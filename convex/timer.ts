@@ -1,7 +1,7 @@
 import { query, mutation, action, internalMutation, MutationCtx } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
-import { internal } from "./_generated/api";
+import { internal, api } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 
 export const getRunningTimer = query({
@@ -47,6 +47,15 @@ export const start = mutation({
       throw new Error("Project not found");
     }
 
+    // Get user settings for interrupt interval
+    const settings = await ctx.db
+      .query("userSettings")
+      .withIndex("byUser", (q) => q.eq("userId", userId))
+      .unique();
+
+    const interruptInterval = settings?.interruptInterval ?? 60; // default 60 minutes
+    const interruptEnabled = settings?.interruptEnabled ?? true;
+
     // Stop any existing timer
     const existingTimer = await ctx.db
       .query("runningTimers")
@@ -58,15 +67,24 @@ export const start = mutation({
     }
 
     const now = Date.now();
+    const nextInterruptAt = interruptEnabled ? now + (interruptInterval * 60 * 1000) : undefined;
 
     // Create running timer
-    await ctx.db.insert("runningTimers", {
+    const timerId = await ctx.db.insert("runningTimers", {
       ownerId: userId,
       projectId: args.projectId,
       startedAt: now,
       lastHeartbeatAt: now,
       awaitingInterruptAck: false,
+      nextInterruptAt,
     });
+
+    // Schedule interrupt check if enabled
+    if (nextInterruptAt) {
+      await ctx.scheduler.runAt(nextInterruptAt, api.interrupts.check, {
+        userId,
+      });
+    }
 
     // Create time entry
     await ctx.db.insert("timeEntries", {
@@ -77,7 +95,11 @@ export const start = mutation({
       isOverrun: false,
     });
 
-    return { success: true };
+    return {
+      success: true,
+      timerId,
+      nextInterruptAt,
+    };
   },
 });
 
@@ -201,19 +223,98 @@ export const ackInterrupt = mutation({
       .unique();
 
     if (!timer || !timer.awaitingInterruptAck) {
-      return { success: false };
+      return { success: false, action: "already_acked", nextInterruptAt: null };
     }
 
     if (args.continue) {
+      // Get user settings for next interrupt scheduling
+      const settings = await ctx.db
+        .query("userSettings")
+        .withIndex("byUser", (q) => q.eq("userId", userId))
+        .unique();
+
+      const interruptInterval = settings?.interruptInterval ?? 60; // default 60 minutes
+      const interruptEnabled = settings?.interruptEnabled ?? true;
+
+      const now = Date.now();
+      const nextInterruptAt = interruptEnabled ? now + (interruptInterval * 60 * 1000) : undefined;
+
       await ctx.db.patch(timer._id, {
         awaitingInterruptAck: false,
         interruptShownAt: undefined,
+        nextInterruptAt,
       });
+
+      // Schedule next interrupt check if enabled
+      if (nextInterruptAt) {
+        await ctx.scheduler.runAt(nextInterruptAt, api.interrupts.check, {
+          userId,
+        });
+      }
+
+      return { success: true, action: "continued", nextInterruptAt };
     } else {
       await stopInternal(ctx, userId, "timer");
+      return { success: true, action: "stopped", nextInterruptAt: null };
+    }
+  },
+});
+
+export const mergeOverrun = mutation({
+  args: {
+    overrunId: v.id("timeEntries"),
+    targetId: v.id("timeEntries"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated");
     }
 
-    return { success: true };
+    const overrunEntry = await ctx.db.get(args.overrunId);
+    const targetEntry = await ctx.db.get(args.targetId);
+
+    if (!overrunEntry || !targetEntry) {
+      throw new Error("Entry not found");
+    }
+
+    if (overrunEntry.ownerId !== userId || targetEntry.ownerId !== userId) {
+      throw new Error("Unauthorized");
+    }
+
+    if (!overrunEntry.isOverrun || overrunEntry.source !== "overrun") {
+      throw new Error("Source entry is not an overrun");
+    }
+
+    if (targetEntry.isOverrun) {
+      throw new Error("Cannot merge into an overrun entry");
+    }
+
+    if (!targetEntry.stoppedAt || !targetEntry.seconds) {
+      throw new Error("Target entry is not completed");
+    }
+
+    // Calculate overrun duration (from overrun start to now)
+    const now = Date.now();
+    const overrunSeconds = Math.floor((now - overrunEntry.startedAt) / 1000);
+    const mergedSeconds = targetEntry.seconds + overrunSeconds;
+
+    // Update target entry with merged time
+    await ctx.db.patch(args.targetId, {
+      stoppedAt: now,
+      seconds: mergedSeconds,
+      note: targetEntry.note
+        ? `${targetEntry.note} (merged with ${overrunSeconds}s overrun)`
+        : `Merged with ${overrunSeconds}s overrun`,
+    });
+
+    // Delete the overrun entry
+    await ctx.db.delete(args.overrunId);
+
+    return {
+      mergedSeconds: overrunSeconds,
+      totalSeconds: mergedSeconds,
+    };
   },
 });
 

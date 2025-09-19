@@ -18,6 +18,7 @@ import type * as clients from "../clients.js";
 import type * as crons from "../crons.js";
 import type * as entries from "../entries.js";
 import type * as http from "../http.js";
+import type * as interrupts from "../interrupts.js";
 import type * as projects from "../projects.js";
 import type * as router from "../router.js";
 import type * as timer from "../timer.js";
@@ -37,6 +38,7 @@ declare const fullApi: ApiFromModules<{
   crons: typeof crons;
   entries: typeof entries;
   http: typeof http;
+  interrupts: typeof interrupts;
   projects: typeof projects;
   router: typeof router;
   timer: typeof timer;

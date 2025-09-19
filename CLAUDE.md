@@ -4,7 +4,7 @@ Auto-generated from all feature plans. Last updated: 2025-09-19
 
 ## Active Technologies
 - TypeScript 5.7.2 + React 19 + Convex (001-timer-interruption-feature)
-- Vite build system + Tailwind CSS
+- Vite build system + Tailwind CSS + shadcn/ui components
 - Convex scheduler.runAt for server-side timing
 
 ## Project Structure
@@ -17,6 +17,7 @@ convex/
 
 src/
 ├── components/
+│   ├── ui/             # shadcn/ui components (Button, Card, Dialog, etc.)
 │   ├── TimerCard.tsx   # Timer UI component
 │   ├── InterruptModal.tsx  # New: Interruption acknowledgment modal
 │   └── OverrunBanner.tsx   # New: Overrun merge notification
@@ -38,6 +39,7 @@ tests/
 - TypeScript: Strict mode, no `any` types
 - React: Functional components with hooks
 - Tailwind: Utility classes only, no inline styles
+- shadcn/ui: Use pre-built components with @/ imports (e.g., @/components/ui/button)
 - Convex: Strongly typed functions with v.object() validators
 
 ## Recent Changes

@@ -52,6 +52,7 @@ const applicationTables = {
     lastHeartbeatAt: v.number(),
     awaitingInterruptAck: v.boolean(),
     interruptShownAt: v.optional(v.number()),
+    nextInterruptAt: v.optional(v.number()),
   })
     .index("byOwner", ["ownerId"])
     .index("byOwnerProject", ["ownerId", "projectId"]),

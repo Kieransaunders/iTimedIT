@@ -8,45 +8,58 @@ import { useState } from "react";
 import { Settings } from "./components/Settings";
 import { ClientsPage } from "./components/ClientsPage";
 import { ProjectsPage } from "./components/ProjectsPage";
+import { ThemeProvider } from "./lib/theme";
+import { ThemeToggle } from "./components/ThemeToggle";
 
 export default function App() {
+  return (
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
+  );
+}
+
+function AppContent() {
   const [currentPage, setCurrentPage] = useState<"dashboard" | "clients" | "projects" | "settings">("dashboard");
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
-      <header className="sticky top-0 z-10 bg-white/80 backdrop-blur-sm h-16 flex justify-between items-center border-b shadow-sm px-4">
+    <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-dark-gradient">
+      <header className="sticky top-0 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm h-16 flex justify-between items-center border-b border-gray-200 dark:border-gray-700 shadow-sm px-4">
         <div className="flex items-center gap-6">
-          <h2 className="text-xl font-semibold text-primary">TimeTracker</h2>
+          <h2 className="text-xl font-semibold text-primary dark:text-white">TimeTracker</h2>
           <Authenticated>
             <nav className="flex gap-4">
               <button
                 onClick={() => setCurrentPage("dashboard")}
-                className={`px-3 py-1 rounded ${currentPage === "dashboard" ? "bg-blue-100 text-blue-700" : "text-gray-600 hover:text-gray-900"}`}
+                className={`px-3 py-1 rounded ${currentPage === "dashboard" ? "bg-blue-100 text-blue-700 dark:bg-purple-600 dark:text-white" : "text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"}`}
               >
                 Dashboard
               </button>
               <button
                 onClick={() => setCurrentPage("clients")}
-                className={`px-3 py-1 rounded ${currentPage === "clients" ? "bg-blue-100 text-blue-700" : "text-gray-600 hover:text-gray-900"}`}
+                className={`px-3 py-1 rounded ${currentPage === "clients" ? "bg-blue-100 text-blue-700 dark:bg-purple-600 dark:text-white" : "text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"}`}
               >
                 Clients
               </button>
               <button
                 onClick={() => setCurrentPage("projects")}
-                className={`px-3 py-1 rounded ${currentPage === "projects" ? "bg-blue-100 text-blue-700" : "text-gray-600 hover:text-gray-900"}`}
+                className={`px-3 py-1 rounded ${currentPage === "projects" ? "bg-blue-100 text-blue-700 dark:bg-purple-600 dark:text-white" : "text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"}`}
               >
                 Projects
               </button>
               <button
                 onClick={() => setCurrentPage("settings")}
-                className={`px-3 py-1 rounded ${currentPage === "settings" ? "bg-blue-100 text-blue-700" : "text-gray-600 hover:text-gray-900"}`}
+                className={`px-3 py-1 rounded ${currentPage === "settings" ? "bg-blue-100 text-blue-700 dark:bg-purple-600 dark:text-white" : "text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"}`}
               >
                 Settings
               </button>
             </nav>
           </Authenticated>
         </div>
-        <SignOutButton />
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <SignOutButton />
+        </div>
       </header>
       <main className="flex-1 p-8">
         <Content currentPage={currentPage} />
