@@ -1,0 +1,139 @@
+openapi: 3.0.0
+info:
+  title: Scheduled Functions Contract
+  version: 1.0.0
+  description: Convex scheduled actions for timer interruptions
+
+paths:
+  /interrupt.check:
+    post:
+      summary: Check if user needs interruption prompt
+      operationId: interruptCheck
+      description: Scheduled via scheduler.runAt at nextInterruptAt time
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - userId
+              properties:
+                userId:
+                  type: string
+                  description: User ID to check
+      responses:
+        '200':
+          description: Interruption check processed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  action:
+                    type: string
+                    enum: [prompted, skipped, no_timer]
+                  graceJobScheduled:
+                    type: boolean
+                  graceJobTime:
+                    type: number
+                    nullable: true
+
+  /interrupt.autoStopIfNoAck:
+    post:
+      summary: Auto-stop timer if no acknowledgment received
+      operationId: interruptAutoStopIfNoAck
+      description: Scheduled 60 seconds after interruption shown
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - userId
+                - interruptAt
+              properties:
+                userId:
+                  type: string
+                  description: User ID to check
+                interruptAt:
+                  type: number
+                  description: Expected interruptShownAt timestamp
+      responses:
+        '200':
+          description: Auto-stop check processed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  action:
+                    type: string
+                    enum: [auto_stopped, already_acked, stale_job]
+                  stoppedEntryId:
+                    type: string
+                    nullable: true
+                  overrunEntryId:
+                    type: string
+                    nullable: true
+
+  /interrupt.sweep:
+    post:
+      summary: Sweep for stale timers and missed interruptions
+      operationId: interruptSweep
+      description: Optional cron job for safety net (runs every minute)
+      responses:
+        '200':
+          description: Sweep completed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  checkedTimers:
+                    type: number
+                  interruptionsTriggered:
+                    type: number
+                  autoStoppedTimers:
+                    type: number
+                  staleTimersStopped:
+                    type: number
+
+components:
+  schemas:
+    ScheduledJob:
+      type: object
+      properties:
+        scheduledFor:
+          type: number
+          description: Epoch ms when job should run
+        functionName:
+          type: string
+        args:
+          type: object
+        retryCount:
+          type: number
+          default: 0
+        maxRetries:
+          type: number
+          default: 3
+
+    InterruptionState:
+      type: object
+      properties:
+        userId:
+          type: string
+        timerId:
+          type: string
+        awaitingAck:
+          type: boolean
+        shownAt:
+          type: number
+          nullable: true
+        nextCheckAt:
+          type: number
+          nullable: true
+        graceEndsAt:
+          type: number
+          nullable: true

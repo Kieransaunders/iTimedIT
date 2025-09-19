@@ -1,8 +1,8 @@
 
-# Implementation Plan: [FEATURE]
+# Implementation Plan: Timer Interruption System
 
-**Branch**: `[###-feature-name]` | **Date**: [DATE] | **Spec**: [link]
-**Input**: Feature specification from `/specs/[###-feature-name]/spec.md`
+**Branch**: `001-timer-interruption-feature` | **Date**: 2025-09-19 | **Spec**: [spec.md](./spec.md)
+**Input**: Feature specification from `/specs/001-timer-interruption-feature/spec.md`
 
 ## Execution Flow (/plan command scope)
 ```
@@ -31,23 +31,28 @@
 - Phase 3-4: Implementation execution (manual or via tools)
 
 ## Summary
-[Extract from feature spec: primary requirement + technical approach from research]
+Implement a server-side timer interruption system using Convex scheduler.runAt for precise per-user alarms that prompts users at configurable intervals to confirm they're still actively working. The system provides a 60-second grace period for responses, automatically stops timers when no acknowledgment is received, and creates overrun entries for potential time recovery. This ensures accurate time tracking even when the browser/app is closed.
 
 ## Technical Context
-**Language/Version**: [e.g., Python 3.11, Swift 5.9, Rust 1.75 or NEEDS CLARIFICATION]  
-**Primary Dependencies**: [e.g., FastAPI, UIKit, LLVM or NEEDS CLARIFICATION]  
-**Storage**: [if applicable, e.g., PostgreSQL, CoreData, files or N/A]  
-**Testing**: [e.g., pytest, XCTest, cargo test or NEEDS CLARIFICATION]  
-**Target Platform**: [e.g., Linux server, iOS 15+, WASM or NEEDS CLARIFICATION]
-**Project Type**: [single/web/mobile - determines source structure]  
-**Performance Goals**: [domain-specific, e.g., 1000 req/s, 10k lines/sec, 60 fps or NEEDS CLARIFICATION]  
-**Constraints**: [domain-specific, e.g., <200ms p95, <100MB memory, offline-capable or NEEDS CLARIFICATION]  
-**Scale/Scope**: [domain-specific, e.g., 10k users, 1M LOC, 50 screens or NEEDS CLARIFICATION]
+**Language/Version**: TypeScript 5.7.2 (React 19 + Convex backend)
+**Primary Dependencies**: Convex (backend + scheduler), React (UI), Tailwind CSS (styling)
+**Storage**: Convex database with reactive queries
+**Testing**: Vite build with TypeScript checks
+**Target Platform**: Web browser (Chrome, Firefox, Safari, Edge)
+**Project Type**: web - Convex backend + React frontend
+**Performance Goals**: Timer accuracy within 1 second, UI updates <100ms, interrupt checks precise to the second
+**Constraints**: Must work when browser/tab closed, 60-second grace period, support 5-120 minute intervals
+**Scale/Scope**: Support 1000+ concurrent timers, handle multiple tabs/devices per user
 
 ## Constitution Check
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+- [x] **Convex-First Architecture**: All timer logic implemented as Convex functions with scheduler.runAt
+- [x] **Type Safety**: Full TypeScript types for all timer states, interruption data, and function parameters
+- [x] **Component-First UI**: Interruption modal as reusable React component with Tailwind styling
+- [x] **Real-time Data Consistency**: Timer state synchronized across tabs via Convex subscriptions
+- [x] **User-Centric Design**: Configurable intervals, grace period, and overrun recovery for productivity
+- [x] **Performance Standards**: 1-second timer precision, <100ms UI updates, efficient queries with indexes
 
 ## Project Structure
 
@@ -99,7 +104,7 @@ ios/ or android/
 └── [platform-specific structure]
 ```
 
-**Structure Decision**: [DEFAULT to Option 1 unless Technical Context indicates web/mobile app]
+**Structure Decision**: Option 2 - Web application (Convex backend + React frontend)
 
 ## Phase 0: Outline & Research
 1. **Extract unknowns from Technical Context** above:
@@ -160,17 +165,27 @@ ios/ or android/
 **Task Generation Strategy**:
 - Load `.specify/templates/tasks-template.md` as base
 - Generate tasks from Phase 1 design docs (contracts, data model, quickstart)
-- Each contract → contract test task [P]
-- Each entity → model creation task [P] 
-- Each user story → integration test task
-- Implementation tasks to make tests pass
+- Schema updates: Add interrupt fields to runningTimers and timeEntries
+- Contract tests: timer.start, timer.stop, timer.ackInterrupt, timer.mergeOverrun [P]
+- Scheduled actions: interrupt.check, interrupt.autoStopIfNoAck [P]
+- UI components: InterruptModal, OverrunBanner [P]
+- Integration tests: Full interrupt flow scenarios
 
 **Ordering Strategy**:
-- TDD order: Tests before implementation 
-- Dependency order: Models before services before UI
-- Mark [P] for parallel execution (independent files)
+- Phase 1: Schema updates (blocking)
+- Phase 2: Contract tests for all functions [P]
+- Phase 3: Core timer functions (timer.start, timer.stop)
+- Phase 4: Scheduled interrupt actions
+- Phase 5: UI components for acknowledgment and overrun
+- Phase 6: Integration tests and heartbeat logic
 
-**Estimated Output**: 25-30 numbered, ordered tasks in tasks.md
+**Estimated Output**: 28-32 numbered, ordered tasks in tasks.md
+
+**Key Dependencies**:
+- Schema changes must complete before any function implementation
+- timer.start/stop before interrupt scheduling
+- Interrupt actions before UI components
+- All core functions before integration tests
 
 **IMPORTANT**: This phase is executed by the /tasks command, NOT by /plan
 
@@ -194,18 +209,18 @@ ios/ or android/
 *This checklist is updated during execution flow*
 
 **Phase Status**:
-- [ ] Phase 0: Research complete (/plan command)
-- [ ] Phase 1: Design complete (/plan command)
-- [ ] Phase 2: Task planning complete (/plan command - describe approach only)
+- [x] Phase 0: Research complete (/plan command)
+- [x] Phase 1: Design complete (/plan command)
+- [x] Phase 2: Task planning complete (/plan command - describe approach only)
 - [ ] Phase 3: Tasks generated (/tasks command)
 - [ ] Phase 4: Implementation complete
 - [ ] Phase 5: Validation passed
 
 **Gate Status**:
-- [ ] Initial Constitution Check: PASS
-- [ ] Post-Design Constitution Check: PASS
-- [ ] All NEEDS CLARIFICATION resolved
-- [ ] Complexity deviations documented
+- [x] Initial Constitution Check: PASS
+- [x] Post-Design Constitution Check: PASS
+- [x] All NEEDS CLARIFICATION resolved
+- [x] Complexity deviations documented (none required)
 
 ---
-*Based on Constitution v2.1.1 - See `/memory/constitution.md`*
+*Based on Constitution v1.0.0 - See `/memory/constitution.md`*

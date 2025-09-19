@@ -1,0 +1,200 @@
+openapi: 3.0.0
+info:
+  title: Timer Interruption API
+  version: 1.0.0
+  description: Convex function contracts for timer interruption system
+
+paths:
+  /timer.start:
+    post:
+      summary: Start a timer with interruption scheduling
+      operationId: timerStart
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - projectId
+              properties:
+                projectId:
+                  type: string
+                  description: Convex ID of the project
+      responses:
+        '200':
+          description: Timer started successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  timerId:
+                    type: string
+                  nextInterruptAt:
+                    type: number
+                    description: Epoch ms for next interruption
+
+  /timer.stop:
+    post:
+      summary: Stop the running timer
+      operationId: timerStop
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                sourceOverride:
+                  type: string
+                  enum: [manual, autoStop]
+                  description: Override the stop source
+      responses:
+        '200':
+          description: Timer stopped successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  entryId:
+                    type: string
+                  seconds:
+                    type: number
+
+  /timer.heartbeat:
+    post:
+      summary: Update timer heartbeat
+      operationId: timerHeartbeat
+      responses:
+        '200':
+          description: Heartbeat updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  lastHeartbeatAt:
+                    type: number
+
+  /timer.ackInterrupt:
+    post:
+      summary: Acknowledge interruption modal
+      operationId: timerAckInterrupt
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - continue
+              properties:
+                continue:
+                  type: boolean
+                  description: Whether to continue timing
+      responses:
+        '200':
+          description: Interruption acknowledged
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  action:
+                    type: string
+                    enum: [continued, stopped]
+                  nextInterruptAt:
+                    type: number
+                    nullable: true
+
+  /timer.mergeOverrun:
+    post:
+      summary: Merge overrun time into previous entry
+      operationId: timerMergeOverrun
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - overrunId
+                - targetId
+              properties:
+                overrunId:
+                  type: string
+                  description: ID of overrun entry to merge
+                targetId:
+                  type: string
+                  description: ID of target entry to merge into
+      responses:
+        '200':
+          description: Overrun merged successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mergedSeconds:
+                    type: number
+                  totalSeconds:
+                    type: number
+
+components:
+  schemas:
+    RunningTimer:
+      type: object
+      required:
+        - ownerId
+        - projectId
+        - startedAt
+        - lastHeartbeatAt
+        - awaitingInterruptAck
+      properties:
+        ownerId:
+          type: string
+        projectId:
+          type: string
+        startedAt:
+          type: number
+        lastHeartbeatAt:
+          type: number
+        awaitingInterruptAck:
+          type: boolean
+        interruptShownAt:
+          type: number
+          nullable: true
+        nextInterruptAt:
+          type: number
+          nullable: true
+
+    TimeEntry:
+      type: object
+      required:
+        - ownerId
+        - projectId
+        - startedAt
+        - source
+        - isOverrun
+      properties:
+        ownerId:
+          type: string
+        projectId:
+          type: string
+        startedAt:
+          type: number
+        stoppedAt:
+          type: number
+          nullable: true
+        seconds:
+          type: number
+          nullable: true
+        source:
+          type: string
+          enum: [manual, timer, autoStop, overrun]
+        note:
+          type: string
+          nullable: true
+        isOverrun:
+          type: boolean
