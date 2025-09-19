@@ -4,7 +4,9 @@ This is a project built with [Chef](https://chef.convex.dev) using [Convex](http
  You can find docs about Chef with useful information like how to deploy to production [here](https://docs.convex.dev/chef).
   
 This project is connected to the Convex deployment named [`small-barracuda-254`](https://dashboard.convex.dev/d/small-barracuda-254).
-  
+ 
+You can test the latest build at https://freelancertimer.netlify.app/ (backed by the production Convex deployment URL `https://small-barracuda-254.convex.cloud`).
+
 ## Project structure
   
 The frontend code is in the `app` directory and is built with [Vite](https://vitejs.dev/).
