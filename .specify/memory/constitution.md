@@ -1,50 +1,41 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+Sync Impact Report:
+- Version change: NEW → 1.0.0
+- Initial constitution creation for Freelancer Time Tracker App
+- Added sections: Core Principles (5), Performance Standards, Development Workflow, Governance
+- Templates requiring updates: ✅ No updates needed (initial constitution)
+- Follow-up TODOs: None
+-->
+
+# Freelancer Time Tracker App Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Convex-First Architecture
+All backend functionality MUST be implemented as Convex functions; Database operations MUST use Convex's reactive queries and mutations; Real-time updates MUST leverage Convex subscriptions for optimal performance and consistency.
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+### II. Type Safety (NON-NEGOTIABLE)
+TypeScript MUST be used throughout frontend and backend; All Convex schema definitions MUST be strongly typed; Vite build MUST pass TypeScript checks without errors; No `any` types permitted in production code.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### III. Component-First UI
+React components MUST be modular and reusable; Tailwind CSS MUST be used for styling consistency; No inline styles or CSS-in-JS permitted; Components MUST follow single responsibility principle.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+### IV. Real-time Data Consistency
+Timer state MUST be synchronized across browser tabs; Data updates MUST be instantly reflected in UI through Convex reactivity; Offline changes MUST be queued and synced when reconnected.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### V. User-Centric Design
+All features MUST serve freelancer time tracking workflows; UI MUST be responsive and accessible; Performance MUST support real-time timer operations without lag; User experience MUST prioritize productivity and efficiency.
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+## Performance Standards
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+Timer accuracy MUST be within 1-second precision for billing accuracy; UI updates MUST complete within 100ms to maintain responsive feel; App MUST handle 1000+ time entries per user efficiently; Database queries MUST use appropriate indexes for fast retrieval.
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+## Development Workflow
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+All schema changes MUST be backward compatible to prevent data loss; Convex functions MUST be tested in development environment before deployment; Database migrations MUST preserve user data integrity; Code reviews MUST verify compliance with constitutional principles.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+Constitution supersedes all development practices; Schema changes require constitution compliance review; Use `.specify/templates/agent-file-template.md` for AI assistant guidance; All implementations MUST verify constitutional compliance before merging.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+**Version**: 1.0.0 | **Ratified**: 2025-09-19 | **Last Amended**: 2025-09-19
