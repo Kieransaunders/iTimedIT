@@ -1,20 +1,19 @@
-import { query, mutation, action, internalMutation, MutationCtx } from "./_generated/server";
-import { getAuthUserId } from "@convex-dev/auth/server";
+import { query, mutation, internalMutation, MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { internal, api } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
+import { ensureMembership, requireMembership } from "./orgContext";
 
 export const getRunningTimer = query({
   args: {},
   handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      return null;
-    }
+    const membership = await requireMembership(ctx);
 
     const timer = await ctx.db
       .query("runningTimers")
-      .withIndex("byOwner", (q) => q.eq("ownerId", userId))
+      .withIndex("byOrgUser", (q) =>
+        q.eq("organizationId", membership.organizationId).eq("userId", membership.userId)
+      )
       .unique();
 
     if (!timer) {
@@ -37,13 +36,11 @@ export const start = mutation({
     projectId: v.id("projects"),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("Not authenticated");
-    }
+    const membership = await ensureMembership(ctx);
+    const { organizationId, userId } = membership;
 
     const project = await ctx.db.get(args.projectId);
-    if (!project || project.ownerId !== userId) {
+    if (!project || project.organizationId !== organizationId) {
       throw new Error("Project not found");
     }
 
@@ -59,11 +56,13 @@ export const start = mutation({
     // Stop any existing timer
     const existingTimer = await ctx.db
       .query("runningTimers")
-      .withIndex("byOwner", (q) => q.eq("ownerId", userId))
+      .withIndex("byOrgUser", (q) =>
+        q.eq("organizationId", organizationId).eq("userId", userId)
+      )
       .unique();
 
     if (existingTimer) {
-      await stopInternal(ctx, userId, "timer");
+      await stopInternal(ctx, organizationId, userId, "timer");
     }
 
     const now = Date.now();
@@ -71,7 +70,8 @@ export const start = mutation({
 
     // Create running timer
     const timerId = await ctx.db.insert("runningTimers", {
-      ownerId: userId,
+      organizationId,
+      userId,
       projectId: args.projectId,
       startedAt: now,
       lastHeartbeatAt: now,
@@ -82,13 +82,15 @@ export const start = mutation({
     // Schedule interrupt check if enabled
     if (nextInterruptAt) {
       await ctx.scheduler.runAt(nextInterruptAt, api.interrupts.check, {
+        organizationId,
         userId,
       });
     }
 
     // Create time entry
     await ctx.db.insert("timeEntries", {
-      ownerId: userId,
+      organizationId,
+      userId,
       projectId: args.projectId,
       startedAt: now,
       source: "timer",
@@ -108,19 +110,27 @@ export const stop = mutation({
     sourceOverride: v.optional(v.union(v.literal("manual"), v.literal("timer"), v.literal("autoStop"), v.literal("overrun"))),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("Not authenticated");
-    }
-
-    return await stopInternal(ctx, userId, args.sourceOverride || "timer");
+    const membership = await ensureMembership(ctx);
+    return await stopInternal(
+      ctx,
+      membership.organizationId,
+      membership.userId,
+      args.sourceOverride || "timer"
+    );
   },
 });
 
-async function stopInternal(ctx: MutationCtx, userId: Id<"users">, source: "manual" | "timer" | "autoStop" | "overrun") {
+async function stopInternal(
+  ctx: MutationCtx,
+  organizationId: Id<"organizations">,
+  userId: Id<"users">,
+  source: "manual" | "timer" | "autoStop" | "overrun"
+) {
   const timer = await ctx.db
     .query("runningTimers")
-    .withIndex("byOwner", (q) => q.eq("ownerId", userId))
+    .withIndex("byOrgUser", (q) =>
+      q.eq("organizationId", organizationId).eq("userId", userId)
+    )
     .unique();
 
   if (!timer) {
@@ -134,7 +144,8 @@ async function stopInternal(ctx: MutationCtx, userId: Id<"users">, source: "manu
     .query("timeEntries")
     .withIndex("byProject", (q) => q.eq("projectId", timer.projectId))
     .filter((q) => q.and(
-      q.eq(q.field("ownerId"), userId),
+      q.eq(q.field("organizationId"), organizationId),
+      q.eq(q.field("userId"), userId),
       q.eq(q.field("stoppedAt"), undefined),
       q.eq(q.field("isOverrun"), false)
     ))
@@ -158,14 +169,13 @@ async function stopInternal(ctx: MutationCtx, userId: Id<"users">, source: "manu
 export const heartbeat = mutation({
   args: {},
   handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("Not authenticated");
-    }
+    const membership = await ensureMembership(ctx);
 
     const timer = await ctx.db
       .query("runningTimers")
-      .withIndex("byOwner", (q) => q.eq("ownerId", userId))
+      .withIndex("byOrgUser", (q) =>
+        q.eq("organizationId", membership.organizationId).eq("userId", membership.userId)
+      )
       .unique();
 
     if (timer) {
@@ -179,14 +189,13 @@ export const heartbeat = mutation({
 export const requestInterrupt = mutation({
   args: {},
   handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("Not authenticated");
-    }
+    const membership = await ensureMembership(ctx);
 
     const timer = await ctx.db
       .query("runningTimers")
-      .withIndex("byOwner", (q) => q.eq("ownerId", userId))
+      .withIndex("byOrgUser", (q) =>
+        q.eq("organizationId", membership.organizationId).eq("userId", membership.userId)
+      )
       .unique();
 
     if (!timer) {
@@ -200,7 +209,8 @@ export const requestInterrupt = mutation({
 
     // Schedule auto-stop after 60 seconds
     await ctx.scheduler.runAfter(60000, internal.timer.autoStopForMissedAck, {
-      userId,
+      organizationId: membership.organizationId,
+      userId: membership.userId,
     });
 
     return { shouldShowInterrupt: true };
@@ -212,14 +222,14 @@ export const ackInterrupt = mutation({
     continue: v.boolean(),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("Not authenticated");
-    }
+    const membership = await ensureMembership(ctx);
+    const { organizationId, userId } = membership;
 
     const timer = await ctx.db
       .query("runningTimers")
-      .withIndex("byOwner", (q) => q.eq("ownerId", userId))
+      .withIndex("byOrgUser", (q) =>
+        q.eq("organizationId", organizationId).eq("userId", userId)
+      )
       .unique();
 
     if (!timer || !timer.awaitingInterruptAck) {
@@ -248,13 +258,19 @@ export const ackInterrupt = mutation({
       // Schedule next interrupt check if enabled
       if (nextInterruptAt) {
         await ctx.scheduler.runAt(nextInterruptAt, api.interrupts.check, {
+          organizationId,
           userId,
         });
       }
 
       return { success: true, action: "continued", nextInterruptAt };
     } else {
-      await stopInternal(ctx, userId, "timer");
+      await stopInternal(
+        ctx,
+        organizationId,
+        userId,
+        "timer"
+      );
       return { success: true, action: "stopped", nextInterruptAt: null };
     }
   },
@@ -321,15 +337,22 @@ export const ackInterrupt = mutation({
 
 export const autoStopForMissedAck = internalMutation({
   args: {
+    organizationId: v.id("organizations"),
     userId: v.id("users"),
   },
   handler: async (ctx, args) => {
     const timer = await ctx.db
       .query("runningTimers")
-      .withIndex("byOwner", (q) => q.eq("ownerId", args.userId))
+      .withIndex("byOrgUser", (q) =>
+        q.eq("organizationId", args.organizationId).eq("userId", args.userId)
+      )
       .unique();
 
     if (!timer || !timer.awaitingInterruptAck || !timer.interruptShownAt) {
+      return;
+    }
+
+    if (!timer.organizationId || !timer.userId) {
       return;
     }
 
@@ -339,11 +362,12 @@ export const autoStopForMissedAck = internalMutation({
     // Only auto-stop if more than 60 seconds have passed
     if (timeSinceInterrupt > 60000) {
       // Stop current entry with autoStop source
-      await stopInternal(ctx, args.userId, "autoStop");
+      await stopInternal(ctx, args.organizationId, args.userId, "autoStop");
 
       // COMMENTED OUT: Create overrun placeholder
       // await ctx.db.insert("timeEntries", {
-      //   ownerId: args.userId,
+      //   organizationId: args.organizationId,
+      //   userId: args.userId,
       //   projectId: timer.projectId,
       //   startedAt: now,
       //   source: "overrun",

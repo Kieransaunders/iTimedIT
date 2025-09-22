@@ -1,18 +1,15 @@
-import { query, mutation } from "./_generated/server";
-import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
+import { query, mutation } from "./_generated/server";
+import { requireMembership, ensureMembershipWithRole, requireMembershipWithRole } from "./orgContext";
 
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("Not authenticated");
-    }
+    const { organizationId } = await requireMembership(ctx);
 
     const clients = await ctx.db
       .query("clients")
-      .withIndex("byOwner", (q) => q.eq("ownerId", userId))
+      .withIndex("byOrganization", (q) => q.eq("organizationId", organizationId))
       .filter((q) => q.eq(q.field("archived"), false))
       .collect();
 
@@ -67,13 +64,14 @@ export const create = mutation({
     color: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("Not authenticated");
-    }
+    const { organizationId, userId } = await ensureMembershipWithRole(ctx, [
+      "owner",
+      "admin",
+    ]);
 
     return await ctx.db.insert("clients", {
-      ownerId: userId,
+      organizationId,
+      createdBy: userId,
       name: args.name,
       note: args.note,
       color: args.color,
@@ -91,13 +89,10 @@ export const update = mutation({
     archived: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("Not authenticated");
-    }
+    const { organizationId } = await requireMembershipWithRole(ctx, ["owner", "admin"]);
 
     const client = await ctx.db.get(args.id);
-    if (!client || client.ownerId !== userId) {
+    if (!client || client.organizationId !== organizationId) {
       throw new Error("Client not found");
     }
 

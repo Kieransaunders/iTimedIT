@@ -1,7 +1,7 @@
 import { query, mutation } from "./_generated/server";
-import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
+import { ensureMembership, requireMembership } from "./orgContext";
 
 export const list = query({
   args: {
@@ -9,26 +9,30 @@ export const list = query({
     paginationOpts: paginationOptsValidator,
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("Not authenticated");
-    }
+    const { organizationId, userId } = await requireMembership(ctx);
 
-    let query;
-    
-    if (args.projectId) {
-      const projectId = args.projectId;
-      query = ctx.db
+    let entriesQuery;
+
+    const projectId = args.projectId;
+
+    if (projectId) {
+      const project = await ctx.db.get(projectId);
+      if (!project || project.organizationId !== organizationId) {
+        throw new Error("Project not found");
+      }
+
+      entriesQuery = ctx.db
         .query("timeEntries")
         .withIndex("byProject", (q) => q.eq("projectId", projectId))
-        .filter((q) => q.eq(q.field("ownerId"), userId));
+        .filter((q) => q.eq(q.field("userId"), userId));
     } else {
-      query = ctx.db
+      entriesQuery = ctx.db
         .query("timeEntries")
-        .withIndex("byOwnerStarted", (q) => q.eq("ownerId", userId));
+        .withIndex("byUserStarted", (q) => q.eq("userId", userId))
+        .filter((q) => q.eq(q.field("organizationId"), organizationId));
     }
 
-    const result = await query
+    const result = await entriesQuery
       .order("desc")
       .paginate(args.paginationOpts);
 
@@ -60,13 +64,10 @@ export const edit = mutation({
     note: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("Not authenticated");
-    }
+    const { organizationId, userId } = await ensureMembership(ctx);
 
     const entry = await ctx.db.get(args.id);
-    if (!entry || entry.ownerId !== userId) {
+    if (!entry || entry.organizationId !== organizationId || entry.userId !== userId) {
       throw new Error("Entry not found");
     }
 
@@ -144,13 +145,10 @@ export const deleteEntry = mutation({
     id: v.id("timeEntries"),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("Not authenticated");
-    }
+    const { organizationId, userId } = await requireMembership(ctx);
 
     const entry = await ctx.db.get(args.id);
-    if (!entry || entry.ownerId !== userId) {
+    if (!entry || entry.organizationId !== organizationId || entry.userId !== userId) {
       throw new Error("Entry not found");
     }
 

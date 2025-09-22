@@ -3,18 +3,71 @@ import { v } from "convex/values";
 import { authTables } from "@convex-dev/auth/server";
 
 const applicationTables = {
+  organizations: defineTable({
+    name: v.string(),
+    slug: v.optional(v.string()),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+  })
+    .index("byCreator", ["createdBy"])
+    .index("bySlug", ["slug"]),
+
+  memberships: defineTable({
+    organizationId: v.id("organizations"),
+    userId: v.id("users"),
+    role: v.union(
+      v.literal("owner"),
+      v.literal("admin"),
+      v.literal("member")
+    ),
+    invitedBy: v.optional(v.id("users")),
+    createdAt: v.number(),
+    inactiveAt: v.optional(v.number()),
+  })
+    .index("byOrganization", ["organizationId"])
+    .index("byUser", ["userId"])
+    .index("byOrgUser", ["organizationId", "userId"]),
+
+  invitations: defineTable({
+    organizationId: v.id("organizations"),
+    email: v.string(),
+    role: v.union(
+      v.literal("owner"),
+      v.literal("admin"),
+      v.literal("member")
+    ),
+    token: v.string(),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("accepted"),
+      v.literal("revoked"),
+      v.literal("expired")
+    ),
+    invitedBy: v.id("users"),
+    createdAt: v.number(),
+    expiresAt: v.number(),
+    acceptedAt: v.optional(v.number()),
+    revokedAt: v.optional(v.number()),
+  })
+    .index("byOrg", ["organizationId"])
+    .index("byEmail", ["email"])
+    .index("byToken", ["token"]),
+
   clients: defineTable({
-    ownerId: v.id("users"),
+    organizationId: v.optional(v.id("organizations")),
+    createdBy: v.optional(v.id("users")),
     name: v.string(),
     note: v.optional(v.string()),
     color: v.optional(v.string()),
     archived: v.boolean(),
   })
-    .index("byOwner", ["ownerId"])
-    .index("byOwnerName", ["ownerId", "name"]),
+    .index("byOrganization", ["organizationId"])
+    .index("byOrgName", ["organizationId", "name"])
+    .index("byCreator", ["createdBy"]),
 
   projects: defineTable({
-    ownerId: v.id("users"),
+    organizationId: v.optional(v.id("organizations")),
+    createdBy: v.optional(v.id("users")),
     clientId: v.id("clients"),
     name: v.string(),
     hourlyRate: v.number(),
@@ -24,11 +77,13 @@ const applicationTables = {
     archived: v.boolean(),
   })
     .index("byClient", ["clientId"])
-    .index("byOwner", ["ownerId"])
-    .index("byOwnerName", ["ownerId", "name"]),
+    .index("byOrganization", ["organizationId"])
+    .index("byOrgName", ["organizationId", "name"])
+    .index("byCreator", ["createdBy"]),
 
   timeEntries: defineTable({
-    ownerId: v.id("users"),
+    organizationId: v.optional(v.id("organizations")),
+    userId: v.optional(v.id("users")),
     projectId: v.id("projects"),
     startedAt: v.number(),
     stoppedAt: v.optional(v.number()),
@@ -43,11 +98,13 @@ const applicationTables = {
     isOverrun: v.boolean(),
   })
     .index("byProject", ["projectId"])
-    .index("byOwner", ["ownerId"])
-    .index("byOwnerStarted", ["ownerId", "startedAt"]),
+    .index("byOrganization", ["organizationId"])
+    .index("byOrgUser", ["organizationId", "userId"])
+    .index("byUserStarted", ["userId", "startedAt"]),
 
   runningTimers: defineTable({
-    ownerId: v.id("users"),
+    organizationId: v.optional(v.id("organizations")),
+    userId: v.optional(v.id("users")),
     projectId: v.id("projects"),
     startedAt: v.number(),
     lastHeartbeatAt: v.number(),
@@ -55,11 +112,13 @@ const applicationTables = {
     interruptShownAt: v.optional(v.number()),
     nextInterruptAt: v.optional(v.number()),
   })
-    .index("byOwner", ["ownerId"])
-    .index("byOwnerProject", ["ownerId", "projectId"]),
+    .index("byOrganization", ["organizationId"])
+    .index("byOrgUser", ["organizationId", "userId"])
+    .index("byUserProject", ["userId", "projectId"]),
 
   userSettings: defineTable({
     userId: v.id("users"),
+    organizationId: v.optional(v.id("organizations")),
     interruptInterval: v.union(
       v.literal(0.0833), // 5 seconds (5/60 minutes)
       v.literal(5),
@@ -83,14 +142,16 @@ const applicationTables = {
   }).index("byUser", ["userId"]),
 
   imports: defineTable({
-    ownerId: v.id("users"),
+    organizationId: v.optional(v.id("organizations")),
+    requestedBy: v.optional(v.id("users")),
     provider: v.literal("toggl"),
     status: v.union(v.literal("pending"), v.literal("done"), v.literal("error")),
     createdAt: v.number(),
     error: v.optional(v.string()),
     meta: v.any(),
   })
-    .index("byOwner", ["ownerId"])
+    .index("byOrganization", ["organizationId"])
+    .index("byRequester", ["requestedBy"])
     .index("byStatus", ["status"]),
 };
 

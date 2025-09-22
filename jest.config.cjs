@@ -12,8 +12,10 @@ module.exports = {
     '!**/*.d.ts',
   ],
   setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],
-  moduleNameMapping: {
+  moduleNameMapper: {
+    '^@convex-dev/auth/server$': '<rootDir>/tests/mocks/convexAuthServer.ts',
     '^@/(.*)$': '<rootDir>/src/$1',
   },
+  watchman: false,
   verbose: true,
 };
