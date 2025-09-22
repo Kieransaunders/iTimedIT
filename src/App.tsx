@@ -4,10 +4,12 @@ import { SignInForm } from "./SignInForm";
 import { SignOutButton } from "./SignOutButton";
 import { Toaster } from "sonner";
 import { Dashboard } from "./components/Dashboard";
+import { ModernDashboard } from "./components/ModernDashboard";
 import { useState } from "react";
 import { Settings } from "./components/Settings";
 import { ClientsPage } from "./components/ClientsPage";
 import { ProjectsPage } from "./components/ProjectsPage";
+import { ProjectDetailPage } from "./components/ProjectDetailPage";
 import { ThemeProvider } from "./lib/theme";
 import { ThemeToggle } from "./components/ThemeToggle";
 
@@ -20,7 +22,8 @@ export default function App() {
 }
 
 function AppContent() {
-  const [currentPage, setCurrentPage] = useState<"dashboard" | "clients" | "projects" | "settings">("dashboard");
+  const [currentPage, setCurrentPage] = useState<"dashboard" | "modern" | "clients" | "projects" | "settings">("dashboard");
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-dark-gradient">
@@ -34,6 +37,12 @@ function AppContent() {
                 className={`px-3 py-1 rounded ${currentPage === "dashboard" ? "bg-blue-100 text-blue-700 dark:bg-purple-600 dark:text-white" : "text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"}`}
               >
                 Dashboard
+              </button>
+              <button
+                onClick={() => setCurrentPage("modern")}
+                className={`px-3 py-1 rounded ${currentPage === "modern" ? "bg-blue-100 text-blue-700 dark:bg-purple-600 dark:text-white" : "text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"}`}
+              >
+                Modern
               </button>
               <button
                 onClick={() => setCurrentPage("clients")}
@@ -62,14 +71,24 @@ function AppContent() {
         </div>
       </header>
       <main className="flex-1 p-8">
-        <Content currentPage={currentPage} />
+        <Content currentPage={currentPage} selectedProjectId={selectedProjectId} setCurrentPage={setCurrentPage} setSelectedProjectId={setSelectedProjectId} />
       </main>
       <Toaster />
     </div>
   );
 }
 
-function Content({ currentPage }: { currentPage: string }) {
+function Content({ 
+  currentPage, 
+  selectedProjectId, 
+  setCurrentPage,
+  setSelectedProjectId 
+}: { 
+  currentPage: string; 
+  selectedProjectId: string | null;
+  setCurrentPage: (page: "dashboard" | "clients" | "projects" | "settings") => void;
+  setSelectedProjectId: (id: string | null) => void;
+}) {
   const loggedInUser = useQuery(api.auth.loggedInUser);
 
   if (loggedInUser === undefined) {
@@ -85,7 +104,22 @@ function Content({ currentPage }: { currentPage: string }) {
       <Authenticated>
         {currentPage === "dashboard" && <Dashboard />}
         {currentPage === "clients" && <ClientsPage />}
-        {currentPage === "projects" && <ProjectsPage />}
+        {currentPage === "projects" && (
+          selectedProjectId ? (
+            <ProjectDetailPage 
+              projectId={selectedProjectId} 
+              onBackToProjects={() => {
+                setSelectedProjectId(null);
+              }}
+            />
+          ) : (
+            <ProjectsPage 
+              onProjectSelect={(projectId: string) => {
+                setSelectedProjectId(projectId);
+              }}
+            />
+          )
+        )}
         {currentPage === "settings" && <Settings />}
       </Authenticated>
       <Unauthenticated>

@@ -1,4 +1,4 @@
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useState, useEffect } from "react";
 import { Id } from "../../convex/_generated/dataModel";
@@ -14,6 +14,7 @@ export function TimerCard({ selectedProjectId, runningTimer }: TimerCardProps) {
 
   const startTimer = useMutation(api.timer.start);
   const stopTimer = useMutation(api.timer.stop);
+  const projectStats = useQuery(api.projects.getStats, runningTimer?.projectId ? { projectId: runningTimer.projectId } : "skip");
 
   // Update elapsed time every second
   useEffect(() => {
@@ -36,6 +37,16 @@ export function TimerCard({ selectedProjectId, runningTimer }: TimerCardProps) {
     const minutes = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const formatBudgetTime = (seconds: number) => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    return `${hours}h ${minutes}m`;
+  };
+
+  const formatCurrency = (amount: number) => {
+    return `$${amount.toFixed(2)}`;
   };
 
   const handleStart = async () => {
@@ -92,11 +103,23 @@ export function TimerCard({ selectedProjectId, runningTimer }: TimerCardProps) {
           )}
         </div>
 
-        {runningTimer && (
+        {runningTimer && projectStats && (
           <div className="mb-4 text-center">
-            <div className="text-sm text-gray-600 dark:text-gray-300">
-              This task has cost {runningTimer.client?.name} ${((elapsedSeconds / 3600) * (runningTimer.project?.hourlyRate || 0)).toFixed(2)} so far
-            </div>
+            {projectStats.timeRemaining > 0 || projectStats.budgetRemaining > 0 ? (
+              <div className="text-sm text-gray-600 dark:text-gray-300">
+                {runningTimer.project?.budgetType === "hours" && projectStats.timeRemaining > 0 ? (
+                  <>Time remaining: <span className="font-semibold text-green-600 dark:text-green-400">{formatBudgetTime(projectStats.timeRemaining * 3600)}</span></>
+                ) : runningTimer.project?.budgetType === "amount" && projectStats.budgetRemaining > 0 ? (
+                  <>Budget remaining: <span className="font-semibold text-green-600 dark:text-green-400">{formatCurrency(projectStats.budgetRemaining)}</span></>
+                ) : (
+                  <span className="font-semibold text-red-600 dark:text-red-400">⚠️ Budget exceeded</span>
+                )}
+              </div>
+            ) : (
+              <div className="text-sm text-red-600 dark:text-red-400">
+                <span className="font-semibold">⚠️ Budget exceeded</span>
+              </div>
+            )}
           </div>
         )}
 

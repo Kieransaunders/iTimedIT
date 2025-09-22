@@ -260,63 +260,64 @@ export const ackInterrupt = mutation({
   },
 });
 
-export const mergeOverrun = mutation({
-  args: {
-    overrunId: v.id("timeEntries"),
-    targetId: v.id("timeEntries"),
-  },
-  handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("Not authenticated");
-    }
+// COMMENTED OUT: Overrun merge functionality
+// export const mergeOverrun = mutation({
+//   args: {
+//     overrunId: v.id("timeEntries"),
+//     targetId: v.id("timeEntries"),
+//   },
+//   handler: async (ctx, args) => {
+//     const userId = await getAuthUserId(ctx);
+//     if (!userId) {
+//       throw new Error("Not authenticated");
+//     }
 
-    const overrunEntry = await ctx.db.get(args.overrunId);
-    const targetEntry = await ctx.db.get(args.targetId);
+//     const overrunEntry = await ctx.db.get(args.overrunId);
+//     const targetEntry = await ctx.db.get(args.targetId);
 
-    if (!overrunEntry || !targetEntry) {
-      throw new Error("Entry not found");
-    }
+//     if (!overrunEntry || !targetEntry) {
+//       throw new Error("Entry not found");
+//     }
 
-    if (overrunEntry.ownerId !== userId || targetEntry.ownerId !== userId) {
-      throw new Error("Unauthorized");
-    }
+//     if (overrunEntry.ownerId !== userId || targetEntry.ownerId !== userId) {
+//       throw new Error("Unauthorized");
+//     }
 
-    if (!overrunEntry.isOverrun || overrunEntry.source !== "overrun") {
-      throw new Error("Source entry is not an overrun");
-    }
+//     if (!overrunEntry.isOverrun || overrunEntry.source !== "overrun") {
+//       throw new Error("Source entry is not an overrun");
+//     }
 
-    if (targetEntry.isOverrun) {
-      throw new Error("Cannot merge into an overrun entry");
-    }
+//     if (targetEntry.isOverrun) {
+//       throw new Error("Cannot merge into an overrun entry");
+//     }
 
-    if (!targetEntry.stoppedAt || !targetEntry.seconds) {
-      throw new Error("Target entry is not completed");
-    }
+//     if (!targetEntry.stoppedAt || !targetEntry.seconds) {
+//       throw new Error("Target entry is not completed");
+//     }
 
-    // Calculate overrun duration (from overrun start to now)
-    const now = Date.now();
-    const overrunSeconds = Math.floor((now - overrunEntry.startedAt) / 1000);
-    const mergedSeconds = targetEntry.seconds + overrunSeconds;
+//     // Calculate overrun duration (from overrun start to now)
+//     const now = Date.now();
+//     const overrunSeconds = Math.floor((now - overrunEntry.startedAt) / 1000);
+//     const mergedSeconds = targetEntry.seconds + overrunSeconds;
 
-    // Update target entry with merged time
-    await ctx.db.patch(args.targetId, {
-      stoppedAt: now,
-      seconds: mergedSeconds,
-      note: targetEntry.note
-        ? `${targetEntry.note} (merged with ${overrunSeconds}s overrun)`
-        : `Merged with ${overrunSeconds}s overrun`,
-    });
+//     // Update target entry with merged time
+//     await ctx.db.patch(args.targetId, {
+//       stoppedAt: now,
+//       seconds: mergedSeconds,
+//       note: targetEntry.note
+//         ? `${targetEntry.note} (merged with ${overrunSeconds}s overrun)`
+//         : `Merged with ${overrunSeconds}s overrun`,
+//     });
 
-    // Delete the overrun entry
-    await ctx.db.delete(args.overrunId);
+//     // Delete the overrun entry
+//     await ctx.db.delete(args.overrunId);
 
-    return {
-      mergedSeconds: overrunSeconds,
-      totalSeconds: mergedSeconds,
-    };
-  },
-});
+//     return {
+//       mergedSeconds: overrunSeconds,
+//       totalSeconds: mergedSeconds,
+//     };
+//   },
+// });
 
 export const autoStopForMissedAck = internalMutation({
   args: {
@@ -340,15 +341,15 @@ export const autoStopForMissedAck = internalMutation({
       // Stop current entry with autoStop source
       await stopInternal(ctx, args.userId, "autoStop");
 
-      // Create overrun placeholder
-      await ctx.db.insert("timeEntries", {
-        ownerId: args.userId,
-        projectId: timer.projectId,
-        startedAt: now,
-        source: "overrun",
-        isOverrun: true,
-        note: "Overrun placeholder - merge if you were still working",
-      });
+      // COMMENTED OUT: Create overrun placeholder
+      // await ctx.db.insert("timeEntries", {
+      //   ownerId: args.userId,
+      //   projectId: timer.projectId,
+      //   startedAt: now,
+      //   source: "overrun",
+      //   isOverrun: true,
+      //   note: "Overrun placeholder - merge if you were still working",
+      // });
     }
   },
 });

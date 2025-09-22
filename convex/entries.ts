@@ -98,45 +98,46 @@ export const edit = mutation({
   },
 });
 
-export const mergeOverrun = mutation({
-  args: {
-    overrunId: v.id("timeEntries"),
-    intoEntryId: v.id("timeEntries"),
-  },
-  handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("Not authenticated");
-    }
+// COMMENTED OUT: Overrun merge functionality
+// export const mergeOverrun = mutation({
+//   args: {
+//     overrunId: v.id("timeEntries"),
+//     intoEntryId: v.id("timeEntries"),
+//   },
+//   handler: async (ctx, args) => {
+//     const userId = await getAuthUserId(ctx);
+//     if (!userId) {
+//       throw new Error("Not authenticated");
+//     }
 
-    const overrunEntry = await ctx.db.get(args.overrunId);
-    const targetEntry = await ctx.db.get(args.intoEntryId);
+//     const overrunEntry = await ctx.db.get(args.overrunId);
+//     const targetEntry = await ctx.db.get(args.intoEntryId);
 
-    if (!overrunEntry || !targetEntry || 
-        overrunEntry.ownerId !== userId || 
-        targetEntry.ownerId !== userId) {
-      throw new Error("Entries not found");
-    }
+//     if (!overrunEntry || !targetEntry || 
+//         overrunEntry.ownerId !== userId || 
+//         targetEntry.ownerId !== userId) {
+//       throw new Error("Entries not found");
+//     }
 
-    if (!overrunEntry.isOverrun) {
-      throw new Error("Source entry is not an overrun");
-    }
+//     if (!overrunEntry.isOverrun) {
+//       throw new Error("Source entry is not an overrun");
+//     }
 
-    // Calculate overrun seconds (from creation to now if still running)
-    const overrunSeconds = overrunEntry.stoppedAt 
-      ? (overrunEntry.stoppedAt - overrunEntry.startedAt) / 1000
-      : (Date.now() - overrunEntry.startedAt) / 1000;
+//     // Calculate overrun seconds (from creation to now if still running)
+//     const overrunSeconds = overrunEntry.stoppedAt 
+//       ? (overrunEntry.stoppedAt - overrunEntry.startedAt) / 1000
+//       : (Date.now() - overrunEntry.startedAt) / 1000;
 
-    // Add to target entry
-    const currentSeconds = targetEntry.seconds || 0;
-    await ctx.db.patch(args.intoEntryId, {
-      seconds: currentSeconds + Math.floor(overrunSeconds),
-    });
+//     // Add to target entry
+//     const currentSeconds = targetEntry.seconds || 0;
+//     await ctx.db.patch(args.intoEntryId, {
+//       seconds: currentSeconds + Math.floor(overrunSeconds),
+//     });
 
-    // Delete overrun entry
-    await ctx.db.delete(args.overrunId);
-  },
-});
+//     // Delete overrun entry
+//     await ctx.db.delete(args.overrunId);
+//   },
+// });
 
 export const deleteEntry = mutation({
   args: {

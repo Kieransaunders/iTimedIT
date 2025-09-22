@@ -23,6 +23,29 @@ export const listByClient = query({
   },
 });
 
+export const get = query({
+  args: {
+    id: v.id("projects"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
+
+    const project = await ctx.db.get(args.id);
+    if (!project || project.ownerId !== userId) {
+      throw new Error("Project not found");
+    }
+
+    const client = await ctx.db.get(project.clientId);
+    return {
+      ...project,
+      client,
+    };
+  },
+});
+
 export const listAll = query({
   args: {},
   handler: async (ctx) => {
