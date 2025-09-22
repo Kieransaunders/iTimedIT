@@ -25,27 +25,38 @@ export function ProjectsPage({ onProjectSelect }: ProjectsPageProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const projectData = {
-      name,
-      hourlyRate: parseFloat(hourlyRate),
-      budgetType,
-      ...(budgetType === "hours" && budgetHours && { budgetHours: parseFloat(budgetHours) }),
-      ...(budgetType === "amount" && budgetAmount && { budgetAmount: parseFloat(budgetAmount) }),
-    };
+    try {
+      const projectData = {
+        name,
+        hourlyRate: parseFloat(hourlyRate),
+        budgetType,
+        ...(budgetType === "hours" && budgetHours && { budgetHours: parseFloat(budgetHours) }),
+        ...(budgetType === "amount" && budgetAmount && { budgetAmount: parseFloat(budgetAmount) }),
+      };
 
-    if (editingProject) {
-      await updateProject({
-        id: editingProject._id,
-        ...projectData,
-      });
-    } else {
-      await createProject({
-        clientId: clientId as Id<"clients">,
-        ...projectData,
-      });
+      console.log("Submitting project data:", projectData);
+
+      if (editingProject) {
+        console.log("Updating project:", editingProject._id);
+        await updateProject({
+          id: editingProject._id,
+          ...projectData,
+        });
+        console.log("Project updated successfully");
+      } else {
+        console.log("Creating new project");
+        await createProject({
+          clientId: clientId as Id<"clients">,
+          ...projectData,
+        });
+        console.log("Project created successfully");
+      }
+      
+      resetForm();
+    } catch (error) {
+      console.error("Error saving project:", error);
+      alert("Error saving project. Please try again.");
     }
-    
-    resetForm();
   };
 
   const resetForm = () => {
@@ -127,7 +138,7 @@ export function ProjectsPage({ onProjectSelect }: ProjectsPageProps) {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-purple-timer bg-white dark:bg-gray-700/50 text-gray-900 dark:text-gray-100"
                 />
               </div>
             </div>
@@ -145,18 +156,18 @@ export function ProjectsPage({ onProjectSelect }: ProjectsPageProps) {
                   required
                   min="0"
                   step="0.01"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-purple-timer bg-white dark:bg-gray-700/50 text-gray-900 dark:text-gray-100"
                 />
               </div>
               <div>
                 <label htmlFor="budgetType" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Budget Type
+                  Allocation Type
                 </label>
                 <select
                   id="budgetType"
                   value={budgetType}
                   onChange={(e) => setBudgetType(e.target.value as "hours" | "amount")}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-purple-timer bg-white dark:bg-gray-700/50 text-gray-900 dark:text-gray-100"
                 >
                   <option value="hours">Hours</option>
                   <option value="amount">Amount</option>
@@ -166,7 +177,7 @@ export function ProjectsPage({ onProjectSelect }: ProjectsPageProps) {
                 {budgetType === "hours" ? (
                   <>
                     <label htmlFor="budgetHours" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Budget Hours
+                      Allocated Hours
                     </label>
                     <input
                       type="number"
@@ -181,7 +192,7 @@ export function ProjectsPage({ onProjectSelect }: ProjectsPageProps) {
                 ) : (
                   <>
                     <label htmlFor="budgetAmount" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Budget Amount ($)
+                      Allocated Amount ($)
                     </label>
                     <input
                       type="number"
@@ -228,7 +239,13 @@ export function ProjectsPage({ onProjectSelect }: ProjectsPageProps) {
                   Hourly Rate
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Budget
+                  Time Used
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Allocated
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Remaining
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Actions
@@ -239,21 +256,35 @@ export function ProjectsPage({ onProjectSelect }: ProjectsPageProps) {
               {projects.map((project) => (
                 <tr key={project._id}>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                      {project.client?.name}
-                    </div>
-                    <div className="text-sm text-gray-500 dark:text-gray-400">
-                      {project.name}
+                    <div className="flex items-center gap-3">
+                      <span
+                        className="h-4 w-4 rounded-full border border-gray-300 dark:border-gray-600"
+                        style={{ backgroundColor: project.client?.color || "#8b5cf6" }}
+                      />
+                      <div>
+                        <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                          {project.name}
+                        </div>
+                        <div className="text-sm text-gray-500 dark:text-gray-400">
+                          {project.client?.name}
+                        </div>
+                      </div>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                     ${project.hourlyRate}/hr
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                    {project.totalHoursFormatted || "0h"}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                     {project.budgetType === "hours" 
                       ? `${project.budgetHours || 0} hours`
                       : `$${project.budgetAmount || 0}`
                     }
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                    {project.budgetRemainingFormatted}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <div className="flex gap-2">

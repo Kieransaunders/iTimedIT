@@ -7,6 +7,7 @@ const applicationTables = {
     ownerId: v.id("users"),
     name: v.string(),
     note: v.optional(v.string()),
+    color: v.optional(v.string()),
     archived: v.boolean(),
   })
     .index("byOwner", ["ownerId"])
@@ -64,6 +65,7 @@ const applicationTables = {
       v.literal(5),
       v.literal(15),
       v.literal(30),
+      v.literal(45),
       v.literal(60),
       v.literal(120)
     ),
@@ -75,6 +77,9 @@ const applicationTables = {
       v.literal(60),  // 60 seconds
       v.literal(120)  // 2 minutes
     )),
+    budgetWarningEnabled: v.optional(v.boolean()),
+    budgetWarningThresholdHours: v.optional(v.number()),
+    budgetWarningThresholdAmount: v.optional(v.number()),
   }).index("byUser", ["userId"]),
 
   imports: defineTable({

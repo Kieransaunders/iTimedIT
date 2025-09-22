@@ -7,6 +7,9 @@ import { Badge } from "./ui/badge";
 import { Card } from "./ui/card";
 import { cn } from "../lib/utils";
 import { InterruptModal } from "./InterruptModal";
+import { ProjectSwitchModal } from "./ProjectSwitchModal";
+import { ProjectKpis } from "./ProjectKpis";
+import { RecentEntriesTable } from "./RecentEntriesTable";
 
 interface TimerState {
   running: boolean;
@@ -26,7 +29,7 @@ interface ProjectWithClient {
   color: string;
 }
 
-const CLIENT_COLORS = [
+const FALLBACK_COLORS = [
   "#8b5cf6", // purple
   "#06b6d4", // cyan  
   "#22c55e", // green
@@ -42,7 +45,7 @@ function getClientColor(clientId: string): string {
     a = ((a << 5) - a) + b.charCodeAt(0);
     return a & a;
   }, 0);
-  return CLIENT_COLORS[Math.abs(hash) % CLIENT_COLORS.length];
+  return FALLBACK_COLORS[Math.abs(hash) % FALLBACK_COLORS.length];
 }
 
 function formatTime(ms: number): string {
@@ -64,10 +67,18 @@ function formatCurrency(amount: number): string {
   }).format(amount);
 }
 
+function formatBudgetTime(seconds: number): string {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  return `${hours}h ${minutes}m`;
+}
+
 export function ModernDashboard() {
   const [currentProjectId, setCurrentProjectId] = useState<Id<"projects"> | null>(null);
   const [now, setNow] = useState(Date.now());
   const [showInterruptModal, setShowInterruptModal] = useState(false);
+  const [showProjectSwitchModal, setShowProjectSwitchModal] = useState(false);
+  const [pendingProjectId, setPendingProjectId] = useState<Id<"projects"> | null>(null);
 
   const projects = useQuery(api.projects.listAll);
   const runningTimer = useQuery(api.timer.getRunningTimer);
@@ -76,13 +87,14 @@ export function ModernDashboard() {
   const stopTimer = useMutation(api.timer.stop);
   const heartbeat = useMutation(api.timer.heartbeat);
   const requestInterrupt = useMutation(api.timer.requestInterrupt);
+  const projectStats = useQuery(api.projects.getStats, runningTimer?.projectId ? { projectId: runningTimer.projectId } : "skip");
 
   // Enhance projects with colors
   const projectsWithColors = useMemo(() => {
     if (!projects) return [];
     return projects.map(project => ({
       ...project,
-      color: getClientColor(project.client._id),
+      color: project.client.color || getClientColor(project.client._id),
     }));
   }, [projects]);
 
@@ -138,7 +150,7 @@ export function ModernDashboard() {
 
   const totalElapsedMs = useMemo(() => {
     if (!timerState.running || !timerState.startMs) return 0;
-    return now - timerState.startMs;
+    return Math.max(0, now - timerState.startMs);
   }, [timerState, now]);
 
   const totalSeconds = Math.floor(totalElapsedMs / 1000);
@@ -158,13 +170,34 @@ export function ModernDashboard() {
     if (projectId === currentProjectId) return;
     
     if (timerState.running) {
-      await stopTimer();
-      setCurrentProjectId(projectId);
-      await startTimer({ projectId });
+      setPendingProjectId(projectId);
+      setShowProjectSwitchModal(true);
     } else {
       setCurrentProjectId(projectId);
     }
-  }, [currentProjectId, timerState.running, stopTimer, startTimer]);
+  }, [currentProjectId, timerState.running]);
+
+  const handleStopAndSwitch = useCallback(async () => {
+    if (!pendingProjectId) return;
+    await stopTimer();
+    setCurrentProjectId(pendingProjectId);
+    setShowProjectSwitchModal(false);
+    setPendingProjectId(null);
+  }, [pendingProjectId, stopTimer]);
+
+  const handleTransferTimer = useCallback(async () => {
+    if (!pendingProjectId) return;
+    await stopTimer();
+    setCurrentProjectId(pendingProjectId);
+    await startTimer({ projectId: pendingProjectId });
+    setShowProjectSwitchModal(false);
+    setPendingProjectId(null);
+  }, [pendingProjectId, stopTimer, startTimer]);
+
+  const handleCancelSwitch = useCallback(() => {
+    setShowProjectSwitchModal(false);
+    setPendingProjectId(null);
+  }, []);
 
   if (!currentProject) {
     return (
@@ -175,23 +208,30 @@ export function ModernDashboard() {
   }
 
   return (
-    <div
-      className={cn(
-        "min-h-[calc(100vh-8rem)]",
-        "bg-[radial-gradient(1000px_600px_at_10%_-20%,_rgba(139,92,246,0.25),_transparent),radial-gradient(800px_500px_at_100%_20%,_rgba(6,182,212,0.18),_transparent)]",
-      )}
-      style={{
-        background: `radial-gradient(1000px 600px at 10% -20%, ${currentProject.color}25, transparent), radial-gradient(800px 500px at 100% 20%, ${currentProject.color}18, transparent)`,
-      }}
-    >
+    <div className="min-h-[calc(100vh-8rem)] bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 dark:from-gray-900 dark:via-purple-900 dark:to-violet-900">
       <div className="container mx-auto flex min-h-full flex-col items-center justify-center gap-6 py-10">
         {/* Project Switcher */}
         <div className="w-full flex flex-col items-center gap-3">
-          <div className="w-full max-w-sm">
+          <div className="w-full max-w-md relative">
+            <div className="bg-white/70 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-300/50 dark:border-gray-700/50 rounded-xl p-4 shadow-lg">
+              <div className="flex items-center gap-3">
+                <span
+                  className="h-3 w-3 rounded-full"
+                  style={{ backgroundColor: currentProject.color }}
+                />
+                <div className="flex-1">
+                  <div className="text-gray-900 dark:text-white font-medium">{currentProject.client.name}</div>
+                  <div className="text-gray-600 dark:text-gray-300 text-sm">– {currentProject.name}</div>
+                </div>
+                <svg className="w-4 h-4 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
             <select
               value={currentProject._id}
               onChange={(e) => switchProject(e.target.value as Id<"projects">)}
-              className="w-full p-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary"
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
             >
               {projectsWithColors.map((project) => (
                 <option key={project._id} value={project._id}>
@@ -200,82 +240,108 @@ export function ModernDashboard() {
               ))}
             </select>
           </div>
-          <div className="text-sm text-muted-foreground">Select a project to track time</div>
+          <div className="text-sm text-gray-600 dark:text-gray-400">Swipe left/right to switch projects</div>
         </div>
 
         {/* Timer Display */}
-        <div className="text-center">
-          <div className="text-8xl font-mono font-bold text-gray-900 dark:text-gray-100 mb-2">
+        <div className="text-center mb-8">
+          <div 
+            className={`text-9xl font-mono font-bold mb-4 tracking-tight ${
+              runningTimer && projectStats?.isNearBudgetLimit 
+                ? "animate-pulse" 
+                : ""
+            }`}
+            style={{ 
+              color: runningTimer && projectStats?.isNearBudgetLimit 
+                ? "#f59e0b" // amber warning color
+                : currentProject.color 
+            }}
+          >
             {formatTime(totalElapsedMs)}
           </div>
-          <div className="flex items-center justify-center gap-2">
-            <span
-              className="h-3 w-3 rounded-full"
-              style={{ backgroundColor: currentProject.color }}
-            />
-            <span className="text-lg font-medium text-gray-700 dark:text-gray-300">
-              {currentProject.client.name}
-            </span>
-          </div>
         </div>
 
-        {/* Cost Ticker */}
-        <div className="text-center">
-          <div className="text-3xl font-bold text-green-600 dark:text-green-400">
-            {formatCurrency(earnedAmount)}
+        {/* Time/Allocation Remaining Display */}
+        {runningTimer && projectStats && (
+          <div className="text-center mb-8">
+            {projectStats.timeRemaining > 0 || projectStats.budgetRemaining > 0 ? (
+              <div className="text-lg text-gray-700 dark:text-gray-300">
+                {runningTimer.project?.budgetType === "hours" && projectStats.timeRemaining > 0 ? (
+                  <>Time remaining: <span className={`font-bold ${projectStats.isNearBudgetLimit ? "text-amber-400" : "text-green-400"}`}>{formatBudgetTime(projectStats.timeRemaining * 3600)}</span></>
+                ) : runningTimer.project?.budgetType === "amount" && projectStats.budgetRemaining > 0 ? (
+                  <>Amount remaining: <span className={`font-bold ${projectStats.isNearBudgetLimit ? "text-amber-400" : "text-green-400"}`}>{formatCurrency(projectStats.budgetRemaining)}</span></>
+                ) : (
+                  <span className="font-bold text-red-400">⚠️ Budget exceeded</span>
+                )}
+                {projectStats.isNearBudgetLimit && (
+                  <div className="text-sm text-amber-600 dark:text-amber-400 mt-1 animate-pulse">
+                    ⚠️ Approaching budget limit
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-lg text-red-600 dark:text-red-400">
+                <span className="font-bold">⚠️ Budget exceeded</span>
+              </div>
+            )}
           </div>
-          <div className="text-sm text-muted-foreground">
-            @ {formatCurrency(currentProject.hourlyRate)}/hour for {currentProject.client.name}
-          </div>
-        </div>
+        )}
 
         {/* Start/Stop Button */}
-        <div className="mt-6 flex items-center gap-3">
-          <Button
-            size="lg"
-            className={cn(
-              "h-14 px-10 text-lg font-semibold shadow-lg transition-all duration-200",
-              timerState.running 
-                ? "bg-red-500 hover:bg-red-600 text-white shadow-red-500/30" 
-                : "shadow-primary/30",
-            )}
+        <div className="mb-12">
+          <button
+            className="px-12 py-4 text-lg font-semibold text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
             style={{
               backgroundColor: timerState.running ? "#ef4444" : currentProject.color,
-              color: "white",
             }}
             onClick={toggleTimer}
             aria-pressed={timerState.running}
           >
             {timerState.running ? "Stop" : "Start"}
-          </Button>
+          </button>
         </div>
 
-        {/* Recent Projects Carousel */}
-        <section className="w-full max-w-4xl">
+        {/* Recent Projects */}
+        <section className="w-full max-w-5xl">
           <h2 className="sr-only">Recent projects</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {projectsWithColors.slice(0, 4).map((project) => (
-              <Card
+              <div
                 key={project._id}
                 className={cn(
-                  "p-4 cursor-pointer transition-all duration-200 hover:scale-105",
-                  project._id === currentProjectId && "ring-2 ring-primary"
+                  "bg-white/60 dark:bg-gray-800/30 backdrop-blur-sm border border-gray-300/50 dark:border-gray-700/50 rounded-xl p-4 cursor-pointer transition-all duration-200 hover:bg-gray-100/60 dark:hover:bg-gray-700/40 hover:scale-105",
+                  project._id === currentProjectId && "ring-2 ring-gray-400/50 dark:ring-white/20"
                 )}
                 onClick={() => switchProject(project._id)}
               >
                 <div className="flex items-center gap-2 mb-2">
                   <span
-                    className="h-2.5 w-2.5 rounded-full"
+                    className="h-3 w-3 rounded-full"
                     style={{ backgroundColor: project.color }}
                   />
-                  <span className="font-medium text-sm truncate">{project.client.name}</span>
+                  <span className="font-medium text-gray-900 dark:text-white text-sm truncate">{project.client.name}</span>
                 </div>
-                <div className="text-xs text-muted-foreground truncate">{project.name}</div>
-                <div className="text-xs text-muted-foreground mt-1">
-                  {formatCurrency(project.hourlyRate)}/hour
+                <div className="text-gray-700 dark:text-gray-300 text-xs truncate font-medium">{project.name}</div>
+                <div className="text-gray-600 dark:text-gray-400 text-xs mt-1">
+                  {formatCurrency(project.hourlyRate)}/hr
                 </div>
-              </Card>
+              </div>
             ))}
+          </div>
+        </section>
+
+        {/* Project Summary */}
+        <section className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Project KPIs */}
+          {currentProjectId && (
+            <div className="bg-white/60 dark:bg-gray-800/30 backdrop-blur-sm border border-gray-300/50 dark:border-gray-700/50 rounded-xl p-6">
+              <ProjectKpis projectId={currentProjectId} />
+            </div>
+          )}
+          
+          {/* Recent Entries */}
+          <div className="bg-white/60 dark:bg-gray-800/30 backdrop-blur-sm border border-gray-300/50 dark:border-gray-700/50 rounded-xl p-6">
+            <RecentEntriesTable projectId={currentProjectId} />
           </div>
         </section>
       </div>
@@ -285,6 +351,20 @@ export function ModernDashboard() {
         <InterruptModal
           projectName={currentProject.name}
           onClose={() => setShowInterruptModal(false)}
+        />
+      )}
+
+      {/* Project Switch Modal */}
+      {showProjectSwitchModal && pendingProjectId && (
+        <ProjectSwitchModal
+          currentProjectName={`${currentProject.client.name} – ${currentProject.name}`}
+          newProjectName={(() => {
+            const pendingProject = projectsWithColors.find(p => p._id === pendingProjectId);
+            return pendingProject ? `${pendingProject.client.name} – ${pendingProject.name}` : '';
+          })()}
+          onStopAndSwitch={handleStopAndSwitch}
+          onTransferTimer={handleTransferTimer}
+          onCancel={handleCancelSwitch}
         />
       )}
     </div>
