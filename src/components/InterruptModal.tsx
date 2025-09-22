@@ -8,14 +8,14 @@ interface InterruptModalProps {
 }
 
 export function InterruptModal({ projectName, onClose }: InterruptModalProps) {
-  const [countdown, setCountdown] = useState(60);
+  const [countdown, setCountdown] = useState(5);
   const ackInterrupt = useMutation(api.timer.ackInterrupt);
 
   useEffect(() => {
     const interval = setInterval(() => {
       setCountdown(prev => {
         if (prev <= 1) {
-          // Auto-stop after 60 seconds
+          // Auto-stop after 5 seconds
           handleStop();
           return 0;
         }
@@ -55,7 +55,7 @@ export function InterruptModal({ projectName, onClose }: InterruptModalProps) {
             <div className="w-full bg-gray-200 rounded-full h-2">
               <div 
                 className="bg-red-500 h-2 rounded-full transition-all duration-1000"
-                style={{ width: `${((60 - countdown) / 60) * 100}%` }}
+                style={{ width: `${((5 - countdown) / 5) * 100}%` }}
               ></div>
             </div>
           </div>

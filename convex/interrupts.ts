@@ -21,6 +21,12 @@ export const check = action({
       return { action: "skipped", graceJobScheduled: false, graceJobTime: null };
     }
 
+    // Get user's grace period setting
+    const userSettings = await ctx.runMutation(internal.interrupts.getUserSettings, {
+      userId: args.userId,
+    });
+    const gracePeriodMs: number = (userSettings?.gracePeriod ?? 5) * 1000;
+
     // Check if user has been active (heartbeat within last 5 minutes)
     const now = Date.now();
     const heartbeatStale = now - timer.lastHeartbeatAt > 5 * 60 * 1000; // 5 minutes
@@ -42,8 +48,8 @@ export const check = action({
       interruptAt,
     });
 
-    // Schedule auto-stop if no acknowledgment after 60 seconds
-    const graceJobTime = interruptAt + 60000;
+    // Schedule auto-stop if no acknowledgment after grace period
+    const graceJobTime: number = interruptAt + gracePeriodMs;
     await ctx.scheduler.runAt(graceJobTime, api.interrupts.autoStopIfNoAck, {
       userId: args.userId,
       interruptAt,
@@ -80,17 +86,23 @@ export const autoStopIfNoAck = action({
       return { action: "already_acked", stoppedEntryId: null, overrunEntryId: null };
     }
 
-    // Auto-stop the timer and create overrun entry
-    const result = await ctx.runMutation(internal.interrupts.autoStopAndCreateOverrun, {
+    // COMMENTED OUT: Auto-stop the timer and create overrun entry
+    // const result = await ctx.runMutation(internal.interrupts.autoStopAndCreateOverrun, {
+    //   userId: args.userId,
+    //   timerId: timer._id,
+    //   projectId: timer.projectId,
+    // });
+
+    // Just auto-stop the timer without creating overrun
+    await ctx.runMutation(internal.interrupts.autoStopStaleTimer, {
       userId: args.userId,
       timerId: timer._id,
-      projectId: timer.projectId,
     });
 
     return {
       action: "auto_stopped",
-      stoppedEntryId: result.stoppedEntryId,
-      overrunEntryId: result.overrunEntryId,
+      stoppedEntryId: null,
+      overrunEntryId: null,
     };
   },
 });
@@ -120,14 +132,23 @@ export const sweep = action({
         continue;
       }
 
-      // Check for timers awaiting interrupt ack for too long (60+ seconds)
+      // Check for timers awaiting interrupt ack for too long
       if (timer.awaitingInterruptAck && timer.interruptShownAt) {
+        const userSettings = await ctx.runMutation(internal.interrupts.getUserSettings, {
+          userId: timer.ownerId,
+        });
+        const gracePeriodMs: number = (userSettings?.gracePeriod ?? 5) * 1000;
         const timeSinceInterrupt = now - timer.interruptShownAt;
-        if (timeSinceInterrupt > 60000) {
-          await ctx.runMutation(internal.interrupts.autoStopAndCreateOverrun, {
+        if (timeSinceInterrupt > gracePeriodMs) {
+          // COMMENTED OUT: Create overrun entry
+          // await ctx.runMutation(internal.interrupts.autoStopAndCreateOverrun, {
+          //   userId: timer.ownerId,
+          //   timerId: timer._id,
+          //   projectId: timer.projectId,
+          // });
+          await ctx.runMutation(internal.interrupts.autoStopStaleTimer, {
             userId: timer.ownerId,
             timerId: timer._id,
-            projectId: timer.projectId,
           });
           autoStoppedTimers++;
           continue;
@@ -143,8 +164,14 @@ export const sweep = action({
           interruptAt,
         });
 
+        // Get user's grace period setting
+        const userSettings = await ctx.runMutation(internal.interrupts.getUserSettings, {
+          userId: timer.ownerId,
+        });
+        const gracePeriodMs: number = (userSettings?.gracePeriod ?? 5) * 1000;
+
         // Schedule auto-stop
-          await ctx.scheduler.runAt(interruptAt + 60000, api.interrupts.autoStopIfNoAck, {
+        await ctx.scheduler.runAt(interruptAt + gracePeriodMs, api.interrupts.autoStopIfNoAck, {
           userId: timer.ownerId,
           interruptAt,
         });
@@ -233,51 +260,64 @@ export const autoStopStaleTimer = internalMutation({
   },
 });
 
-export const autoStopAndCreateOverrun = internalMutation({
+// COMMENTED OUT: Auto-stop and create overrun functionality
+// export const autoStopAndCreateOverrun = internalMutation({
+//   args: {
+//     userId: v.id("users"),
+//     timerId: v.id("runningTimers"),
+//     projectId: v.id("projects"),
+//   },
+//   handler: async (ctx, args) => {
+//     const now = Date.now();
+
+//     // Find the active time entry
+//     const activeEntry = await ctx.db
+//       .query("timeEntries")
+//       .withIndex("byProject", (q) => q.eq("projectId", args.projectId))
+//       .filter((q) => q.and(
+//         q.eq(q.field("ownerId"), args.userId),
+//         q.eq(q.field("stoppedAt"), undefined),
+//         q.eq(q.field("isOverrun"), false)
+//       ))
+//       .first();
+
+//     let stoppedEntryId: Id<"timeEntries"> | null = null;
+
+//     if (activeEntry) {
+//       const seconds = Math.floor((now - activeEntry.startedAt) / 1000);
+//       await ctx.db.patch(activeEntry._id, {
+//         stoppedAt: now,
+//         seconds,
+//         source: "autoStop",
+//       });
+//       stoppedEntryId = activeEntry._id;
+//     }
+
+//     // Create overrun placeholder
+//     const overrunEntryId = await ctx.db.insert("timeEntries", {
+//       ownerId: args.userId,
+//       projectId: args.projectId,
+//       startedAt: now,
+//       source: "overrun",
+//       isOverrun: true,
+//       note: "Overrun placeholder - merge if you were still working",
+//     });
+
+//     // Delete running timer
+//     await ctx.db.delete(args.timerId);
+
+//     return { stoppedEntryId, overrunEntryId };
+//   },
+// });
+
+export const getUserSettings = internalMutation({
   args: {
     userId: v.id("users"),
-    timerId: v.id("runningTimers"),
-    projectId: v.id("projects"),
   },
   handler: async (ctx, args) => {
-    const now = Date.now();
-
-    // Find the active time entry
-    const activeEntry = await ctx.db
-      .query("timeEntries")
-      .withIndex("byProject", (q) => q.eq("projectId", args.projectId))
-      .filter((q) => q.and(
-        q.eq(q.field("ownerId"), args.userId),
-        q.eq(q.field("stoppedAt"), undefined),
-        q.eq(q.field("isOverrun"), false)
-      ))
-      .first();
-
-    let stoppedEntryId: Id<"timeEntries"> | null = null;
-
-    if (activeEntry) {
-      const seconds = Math.floor((now - activeEntry.startedAt) / 1000);
-      await ctx.db.patch(activeEntry._id, {
-        stoppedAt: now,
-        seconds,
-        source: "autoStop",
-      });
-      stoppedEntryId = activeEntry._id;
-    }
-
-    // Create overrun placeholder
-    const overrunEntryId = await ctx.db.insert("timeEntries", {
-      ownerId: args.userId,
-      projectId: args.projectId,
-      startedAt: now,
-      source: "overrun",
-      isOverrun: true,
-      note: "Overrun placeholder - merge if you were still working",
-    });
-
-    // Delete running timer
-    await ctx.db.delete(args.timerId);
-
-    return { stoppedEntryId, overrunEntryId };
+    return await ctx.db
+      .query("userSettings")
+      .withIndex("byUser", (q) => q.eq("userId", args.userId))
+      .unique();
   },
 });

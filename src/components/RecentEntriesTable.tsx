@@ -10,6 +10,9 @@ interface RecentEntriesTableProps {
 export function RecentEntriesTable({ projectId }: RecentEntriesTableProps) {
   const [editingEntry, setEditingEntry] = useState<string | null>(null);
   const [editNote, setEditNote] = useState("");
+  const [editingDuration, setEditingDuration] = useState<string | null>(null);
+  const [editDurationHours, setEditDurationHours] = useState(0);
+  const [editDurationMinutes, setEditDurationMinutes] = useState(0);
 
   const entries = useQuery(api.entries.list, {
     projectId: projectId || undefined,
@@ -18,10 +21,11 @@ export function RecentEntriesTable({ projectId }: RecentEntriesTableProps) {
 
   const editEntry = useMutation(api.entries.edit);
   const deleteEntry = useMutation(api.entries.deleteEntry);
-  const mergeOverrun = useMutation(api.entries.mergeOverrun);
+  // COMMENTED OUT: Overrun merge functionality
+  // const mergeOverrun = useMutation(api.entries.mergeOverrun);
 
   if (!entries) {
-    return <div className="animate-pulse bg-gray-200 h-64 rounded-lg"></div>;
+    return <div className="animate-pulse bg-gray-200 dark:bg-gray-700 h-64 rounded-lg"></div>;
   }
 
   const formatTime = (seconds: number) => {
@@ -44,23 +48,43 @@ export function RecentEntriesTable({ projectId }: RecentEntriesTableProps) {
     setEditNote("");
   };
 
-  const handleMergeOverrun = async (overrunId: string, targetId: string) => {
-    await mergeOverrun({
-      overrunId: overrunId as Id<"timeEntries">,
-      intoEntryId: targetId as Id<"timeEntries">,
-    });
+  const handleEditDuration = async (entryId: string, hours: number, minutes: number) => {
+    const totalSeconds = (hours * 3600) + (minutes * 60);
+    await editEntry({ id: entryId as Id<"timeEntries">, seconds: totalSeconds });
+    setEditingDuration(null);
+    setEditDurationHours(0);
+    setEditDurationMinutes(0);
   };
 
-  const overrunEntries = entries.page.filter(entry => entry.isOverrun);
-  const regularEntries = entries.page.filter(entry => !entry.isOverrun);
+  const startEditingDuration = (entryId: string, currentSeconds: number) => {
+    setEditingDuration(entryId);
+    const hours = Math.floor(currentSeconds / 3600);
+    const minutes = Math.floor((currentSeconds % 3600) / 60);
+    setEditDurationHours(hours);
+    setEditDurationMinutes(minutes);
+  };
+
+  // COMMENTED OUT: Overrun merge functionality
+  // const handleMergeOverrun = async (overrunId: string, targetId: string) => {
+  //   await mergeOverrun({
+  //     overrunId: overrunId as Id<"timeEntries">,
+  //     intoEntryId: targetId as Id<"timeEntries">,
+  //   });
+  // };
+
+  // COMMENTED OUT: Filter overrun entries - now showing all entries
+  // const overrunEntries = entries.page.filter(entry => entry.isOverrun);
+  // const regularEntries = entries.page.filter(entry => !entry.isOverrun);
+  const regularEntries = entries.page; // Show all entries
 
   return (
-    <div className="bg-white rounded-lg shadow">
-      <div className="p-6 border-b">
-        <h3 className="text-lg font-semibold">Recent Entries</h3>
+    <div className="bg-white dark:bg-gray-800/50 dark:backdrop-blur-sm rounded-lg shadow dark:shadow-dark-card border-0 dark:border dark:border-gray-700/50">
+      <div className="p-6 border-b border-gray-200 dark:border-gray-600">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Recent Entries</h3>
       </div>
 
-      {overrunEntries.length > 0 && (
+      {/* COMMENTED OUT: Overrun placeholders section */}
+      {/* {overrunEntries.length > 0 && (
         <div className="p-4 bg-yellow-50 border-b">
           <h4 className="font-medium text-yellow-800 mb-2">Overrun Placeholders</h4>
           <div className="space-y-2">
@@ -105,48 +129,94 @@ export function RecentEntriesTable({ projectId }: RecentEntriesTableProps) {
             ))}
           </div>
         </div>
-      )}
+      )} */}
 
       <div className="overflow-x-auto">
         <table className="w-full">
-          <thead className="bg-gray-50">
+          <thead className="bg-gray-50 dark:bg-gray-700/50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                 Project
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                 Date
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                 Duration
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                 Note
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                 Actions
               </th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="bg-white dark:bg-gray-800/50 divide-y divide-gray-200 dark:divide-gray-600">
             {regularEntries.map((entry) => {
               const duration = entry.seconds || (entry.stoppedAt ? (entry.stoppedAt - entry.startedAt) / 1000 : 0);
               
               return (
                 <tr key={entry._id}>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">
+                    <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
                       {entry.client?.name}
                     </div>
-                    <div className="text-sm text-gray-500">
+                    <div className="text-sm text-gray-500 dark:text-gray-400">
                       {entry.project?.name}
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                     {formatDate(entry.startedAt)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {formatTime(duration)}
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                    {editingDuration === entry._id ? (
+                      <div className="flex gap-2 items-center">
+                        <input
+                          type="number"
+                          value={editDurationHours}
+                          onChange={(e) => setEditDurationHours(parseInt(e.target.value) || 0)}
+                          className="w-16 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700/50 text-gray-900 dark:text-gray-100"
+                          min="0"
+                          placeholder="Hours"
+                        />
+                        <span className="text-xs">h</span>
+                        <input
+                          type="number"
+                          value={editDurationMinutes}
+                          onChange={(e) => setEditDurationMinutes(parseInt(e.target.value) || 0)}
+                          className="w-16 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700/50 text-gray-900 dark:text-gray-100"
+                          min="0"
+                          max="59"
+                          placeholder="Min"
+                        />
+                        <span className="text-xs">m</span>
+                        <button
+                          onClick={() => handleEditDuration(entry._id, editDurationHours, editDurationMinutes)}
+                          className="px-2 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                        >
+                          Save
+                        </button>
+                        <button
+                          onClick={() => {
+                            setEditingDuration(null);
+                            setEditDurationHours(0);
+                            setEditDurationMinutes(0);
+                          }}
+                          className="px-2 py-1 text-sm bg-gray-600 text-white rounded hover:bg-gray-700"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <div
+                        onClick={() => startEditingDuration(entry._id, duration)}
+                        className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 p-1 rounded"
+                        title="Click to edit duration"
+                      >
+                        {formatTime(duration)}
+                      </div>
+                    )}
                   </td>
                   <td className="px-6 py-4">
                     {editingEntry === entry._id ? (
@@ -155,7 +225,7 @@ export function RecentEntriesTable({ projectId }: RecentEntriesTableProps) {
                           type="text"
                           value={editNote}
                           onChange={(e) => setEditNote(e.target.value)}
-                          className="flex-1 px-2 py-1 text-sm border rounded"
+                          className="flex-1 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700/50 text-gray-900 dark:text-gray-100"
                           autoFocus
                         />
                         <button
@@ -180,7 +250,7 @@ export function RecentEntriesTable({ projectId }: RecentEntriesTableProps) {
                           setEditingEntry(entry._id);
                           setEditNote(entry.note || "");
                         }}
-                        className="text-sm text-gray-900 cursor-pointer hover:bg-gray-50 p-1 rounded"
+                        className="text-sm text-gray-900 dark:text-gray-100 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 p-1 rounded"
                       >
                         {entry.note || "Click to add note..."}
                       </div>
@@ -189,7 +259,7 @@ export function RecentEntriesTable({ projectId }: RecentEntriesTableProps) {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <button
                       onClick={() => deleteEntry({ id: entry._id as Id<"timeEntries"> })}
-                      className="text-red-600 hover:text-red-900"
+                      className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
                     >
                       Delete
                     </button>
@@ -202,7 +272,7 @@ export function RecentEntriesTable({ projectId }: RecentEntriesTableProps) {
       </div>
 
       {regularEntries.length === 0 && (
-        <div className="text-center py-8 text-gray-500">
+        <div className="text-center py-8 text-gray-500 dark:text-gray-400">
           No time entries yet. Start a timer to begin tracking!
         </div>
       )}

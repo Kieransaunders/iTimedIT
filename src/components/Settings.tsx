@@ -8,12 +8,14 @@ export function Settings() {
   const updateSettings = useMutation(api.users.updateSettings);
   
   const [interruptEnabled, setInterruptEnabled] = useState(true);
-  const [interruptInterval, setInterruptInterval] = useState<5 | 15 | 30 | 60 | 120>(60);
+  const [interruptInterval, setInterruptInterval] = useState<0.0833 | 5 | 15 | 30 | 60 | 120>(60);
+  const [gracePeriod, setGracePeriod] = useState<5 | 10 | 30 | 60 | 120>(5);
 
   useEffect(() => {
     if (settings) {
       setInterruptEnabled(settings.interruptEnabled);
       setInterruptInterval(settings.interruptInterval);
+      setGracePeriod(settings.gracePeriod ?? 5);
     } else {
       // Ensure settings exist
       ensureSettings();
@@ -28,15 +30,25 @@ export function Settings() {
     await updateSettings({
       interruptEnabled,
       interruptInterval,
+      gracePeriod,
     });
   };
 
   const intervalOptions = [
+    { value: 0.0833, label: "5 seconds" },
     { value: 5, label: "5 minutes" },
     { value: 15, label: "15 minutes" },
     { value: 30, label: "30 minutes" },
     { value: 60, label: "1 hour" },
     { value: 120, label: "2 hours" },
+  ];
+
+  const gracePeriodOptions = [
+    { value: 5, label: "5 seconds" },
+    { value: 10, label: "10 seconds" },
+    { value: 30, label: "30 seconds" },
+    { value: 60, label: "1 minute" },
+    { value: 120, label: "2 minutes" },
   ];
 
   return (
@@ -74,7 +86,7 @@ export function Settings() {
                   <select
                     id="interruptInterval"
                     value={interruptInterval}
-                    onChange={(e) => setInterruptInterval(Number(e.target.value) as 5 | 15 | 30 | 60 | 120)}
+                    onChange={(e) => setInterruptInterval(Number(e.target.value) as 0.0833 | 5 | 15 | 30 | 60 | 120)}
                     className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   >
                     {intervalOptions.map((option) => (
@@ -85,6 +97,29 @@ export function Settings() {
                   </select>
                   <p className="mt-1 text-sm text-gray-500">
                     You'll be asked if you're still working every {intervalOptions.find(o => o.value === interruptInterval)?.label.toLowerCase()}.
+                  </p>
+                </div>
+              )}
+              
+              {interruptEnabled && (
+                <div>
+                  <label htmlFor="gracePeriod" className="block text-sm font-medium text-gray-700 mb-2">
+                    Auto-stop countdown
+                  </label>
+                  <select
+                    id="gracePeriod"
+                    value={gracePeriod}
+                    onChange={(e) => setGracePeriod(Number(e.target.value) as 5 | 10 | 30 | 60 | 120)}
+                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    {gracePeriodOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Time to respond before the timer auto-stops: {gracePeriodOptions.find(o => o.value === gracePeriod)?.label.toLowerCase()}.
                   </p>
                 </div>
               )}

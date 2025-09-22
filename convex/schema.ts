@@ -60,6 +60,7 @@ const applicationTables = {
   userSettings: defineTable({
     userId: v.id("users"),
     interruptInterval: v.union(
+      v.literal(0.0833), // 5 seconds (5/60 minutes)
       v.literal(5),
       v.literal(15),
       v.literal(30),
@@ -67,6 +68,13 @@ const applicationTables = {
       v.literal(120)
     ),
     interruptEnabled: v.boolean(),
+    gracePeriod: v.optional(v.union(
+      v.literal(5),   // 5 seconds
+      v.literal(10),  // 10 seconds
+      v.literal(30),  // 30 seconds
+      v.literal(60),  // 60 seconds
+      v.literal(120)  // 2 minutes
+    )),
   }).index("byUser", ["userId"]),
 
   imports: defineTable({
@@ -81,7 +89,22 @@ const applicationTables = {
     .index("byStatus", ["status"]),
 };
 
-export default defineSchema({
+// Custom users table to include the gender field that exists in your data
+const customAuthTables = {
   ...authTables,
+  users: defineTable({
+    email: v.optional(v.string()),
+    emailVerificationTime: v.optional(v.number()),
+    image: v.optional(v.string()),
+    isAnonymous: v.optional(v.boolean()),
+    name: v.optional(v.string()),
+    phone: v.optional(v.string()),
+    phoneVerificationTime: v.optional(v.number()),
+    gender: v.optional(v.string()), // Added to match existing data
+  }),
+};
+
+export default defineSchema({
+  ...customAuthTables,
   ...applicationTables,
 });
