@@ -281,7 +281,7 @@ export const ackInterrupt = mutation({
           projectId,
         });
 
-        await ctx.runAction(api.pushActions.sendTimerAlert, {
+        await ctx.scheduler.runAfter(0, api.pushActions.sendTimerAlert, {
           userId,
           title: "Break time",
           body: `Take a short break before jumping back into ${projectData?.projectName || 'your next task'}.`,
@@ -474,7 +474,7 @@ async function maybeSendBudgetAlerts(ctx: MutationCtx, timer: Doc<"runningTimers
     const lastOverrun = timer.overrunAlertSentAt ?? 0;
     if (now - lastOverrun > BUDGET_OVERRUN_RESEND_INTERVAL_MS) {
       try {
-        const result = await ctx.runAction(api.pushActions.sendTimerAlert, {
+        await ctx.scheduler.runAfter(0, api.pushActions.sendTimerAlert, {
           userId: timer.userId!,
           title: "Budget exceeded",
           body: overrunBody || `The timer for ${project.name} is over its planned limits.`,
@@ -486,10 +486,6 @@ async function maybeSendBudgetAlerts(ctx: MutationCtx, timer: Doc<"runningTimers
             organizationId: timer.organizationId,
           },
         });
-        if (!result.success) {
-          console.log("Budget overrun notification skipped", result.reason);
-          return;
-        }
         update.overrunAlertSentAt = now;
       } catch (error) {
         console.error("Failed to send budget overrun notification:", error);
@@ -511,7 +507,7 @@ async function maybeSendBudgetAlerts(ctx: MutationCtx, timer: Doc<"runningTimers
     const previousType = timer.budgetWarningType;
     if (previousType !== warningType || now - lastWarning > BUDGET_WARNING_RESEND_INTERVAL_MS) {
       try {
-        const result = await ctx.runAction(api.pushActions.sendTimerAlert, {
+        await ctx.scheduler.runAfter(0, api.pushActions.sendTimerAlert, {
           userId: timer.userId!,
           title: "Budget warning",
           body: warningBody || `The timer for ${project.name} is approaching its limits.`,
@@ -524,10 +520,6 @@ async function maybeSendBudgetAlerts(ctx: MutationCtx, timer: Doc<"runningTimers
             warningType,
           },
         });
-        if (!result.success) {
-          console.log("Budget warning notification skipped", result.reason);
-          return;
-        }
         update.budgetWarningSentAt = now;
         update.budgetWarningType = warningType;
       } catch (error) {

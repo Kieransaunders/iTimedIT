@@ -101,7 +101,7 @@ export const nudgeLongRunningTimers = internalMutation({
       const durationLabel = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
 
       try {
-        const result = await ctx.runAction(api.pushActions.sendTimerAlert, {
+        await ctx.scheduler.runAfter(0, api.pushActions.sendTimerAlert, {
           userId: timer.userId,
           title: "Timer still running",
           body: `You've been tracking ${project.name} for ${durationLabel}. Need to adjust?`,
@@ -115,11 +115,9 @@ export const nudgeLongRunningTimers = internalMutation({
           },
         });
 
-        if (result.success) {
-          await ctx.db.patch(timer._id, {
-            lastNudgeSentAt: now,
-          });
-        }
+        await ctx.db.patch(timer._id, {
+          lastNudgeSentAt: now,
+        });
       } catch (error) {
         console.error("Failed to send scheduled nudge", error);
       }
