@@ -2,19 +2,62 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { OrganizationManagementCard } from "./OrganizationManagementCard";
+import type { AppPage } from "./ProfilePage";
+import { 
+  initializePushNotifications, 
+  requestNotificationPermission, 
+  subscribeToPush, 
+  unsubscribeFromPush,
+  isPushSupported,
+  getNotificationPermission,
+  getPermissionTroubleshootingInfo
+} from "../lib/push";
+import { 
+  isBadgeSupported, 
+  isSoundSupported, 
+  isVibrationSupported, 
+  isWakeLockSupported 
+} from "../lib/attention";
 
-export function Settings({ onNavigate }: { onNavigate?: (page: "modern") => void }) {
+export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void }) {
   const settings = useQuery(api.users.getUserSettings);
   const ensureSettings = useMutation(api.users.ensureUserSettings);
   const updateSettings = useMutation(api.users.updateSettings);
   
+  // Notification settings
+  const notificationPrefs = useQuery(api.pushNotifications.getNotificationPrefs);
+  const ensureNotificationPrefs = useMutation(api.pushNotifications.ensureNotificationPrefs);
+  const updateNotificationPrefs = useMutation(api.pushNotifications.updateNotificationPrefs);
+  const savePushSubscription = useMutation(api.pushNotifications.savePushSubscription);
+
   const [interruptEnabled, setInterruptEnabled] = useState(true);
-  const [interruptInterval, setInterruptInterval] = useState<0.0833 | 5 | 15 | 30 | 45 | 60 | 120>(60);
+  const [interruptInterval, setInterruptInterval] = useState<
+    0.0833 | 5 | 15 | 30 | 45 | 60 | 120
+  >(60);
   const [gracePeriod, setGracePeriod] = useState<5 | 10 | 30 | 60 | 120>(5);
   const [budgetWarningEnabled, setBudgetWarningEnabled] = useState(true);
   const [budgetWarningThresholdHours, setBudgetWarningThresholdHours] = useState(1.0);
   const [budgetWarningThresholdAmount, setBudgetWarningThresholdAmount] = useState(50.0);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Notification preferences state
+  const [webPushEnabled, setWebPushEnabled] = useState(true);
+  const [soundEnabled, setSoundEnabled] = useState(false);
+  const [vibrationEnabled, setVibrationEnabled] = useState(false);
+  const [wakeLockEnabled, setWakeLockEnabled] = useState(false);
+  const [quietHoursStart, setQuietHoursStart] = useState("");
+  const [quietHoursEnd, setQuietHoursEnd] = useState("");
+  const [escalationDelayMinutes, setEscalationDelayMinutes] = useState(2);
+  const [doNotDisturbEnabled, setDoNotDisturbEnabled] = useState(false);
+  const [pushSubscribed, setPushSubscribed] = useState(false);
+  const [permissionTroubleshooting, setPermissionTroubleshooting] = useState<{
+    permission: NotificationPermission;
+    canRequest: boolean;
+    browserSupported: boolean;
+    isSecureContext: boolean;
+    troubleshootingSteps: string[];
+  } | null>(null);
 
   useEffect(() => {
     if (settings) {
@@ -30,13 +73,45 @@ export function Settings({ onNavigate }: { onNavigate?: (page: "modern") => void
     }
   }, [settings, ensureSettings]);
 
-  if (!settings) {
-    return <div className="animate-pulse bg-gray-200 h-64 rounded-lg"></div>;
-  }
+  useEffect(() => {
+    if (notificationPrefs) {
+      setWebPushEnabled(notificationPrefs.webPushEnabled);
+      setSoundEnabled(notificationPrefs.soundEnabled);
+      setVibrationEnabled(notificationPrefs.vibrationEnabled);
+      setWakeLockEnabled(notificationPrefs.wakeLockEnabled);
+      setQuietHoursStart(notificationPrefs.quietHoursStart || "");
+      setQuietHoursEnd(notificationPrefs.quietHoursEnd || "");
+      setEscalationDelayMinutes(notificationPrefs.escalationDelayMinutes);
+      setDoNotDisturbEnabled(notificationPrefs.doNotDisturbEnabled);
+    } else {
+      // Ensure notification preferences exist
+      ensureNotificationPrefs();
+    }
+  }, [notificationPrefs, ensureNotificationPrefs]);
+
+  // Initialize push notifications on component mount
+  useEffect(() => {
+    const initPush = async () => {
+      // Get troubleshooting info regardless of support
+      const troubleshootingInfo = getPermissionTroubleshootingInfo();
+      setPermissionTroubleshooting(troubleshootingInfo);
+      
+      if (isPushSupported()) {
+        const initialized = await initializePushNotifications();
+        if (initialized) {
+          const permission = getNotificationPermission();
+          setPushSubscribed(permission === 'granted');
+        }
+      }
+    };
+    initPush();
+  }, []);
 
   const handleSave = async () => {
     try {
       setIsSaving(true);
+      
+      // Save timer settings
       await updateSettings({
         interruptEnabled,
         interruptInterval,
@@ -45,13 +120,24 @@ export function Settings({ onNavigate }: { onNavigate?: (page: "modern") => void
         budgetWarningThresholdHours,
         budgetWarningThresholdAmount,
       });
-      
+
+      // Save notification preferences
+      await updateNotificationPrefs({
+        webPushEnabled,
+        soundEnabled,
+        vibrationEnabled,
+        wakeLockEnabled,
+        quietHoursStart: quietHoursStart || undefined,
+        quietHoursEnd: quietHoursEnd || undefined,
+        escalationDelayMinutes,
+        doNotDisturbEnabled,
+      });
+
       toast.success("Settings saved successfully!", {
         description: "Your preferences have been updated.",
         duration: 2000,
       });
-      
-      // Redirect to modern dashboard after a short delay
+
       setTimeout(() => {
         onNavigate?.("modern");
       }, 1500);
@@ -61,6 +147,72 @@ export function Settings({ onNavigate }: { onNavigate?: (page: "modern") => void
       });
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handlePushToggle = async (enabled: boolean) => {
+    if (enabled) {
+      // Update troubleshooting info before attempting
+      const troubleshootingInfo = getPermissionTroubleshootingInfo();
+      setPermissionTroubleshooting(troubleshootingInfo);
+      
+      if (!troubleshootingInfo.browserSupported) {
+        toast.error("Push notifications not supported in this browser");
+        setWebPushEnabled(false);
+        return;
+      }
+      
+      if (!troubleshootingInfo.isSecureContext) {
+        toast.error("Push notifications require HTTPS or localhost");
+        setWebPushEnabled(false);
+        return;
+      }
+      
+      if (troubleshootingInfo.permission === 'denied') {
+        toast.error("Notification permission denied. Please enable in browser settings.", {
+          duration: 5000,
+          description: "Click the lock icon in the address bar to change notification settings"
+        });
+        setWebPushEnabled(false);
+        return;
+      }
+      
+      const permission = await requestNotificationPermission();
+      // Update troubleshooting info after permission request
+      const updatedInfo = getPermissionTroubleshootingInfo();
+      setPermissionTroubleshooting(updatedInfo);
+      
+      if (permission === 'granted') {
+        const subscription = await subscribeToPush();
+        if (subscription) {
+          await savePushSubscription({
+            endpoint: subscription.endpoint,
+            p256dhKey: subscription.keys.p256dh,
+            authKey: subscription.keys.auth,
+            userAgent: navigator.userAgent,
+          });
+          setPushSubscribed(true);
+          setWebPushEnabled(true);
+          toast.success("Push notifications enabled!");
+        } else {
+          toast.error("Failed to set up push notifications");
+          setWebPushEnabled(false);
+        }
+      } else if (permission === 'denied') {
+        toast.error("Permission denied. Reset in browser settings to try again.", {
+          duration: 5000,
+          description: "Chrome: Address bar → Lock icon → Notifications → Allow"
+        });
+        setWebPushEnabled(false);
+      } else {
+        toast.error("Permission request failed");
+        setWebPushEnabled(false);
+      }
+    } else {
+      await unsubscribeFromPush();
+      setPushSubscribed(false);
+      setWebPushEnabled(false);
+      toast.success("Push notifications disabled");
     }
   };
 
@@ -82,157 +234,398 @@ export function Settings({ onNavigate }: { onNavigate?: (page: "modern") => void
     { value: 120, label: "2 minutes" },
   ];
 
+  const isSettingsLoading = settings === undefined;
+
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="max-w-3xl mx-auto space-y-6">
+      <OrganizationManagementCard />
       <div className="bg-white rounded-lg shadow p-6">
         <h2 className="text-2xl font-semibold mb-6">Settings</h2>
-        
-        <div className="space-y-6">
-          <div>
-            <h3 className="text-lg font-medium mb-4">Interruption Settings</h3>
-            <p className="text-gray-600 mb-4">
-              Configure when and how often you want to be asked if you're still working on a project.
-              This helps prevent accidentally leaving timers running.
-            </p>
-            
-            <div className="space-y-4">
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="interruptEnabled"
-                  checked={interruptEnabled}
-                  onChange={(e) => setInterruptEnabled(e.target.checked)}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                <label htmlFor="interruptEnabled" className="ml-2 block text-sm text-gray-900">
-                  Enable interruption prompts
-                </label>
-              </div>
-              
-              {interruptEnabled && (
-                <div>
-                  <label htmlFor="interruptInterval" className="block text-sm font-medium text-gray-700 mb-2">
-                    Check interval
-                  </label>
-                  <select
-                    id="interruptInterval"
-                    value={interruptInterval}
-                    onChange={(e) => setInterruptInterval(Number(e.target.value) as 0.0833 | 5 | 15 | 30 | 45 | 60 | 120)}
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    {intervalOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="mt-1 text-sm text-gray-500">
-                    You'll be asked if you're still working every {intervalOptions.find(o => o.value === interruptInterval)?.label.toLowerCase()}.
-                  </p>
-                </div>
-              )}
-              
-              {interruptEnabled && (
-                <div>
-                  <label htmlFor="gracePeriod" className="block text-sm font-medium text-gray-700 mb-2">
-                    Auto-stop countdown
-                  </label>
-                  <select
-                    id="gracePeriod"
-                    value={gracePeriod}
-                    onChange={(e) => setGracePeriod(Number(e.target.value) as 5 | 10 | 30 | 60 | 120)}
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    {gracePeriodOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="mt-1 text-sm text-gray-500">
-                    Time to respond before the timer auto-stops: {gracePeriodOptions.find(o => o.value === gracePeriod)?.label.toLowerCase()}.
-                  </p>
-                </div>
-              )}
-            </div>
+
+        {isSettingsLoading ? (
+          <div className="space-y-4">
+            <div className="h-6 bg-gray-200 dark:bg-gray-800 rounded animate-pulse" />
+            <div className="h-24 bg-gray-200 dark:bg-gray-800 rounded animate-pulse" />
+            <div className="h-24 bg-gray-200 dark:bg-gray-800 rounded animate-pulse" />
           </div>
-          
-          <div>
-            <h3 className="text-lg font-medium mb-4">Budget Warning Settings</h3>
-            <p className="text-gray-600 mb-4">
-              Get warned when you're approaching your project budget limits. 
-              The timer will flash and show a warning when you're close to exceeding your budget.
-            </p>
-            
-            <div className="space-y-4">
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="budgetWarningEnabled"
-                  checked={budgetWarningEnabled}
-                  onChange={(e) => setBudgetWarningEnabled(e.target.checked)}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                <label htmlFor="budgetWarningEnabled" className="ml-2 block text-sm text-gray-900">
-                  Enable budget warnings
-                </label>
-              </div>
-              
-              {budgetWarningEnabled && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        ) : (
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-medium mb-4">Interruption Settings</h3>
+              <p className="text-gray-600 mb-4">
+                Configure when and how often you want to be asked if you're still working on a project.
+                This helps prevent accidentally leaving timers running.
+              </p>
+
+              <div className="space-y-4">
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="interruptEnabled"
+                    checked={interruptEnabled}
+                    onChange={(event) => setInterruptEnabled(event.target.checked)}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <label htmlFor="interruptEnabled" className="ml-2 block text-sm text-gray-900">
+                    Enable interruption prompts
+                  </label>
+                </div>
+
+                {interruptEnabled && (
                   <div>
-                    <label htmlFor="budgetWarningThresholdHours" className="block text-sm font-medium text-gray-700 mb-2">
-                      Time warning threshold (hours)
+                    <label htmlFor="interruptInterval" className="block text-sm font-medium text-gray-700 mb-2">
+                      Check interval
                     </label>
-                    <input
-                      type="number"
-                      id="budgetWarningThresholdHours"
-                      value={budgetWarningThresholdHours}
-                      onChange={(e) => setBudgetWarningThresholdHours(Math.max(0.1, parseFloat(e.target.value) || 1.0))}
-                      min="0.1"
-                      step="0.1"
+                    <select
+                      id="interruptInterval"
+                      value={interruptInterval}
+                      onChange={(event) =>
+                        setInterruptInterval(
+                          Number(event.target.value) as 0.0833 | 5 | 15 | 30 | 45 | 60 | 120,
+                        )
+                      }
                       className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    />
+                    >
+                      {intervalOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
                     <p className="mt-1 text-sm text-gray-500">
-                      Warn when less than {budgetWarningThresholdHours} hours remain in time-based budgets.
+                      You'll be asked if you're still working every {intervalOptions
+                        .find((option) => option.value === interruptInterval)
+                        ?.label.toLowerCase()}.
                     </p>
                   </div>
-                  
+                )}
+
+                {interruptEnabled && (
                   <div>
-                    <label htmlFor="budgetWarningThresholdAmount" className="block text-sm font-medium text-gray-700 mb-2">
-                      Amount warning threshold ($)
+                    <label htmlFor="gracePeriod" className="block text-sm font-medium text-gray-700 mb-2">
+                      Auto-stop countdown
                     </label>
-                    <input
-                      type="number"
-                      id="budgetWarningThresholdAmount"
-                      value={budgetWarningThresholdAmount}
-                      onChange={(e) => setBudgetWarningThresholdAmount(Math.max(1, parseFloat(e.target.value) || 50.0))}
-                      min="1"
-                      step="1"
+                    <select
+                      id="gracePeriod"
+                      value={gracePeriod}
+                      onChange={(event) =>
+                        setGracePeriod(Number(event.target.value) as 5 | 10 | 30 | 60 | 120)
+                      }
                       className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    />
+                    >
+                      {gracePeriodOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
                     <p className="mt-1 text-sm text-gray-500">
-                      Warn when less than ${budgetWarningThresholdAmount} remains in amount-based budgets.
+                      Time to respond before the timer auto-stops: {gracePeriodOptions
+                        .find((option) => option.value === gracePeriod)
+                        ?.label.toLowerCase()}.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <h3 className="text-lg font-medium mb-4">Budget Warning Settings</h3>
+              <p className="text-gray-600 mb-4">
+                Get warned when you're approaching your project budget limits. The timer will flash and
+                show a warning when you're close to exceeding your budget.
+              </p>
+
+              <div className="space-y-4">
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="budgetWarningEnabled"
+                    checked={budgetWarningEnabled}
+                    onChange={(event) => setBudgetWarningEnabled(event.target.checked)}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <label htmlFor="budgetWarningEnabled" className="ml-2 block text-sm text-gray-900">
+                    Enable budget warnings
+                  </label>
+                </div>
+
+                {budgetWarningEnabled && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label
+                        htmlFor="budgetWarningThresholdHours"
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                      >
+                        Time warning threshold (hours)
+                      </label>
+                      <input
+                        type="number"
+                        id="budgetWarningThresholdHours"
+                        value={budgetWarningThresholdHours}
+                        onChange={(event) =>
+                          setBudgetWarningThresholdHours(
+                            Math.max(0.1, parseFloat(event.target.value) || 1.0),
+                          )
+                        }
+                        min="0.1"
+                        step="0.1"
+                        className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      />
+                      <p className="mt-1 text-sm text-gray-500">
+                        Warn when less than {budgetWarningThresholdHours} hours remain in time-based
+                        budgets.
+                      </p>
+                    </div>
+
+                    <div>
+                      <label
+                        htmlFor="budgetWarningThresholdAmount"
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                      >
+                        Amount warning threshold ($)
+                      </label>
+                      <input
+                        type="number"
+                        id="budgetWarningThresholdAmount"
+                        value={budgetWarningThresholdAmount}
+                        onChange={(event) =>
+                          setBudgetWarningThresholdAmount(
+                            Math.max(1, parseFloat(event.target.value) || 50.0),
+                          )
+                        }
+                        min="1"
+                        step="1"
+                        className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      />
+                      <p className="mt-1 text-sm text-gray-500">
+                        Warn when less than ${budgetWarningThresholdAmount} remains in amount-based
+                        budgets.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <h3 className="text-lg font-medium mb-4">Notifications & Attention</h3>
+              <p className="text-gray-600 mb-4">
+                Configure how you want to be notified when interruptions occur or when you're not looking at the app.
+              </p>
+
+              <div className="space-y-6">
+                {/* Push Notifications */}
+                <div>
+                  <h4 className="font-medium mb-3">Web Push Notifications</h4>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          id="webPushEnabled"
+                          checked={webPushEnabled && pushSubscribed}
+                          onChange={(event) => handlePushToggle(event.target.checked)}
+                          disabled={!isPushSupported()}
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded disabled:opacity-50"
+                        />
+                        <label htmlFor="webPushEnabled" className="ml-2 text-sm text-gray-900">
+                          Enable push notifications
+                        </label>
+                      </div>
+                      {!isPushSupported() && (
+                        <span className="text-xs text-gray-500">Not supported in this browser</span>
+                      )}
+                    </div>
+                    {webPushEnabled && pushSubscribed && (
+                      <p className="text-xs text-green-600 ml-6">
+                        ✅ Notifications enabled - you'll receive alerts when the app is closed
+                      </p>
+                    )}
+                    {!webPushEnabled && permissionTroubleshooting && permissionTroubleshooting.troubleshootingSteps.length > 0 && (
+                      <div className="ml-6 mt-2 p-3 bg-amber-50 border border-amber-200 rounded-md">
+                        <p className="text-sm font-medium text-amber-800 mb-2">
+                          ⚠️ Notification Setup Required
+                        </p>
+                        <ul className="text-xs text-amber-700 space-y-1">
+                          {permissionTroubleshooting.troubleshootingSteps.map((step, index) => (
+                            <li key={index}>• {step}</li>
+                          ))}
+                        </ul>
+                        {permissionTroubleshooting.permission === 'denied' && (
+                          <button
+                            onClick={() => {
+                              const info = getPermissionTroubleshootingInfo();
+                              setPermissionTroubleshooting(info);
+                              toast.info("Permission status updated. Try enabling notifications again.");
+                            }}
+                            className="mt-2 text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded hover:bg-amber-200"
+                          >
+                            Check Permission Status
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* In-App Attention */}
+                <div>
+                  <h4 className="font-medium mb-3">In-App Attention</h4>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          id="soundEnabled"
+                          checked={soundEnabled}
+                          onChange={(event) => setSoundEnabled(event.target.checked)}
+                          disabled={!isSoundSupported()}
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded disabled:opacity-50"
+                        />
+                        <label htmlFor="soundEnabled" className="ml-2 text-sm text-gray-900">
+                          Play alert sounds
+                        </label>
+                      </div>
+                      {!isSoundSupported() && (
+                        <span className="text-xs text-gray-500">Not supported</span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          id="vibrationEnabled"
+                          checked={vibrationEnabled}
+                          onChange={(event) => setVibrationEnabled(event.target.checked)}
+                          disabled={!isVibrationSupported()}
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded disabled:opacity-50"
+                        />
+                        <label htmlFor="vibrationEnabled" className="ml-2 text-sm text-gray-900">
+                          Vibrate device (mobile)
+                        </label>
+                      </div>
+                      {!isVibrationSupported() && (
+                        <span className="text-xs text-gray-500">Not supported</span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          id="wakeLockEnabled"
+                          checked={wakeLockEnabled}
+                          onChange={(event) => setWakeLockEnabled(event.target.checked)}
+                          disabled={!isWakeLockSupported()}
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded disabled:opacity-50"
+                        />
+                        <label htmlFor="wakeLockEnabled" className="ml-2 text-sm text-gray-900">
+                          Keep screen awake during timing
+                        </label>
+                      </div>
+                      {!isWakeLockSupported() && (
+                        <span className="text-xs text-gray-500">Not supported</span>
+                      )}
+                    </div>
+                  </div>
+                  {isBadgeSupported() && (
+                    <p className="text-xs text-gray-500 mt-2">
+                      App badge counts are automatically enabled
+                    </p>
+                  )}
+                </div>
+
+                {/* Quiet Hours */}
+                <div>
+                  <h4 className="font-medium mb-3">Quiet Hours</h4>
+                  <div className="space-y-3">
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        id="doNotDisturbEnabled"
+                        checked={doNotDisturbEnabled}
+                        onChange={(event) => setDoNotDisturbEnabled(event.target.checked)}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="doNotDisturbEnabled" className="ml-2 text-sm text-gray-900">
+                        Enable quiet hours
+                      </label>
+                    </div>
+
+                    {doNotDisturbEnabled && (
+                      <div className="ml-6 grid grid-cols-2 gap-4">
+                        <div>
+                          <label htmlFor="quietHoursStart" className="block text-sm font-medium text-gray-700 mb-1">
+                            Start time
+                          </label>
+                          <input
+                            type="time"
+                            id="quietHoursStart"
+                            value={quietHoursStart}
+                            onChange={(event) => setQuietHoursStart(event.target.value)}
+                            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="quietHoursEnd" className="block text-sm font-medium text-gray-700 mb-1">
+                            End time
+                          </label>
+                          <input
+                            type="time"
+                            id="quietHoursEnd"
+                            value={quietHoursEnd}
+                            onChange={(event) => setQuietHoursEnd(event.target.value)}
+                            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Escalation */}
+                <div>
+                  <h4 className="font-medium mb-3">Future Escalation Settings</h4>
+                  <div>
+                    <label htmlFor="escalationDelayMinutes" className="block text-sm font-medium text-gray-700 mb-2">
+                      Escalation delay (minutes)
+                    </label>
+                    <select
+                      id="escalationDelayMinutes"
+                      value={escalationDelayMinutes}
+                      onChange={(event) => setEscalationDelayMinutes(Number(event.target.value))}
+                      className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      disabled
+                    >
+                      <option value={1}>1 minute</option>
+                      <option value={2}>2 minutes</option>
+                      <option value={5}>5 minutes</option>
+                      <option value={10}>10 minutes</option>
+                    </select>
+                    <p className="mt-1 text-sm text-gray-500">
+                      Time to wait before escalating to email/SMS (feature coming soon)
                     </p>
                   </div>
                 </div>
-              )}
+              </div>
+            </div>
+
+            <div className="pt-4 border-t">
+              <button
+                onClick={handleSave}
+                disabled={isSaving}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {isSaving && (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                )}
+                {isSaving ? "Saving..." : "Save Settings"}
+              </button>
             </div>
           </div>
-          
-          <div className="pt-4 border-t">
-            <button
-              onClick={handleSave}
-              disabled={isSaving}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-            >
-              {isSaving && (
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-              )}
-              {isSaving ? "Saving..." : "Save Settings"}
-            </button>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );

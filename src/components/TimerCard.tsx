@@ -2,6 +2,8 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useState, useEffect } from "react";
 import { Id } from "../../convex/_generated/dataModel";
+import { useOrganization } from "../lib/organization-context";
+import { ensurePushSubscription } from "../lib/push";
 
 interface TimerCardProps {
   selectedProjectId: Id<"projects"> | null;
@@ -11,10 +13,12 @@ interface TimerCardProps {
 export function TimerCard({ selectedProjectId, runningTimer }: TimerCardProps) {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [note, setNote] = useState("");
+  const { isReady } = useOrganization();
 
   const startTimer = useMutation(api.timer.start);
   const stopTimer = useMutation(api.timer.stop);
-  const projectStats = useQuery(api.projects.getStats, runningTimer?.projectId ? { projectId: runningTimer.projectId } : "skip");
+  const projectStats = useQuery(api.projects.getStats, isReady && runningTimer?.projectId ? { projectId: runningTimer.projectId } : "skip");
+  const savePushSubscription = useMutation(api.pushNotifications.savePushSubscription);
 
   // Update elapsed time every second
   useEffect(() => {
@@ -51,6 +55,19 @@ export function TimerCard({ selectedProjectId, runningTimer }: TimerCardProps) {
 
   const handleStart = async () => {
     if (!selectedProjectId) return;
+    try {
+      const subscription = await ensurePushSubscription({ requestPermission: true });
+      if (subscription) {
+        await savePushSubscription({
+          endpoint: subscription.endpoint,
+          p256dhKey: subscription.keys.p256dh,
+          authKey: subscription.keys.auth,
+          userAgent: navigator.userAgent,
+        });
+      }
+    } catch (error) {
+      console.error("Failed to ensure push subscription", error);
+    }
     await startTimer({ projectId: selectedProjectId });
   };
 

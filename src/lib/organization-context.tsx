@@ -19,6 +19,7 @@ export type MembershipWithOrganization = {
 export type OrganizationContextValue = {
   activeMembershipId: Id<"memberships"> | null;
   activeOrganization: Doc<"organizations"> | null;
+  activeRole: Doc<"memberships">["role"] | null;
   memberships: MembershipWithOrganization[];
   switchOrganization: (organizationId: Id<"organizations">) => Promise<void>;
   isReady: boolean;
@@ -67,6 +68,7 @@ export function OrganizationProvider({
     return {
       activeMembershipId: currentMembership?.membershipId ?? null,
       activeOrganization: currentMembership?.organization ?? null,
+      activeRole: currentMembership?.role ?? null,
       memberships: memberships ?? [],
       switchOrganization: async (organizationId: Id<"organizations">) => {
         await setActiveOrganization({ organizationId });

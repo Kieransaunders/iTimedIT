@@ -126,7 +126,7 @@ export async function ensureMembership(
   };
 }
 
-async function ensureActiveOrganizationSetting(
+export async function ensureActiveOrganizationSetting(
   ctx: MutationCtx,
   userId: Id<"users">,
   organizationId: Id<"organizations">

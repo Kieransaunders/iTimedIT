@@ -2,14 +2,18 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
-import { Button } from "./ui/button";
-import { Badge } from "./ui/badge";
-import { Card } from "./ui/card";
 import { cn } from "../lib/utils";
 import { InterruptModal } from "./InterruptModal";
 import { ProjectSwitchModal } from "./ProjectSwitchModal";
 import { ProjectKpis } from "./ProjectKpis";
 import { RecentEntriesTable } from "./RecentEntriesTable";
+import { ensurePushSubscription } from "../lib/push";
+import { toast } from "sonner";
+
+interface ModernDashboardProps {
+  pushSwitchRequest?: any | null;
+  onPushSwitchHandled?: () => void;
+}
 
 interface TimerState {
   running: boolean;
@@ -73,7 +77,10 @@ function formatBudgetTime(seconds: number): string {
   return `${hours}h ${minutes}m`;
 }
 
-export function ModernDashboard() {
+export function ModernDashboard({
+  pushSwitchRequest,
+  onPushSwitchHandled,
+}: ModernDashboardProps) {
   const [currentProjectId, setCurrentProjectId] = useState<Id<"projects"> | null>(null);
   const [now, setNow] = useState(Date.now());
   const [showInterruptModal, setShowInterruptModal] = useState(false);
@@ -88,6 +95,7 @@ export function ModernDashboard() {
   const heartbeat = useMutation(api.timer.heartbeat);
   const requestInterrupt = useMutation(api.timer.requestInterrupt);
   const projectStats = useQuery(api.projects.getStats, runningTimer?.projectId ? { projectId: runningTimer.projectId } : "skip");
+  const savePushSubscription = useMutation(api.pushNotifications.savePushSubscription);
 
   // Enhance projects with colors
   const projectsWithColors = useMemo(() => {
@@ -156,15 +164,34 @@ export function ModernDashboard() {
   const totalSeconds = Math.floor(totalElapsedMs / 1000);
   const earnedAmount = currentProject ? (totalSeconds / 3600) * currentProject.hourlyRate : 0;
 
+  const ensurePushRegistered = useCallback(async (requestPermission: boolean) => {
+    try {
+      const subscription = await ensurePushSubscription({ requestPermission });
+      if (!subscription) {
+        return;
+      }
+
+      await savePushSubscription({
+        endpoint: subscription.endpoint,
+        p256dhKey: subscription.keys.p256dh,
+        authKey: subscription.keys.auth,
+        userAgent: navigator.userAgent,
+      });
+    } catch (error) {
+      console.error("Failed to ensure push subscription", error);
+    }
+  }, [savePushSubscription]);
+
   const toggleTimer = useCallback(async () => {
     if (!currentProject) return;
     
     if (timerState.running) {
       await stopTimer();
     } else {
+      await ensurePushRegistered(true);
       await startTimer({ projectId: currentProject._id });
     }
-  }, [currentProject, timerState.running, startTimer, stopTimer]);
+  }, [currentProject, timerState.running, startTimer, stopTimer, ensurePushRegistered]);
 
   const switchProject = useCallback(async (projectId: Id<"projects">) => {
     if (projectId === currentProjectId) return;
@@ -185,19 +212,58 @@ export function ModernDashboard() {
     setPendingProjectId(null);
   }, [pendingProjectId, stopTimer]);
 
+  const transferTimerToProject = useCallback(async (projectId: Id<"projects">) => {
+    await stopTimer();
+    setCurrentProjectId(projectId);
+    await ensurePushRegistered(false);
+    await startTimer({ projectId });
+  }, [stopTimer, startTimer, ensurePushRegistered]);
+
   const handleTransferTimer = useCallback(async () => {
     if (!pendingProjectId) return;
-    await stopTimer();
-    setCurrentProjectId(pendingProjectId);
-    await startTimer({ projectId: pendingProjectId });
+    await transferTimerToProject(pendingProjectId);
     setShowProjectSwitchModal(false);
     setPendingProjectId(null);
-  }, [pendingProjectId, stopTimer, startTimer]);
+  }, [pendingProjectId, transferTimerToProject]);
 
   const handleCancelSwitch = useCallback(() => {
     setShowProjectSwitchModal(false);
     setPendingProjectId(null);
   }, []);
+
+  useEffect(() => {
+    if (!pushSwitchRequest) {
+      return;
+    }
+
+    if (!runningTimer || projectsWithColors.length === 0) {
+      onPushSwitchHandled?.();
+      return;
+    }
+
+    const currentIndex = projectsWithColors.findIndex((p) => p._id === runningTimer.projectId);
+    const nextIndex = currentIndex >= 0
+      ? (currentIndex + 1) % projectsWithColors.length
+      : 0;
+    const candidate = projectsWithColors[nextIndex];
+
+    if (!candidate || candidate._id === runningTimer.projectId) {
+      onPushSwitchHandled?.();
+      return;
+    }
+
+    void (async () => {
+      try {
+        await transferTimerToProject(candidate._id);
+        toast.success(`Switched timer to ${candidate.name}`);
+      } catch (error) {
+        console.error("Failed to switch project from push", error);
+        toast.error("Couldn't switch projects automatically. Please pick a project manually.");
+      } finally {
+        onPushSwitchHandled?.();
+      }
+    })();
+  }, [pushSwitchRequest, runningTimer, projectsWithColors, transferTimerToProject, onPushSwitchHandled]);
 
   if (!currentProject) {
     return (

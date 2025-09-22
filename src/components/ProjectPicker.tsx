@@ -2,6 +2,7 @@ import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useState } from "react";
 import { Id } from "../../convex/_generated/dataModel";
+import { useOrganization } from "../lib/organization-context";
 
 interface ProjectPickerProps {
   selectedProjectId: Id<"projects"> | null;
@@ -10,10 +11,11 @@ interface ProjectPickerProps {
 
 export function ProjectPicker({ selectedProjectId, onProjectSelect }: ProjectPickerProps) {
   const [searchTerm, setSearchTerm] = useState("");
-  const projects = useQuery(api.projects.listAll);
+  const { isReady } = useOrganization();
+  const projects = useQuery(api.projects.listAll, isReady ? {} : "skip");
 
-  if (!projects) {
-    return <div className="animate-pulse bg-gray-200 h-20 rounded-lg"></div>;
+  if (!isReady || !projects) {
+    return <div className="animate-pulse bg-gray-200 dark:bg-gray-700 h-20 rounded-lg"></div>;
   }
 
   const filteredProjects = projects.filter(project =>

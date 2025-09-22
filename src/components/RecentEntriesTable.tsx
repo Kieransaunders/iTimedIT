@@ -2,6 +2,7 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useState } from "react";
 import { Id } from "../../convex/_generated/dataModel";
+import { useOrganization } from "../lib/organization-context";
 
 interface RecentEntriesTableProps {
   projectId: Id<"projects"> | null;
@@ -13,18 +14,19 @@ export function RecentEntriesTable({ projectId }: RecentEntriesTableProps) {
   const [editingDuration, setEditingDuration] = useState<string | null>(null);
   const [editDurationHours, setEditDurationHours] = useState(0);
   const [editDurationMinutes, setEditDurationMinutes] = useState(0);
+  const { isReady } = useOrganization();
 
-  const entries = useQuery(api.entries.list, {
+  const entries = useQuery(api.entries.list, isReady ? {
     projectId: projectId || undefined,
     paginationOpts: { numItems: 20, cursor: null },
-  });
+  } : "skip");
 
   const editEntry = useMutation(api.entries.edit);
   const deleteEntry = useMutation(api.entries.deleteEntry);
   // COMMENTED OUT: Overrun merge functionality
   // const mergeOverrun = useMutation(api.entries.mergeOverrun);
 
-  if (!entries) {
+  if (!isReady || !entries) {
     return <div className="animate-pulse bg-gray-200 dark:bg-gray-700 h-64 rounded-lg"></div>;
   }
 
