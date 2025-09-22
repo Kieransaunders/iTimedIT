@@ -3,11 +3,25 @@ import { api } from "../../convex/_generated/api";
 import { useState } from "react";
 import { Id } from "../../convex/_generated/dataModel";
 
+// Default color palette for clients
+const DEFAULT_COLORS = [
+  "#8b5cf6", // purple
+  "#06b6d4", // cyan  
+  "#22c55e", // green
+  "#f59e0b", // amber
+  "#ef4444", // red
+  "#3b82f6", // blue
+  "#f97316", // orange
+  "#ec4899", // pink
+];
+
+
 export function ClientsPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingClient, setEditingClient] = useState<any>(null);
   const [name, setName] = useState("");
   const [note, setNote] = useState("");
+  const [color, setColor] = useState("#8b5cf6");
 
   const clients = useQuery(api.clients.list);
   const createClient = useMutation(api.clients.create);
@@ -21,13 +35,15 @@ export function ClientsPage() {
         id: editingClient._id,
         name,
         note,
+        color,
       });
     } else {
-      await createClient({ name, note });
+      await createClient({ name, note, color });
     }
     
     setName("");
     setNote("");
+    setColor("#8b5cf6");
     setShowForm(false);
     setEditingClient(null);
   };
@@ -36,6 +52,7 @@ export function ClientsPage() {
     setEditingClient(client);
     setName(client.name);
     setNote(client.note || "");
+    setColor(client.color || "#8b5cf6");
     setShowForm(true);
   };
 
@@ -90,6 +107,42 @@ export function ClientsPage() {
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-timer bg-white dark:bg-gray-700/50 text-gray-900 dark:text-gray-100"
               />
             </div>
+            <div>
+              <label className="block text-sm font-medium text-white mb-2">
+                Brand Color
+              </label>
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <input
+                    type="color"
+                    value={color}
+                    onChange={(e) => setColor(e.target.value)}
+                    className="w-10 h-10 rounded border border-gray-300 dark:border-gray-600 cursor-pointer"
+                  />
+                  <input
+                    type="text"
+                    value={color}
+                    onChange={(e) => setColor(e.target.value)}
+                    placeholder="#8b5cf6"
+                    className="px-3 py-2 text-sm font-mono border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-timer bg-white dark:bg-gray-700/50 text-gray-900 dark:text-gray-100 w-24"
+                  />
+                </div>
+                <div className="grid grid-cols-8 gap-2">
+                  {DEFAULT_COLORS.map((defaultColor) => (
+                    <button
+                      key={defaultColor}
+                      type="button"
+                      onClick={() => setColor(defaultColor)}
+                      className={`w-8 h-8 rounded-full border-2 transition-all hover:scale-110 ${
+                        color === defaultColor ? 'border-white' : 'border-gray-400'
+                      }`}
+                      style={{ backgroundColor: defaultColor }}
+                      title={defaultColor}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
             <div className="flex gap-2">
               <button
                 type="submit"
@@ -104,6 +157,7 @@ export function ClientsPage() {
                   setEditingClient(null);
                   setName("");
                   setNote("");
+                  setColor("#8b5cf6");
                 }}
                 className="px-4 py-2 bg-gray-600 dark:bg-gray-700 text-white rounded-md hover:bg-gray-700 dark:hover:bg-gray-600 transition-colors"
               >
@@ -123,6 +177,9 @@ export function ClientsPage() {
                   Name
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Total Amount
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Notes
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
@@ -134,8 +191,19 @@ export function ClientsPage() {
               {clients.map((client) => (
                 <tr key={client._id}>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                      {client.name}
+                    <div className="flex items-center gap-3">
+                      <span
+                        className="h-4 w-4 rounded-full border border-gray-300 dark:border-gray-600"
+                        style={{ backgroundColor: client.color || "#8b5cf6" }}
+                      />
+                      <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                        {client.name}
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-semibold text-green-600 dark:text-green-400">
+                      ${(client.totalAmountSpent || 0).toFixed(2)}
                     </div>
                   </td>
                   <td className="px-6 py-4">

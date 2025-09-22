@@ -31,6 +31,9 @@ export const getUserSettings = query({
       interruptEnabled: true,
       interruptInterval: 0.0833 as const,
       gracePeriod: 5 as const,
+      budgetWarningEnabled: true,
+      budgetWarningThresholdHours: 1.0,
+      budgetWarningThresholdAmount: 50.0,
     };
   },
 });
@@ -54,6 +57,9 @@ export const ensureUserSettings = mutation({
         interruptEnabled: true,
         interruptInterval: 0.0833 as const,
         gracePeriod: 5 as const,
+        budgetWarningEnabled: true,
+        budgetWarningThresholdHours: 1.0,
+        budgetWarningThresholdAmount: 50.0,
       };
       await ctx.db.insert("userSettings", defaultSettings);
       return defaultSettings;
@@ -67,11 +73,14 @@ export const updateSettings = mutation({
   args: {
     interruptEnabled: v.optional(v.boolean()),
     interruptInterval: v.optional(
-      v.union(v.literal(0.0833), v.literal(5), v.literal(15), v.literal(30), v.literal(60), v.literal(120))
+      v.union(v.literal(0.0833), v.literal(5), v.literal(15), v.literal(30), v.literal(45), v.literal(60), v.literal(120))
     ),
     gracePeriod: v.optional(
       v.union(v.literal(5), v.literal(10), v.literal(30), v.literal(60), v.literal(120))
     ),
+    budgetWarningEnabled: v.optional(v.boolean()),
+    budgetWarningThresholdHours: v.optional(v.number()),
+    budgetWarningThresholdAmount: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -90,12 +99,18 @@ export const updateSettings = mutation({
         interruptEnabled: args.interruptEnabled ?? true,
         interruptInterval: args.interruptInterval ?? 0.0833,
         gracePeriod: args.gracePeriod ?? 5,
+        budgetWarningEnabled: args.budgetWarningEnabled ?? true,
+        budgetWarningThresholdHours: args.budgetWarningThresholdHours ?? 1.0,
+        budgetWarningThresholdAmount: args.budgetWarningThresholdAmount ?? 50.0,
       });
     } else {
       await ctx.db.patch(settings._id, {
         ...(args.interruptEnabled !== undefined && { interruptEnabled: args.interruptEnabled }),
         ...(args.interruptInterval !== undefined && { interruptInterval: args.interruptInterval }),
         ...(args.gracePeriod !== undefined && { gracePeriod: args.gracePeriod }),
+        ...(args.budgetWarningEnabled !== undefined && { budgetWarningEnabled: args.budgetWarningEnabled }),
+        ...(args.budgetWarningThresholdHours !== undefined && { budgetWarningThresholdHours: args.budgetWarningThresholdHours }),
+        ...(args.budgetWarningThresholdAmount !== undefined && { budgetWarningThresholdAmount: args.budgetWarningThresholdAmount }),
       });
     }
   },

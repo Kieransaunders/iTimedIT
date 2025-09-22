@@ -35,12 +35,12 @@ export function ProjectDetailPage({ projectId, onBackToProjects }: ProjectDetail
         </p>
         {project.budgetType === "hours" && project.budgetHours && (
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Budget: {project.budgetHours} hours
+            Allocated: {project.budgetHours} hours
           </p>
         )}
         {project.budgetType === "amount" && project.budgetAmount && (
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Budget: ${project.budgetAmount}
+            Allocated: ${project.budgetAmount}
           </p>
         )}
       </div>

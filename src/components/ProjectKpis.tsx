@@ -53,7 +53,7 @@ export function ProjectKpis({ projectId }: ProjectKpisProps) {
 
         {stats.budgetRemaining > 0 && (
           <div className="border-b border-gray-200 dark:border-gray-600 pb-3">
-            <div className="text-sm text-gray-600 dark:text-gray-400">Budget Remaining</div>
+            <div className="text-sm text-gray-600 dark:text-gray-400">Remaining</div>
             <div className="text-2xl font-bold text-green-600 dark:text-green-400">
               {typeof stats.budgetRemaining === 'number' && stats.budgetRemaining < 100 
                 ? formatCurrency(stats.budgetRemaining)
@@ -65,10 +65,10 @@ export function ProjectKpis({ projectId }: ProjectKpisProps) {
         {(stats.timeRemaining <= 0 || stats.budgetRemaining <= 0) && (
           <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700/50 rounded-md p-3">
             <div className="text-sm font-medium text-red-800 dark:text-red-300">
-              ⚠️ Budget Exceeded
+              ⚠️ Allocation Exceeded
             </div>
             <div className="text-sm text-red-600 dark:text-red-400">
-              This project has exceeded its allocated budget.
+              This project has exceeded its allocation.
             </div>
           </div>
         )}

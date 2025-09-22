@@ -29,7 +29,7 @@ function AppContent() {
     <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-dark-gradient">
       <header className="sticky top-0 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm h-16 flex justify-between items-center border-b border-gray-200 dark:border-gray-700 shadow-sm px-4">
         <div className="flex items-center gap-6">
-          <h2 className="text-xl font-semibold text-primary dark:text-white">TimeTracker</h2>
+          <h2 className="text-xl font-semibold text-primary dark:text-white">iTrackIT</h2>
           <Authenticated>
             <nav className="flex gap-4">
               <button
@@ -86,7 +86,7 @@ function Content({
 }: { 
   currentPage: string; 
   selectedProjectId: string | null;
-  setCurrentPage: (page: "dashboard" | "clients" | "projects" | "settings") => void;
+  setCurrentPage: (page: "dashboard" | "modern" | "clients" | "projects" | "settings") => void;
   setSelectedProjectId: (id: string | null) => void;
 }) {
   const loggedInUser = useQuery(api.auth.loggedInUser);
@@ -103,6 +103,7 @@ function Content({
     <div className="max-w-7xl mx-auto">
       <Authenticated>
         {currentPage === "dashboard" && <Dashboard />}
+        {currentPage === "modern" && <ModernDashboard />}
         {currentPage === "clients" && <ClientsPage />}
         {currentPage === "projects" && (
           selectedProjectId ? (
@@ -120,12 +121,12 @@ function Content({
             />
           )
         )}
-        {currentPage === "settings" && <Settings />}
+        {currentPage === "settings" && <Settings onNavigate={setCurrentPage} />}
       </Authenticated>
       <Unauthenticated>
         <div className="max-w-md mx-auto">
           <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-primary mb-4">TimeTracker</h1>
+            <h1 className="text-4xl font-bold text-primary mb-4">iTrackIT</h1>
             <p className="text-xl text-secondary">Track time, manage budgets, stay focused</p>
           </div>
           <SignInForm />

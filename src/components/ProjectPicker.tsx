@@ -43,7 +43,7 @@ export function ProjectPicker({ selectedProjectId, onProjectSelect }: ProjectPic
             {selectedProject.client?.name} → {selectedProject.name}
           </div>
           <div className="text-sm text-blue-700 dark:text-purple-300">
-            ${selectedProject.hourlyRate}/hr • {selectedProject.budgetType === "hours" ? `${selectedProject.budgetHours}h budget` : `$${selectedProject.budgetAmount} budget`}
+            ${selectedProject.hourlyRate}/hr • {selectedProject.budgetType === "hours" ? `${selectedProject.budgetHours}h allocated` : `$${selectedProject.budgetAmount} allocated`}
           </div>
         </div>
       )}

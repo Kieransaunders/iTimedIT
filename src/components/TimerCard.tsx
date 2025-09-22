@@ -110,7 +110,7 @@ export function TimerCard({ selectedProjectId, runningTimer }: TimerCardProps) {
                 {runningTimer.project?.budgetType === "hours" && projectStats.timeRemaining > 0 ? (
                   <>Time remaining: <span className="font-semibold text-green-600 dark:text-green-400">{formatBudgetTime(projectStats.timeRemaining * 3600)}</span></>
                 ) : runningTimer.project?.budgetType === "amount" && projectStats.budgetRemaining > 0 ? (
-                  <>Budget remaining: <span className="font-semibold text-green-600 dark:text-green-400">{formatCurrency(projectStats.budgetRemaining)}</span></>
+                  <>Amount remaining: <span className="font-semibold text-green-600 dark:text-green-400">{formatCurrency(projectStats.budgetRemaining)}</span></>
                 ) : (
                   <span className="font-semibold text-red-600 dark:text-red-400">⚠️ Budget exceeded</span>
                 )}

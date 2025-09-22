@@ -10,11 +10,53 @@ export const list = query({
       throw new Error("Not authenticated");
     }
 
-    return await ctx.db
+    const clients = await ctx.db
       .query("clients")
       .withIndex("byOwner", (q) => q.eq("ownerId", userId))
       .filter((q) => q.eq(q.field("archived"), false))
       .collect();
+
+    // Calculate total amount spent for each client
+    const clientsWithTotals = await Promise.all(
+      clients.map(async (client) => {
+        // Get all projects for this client
+        const projects = await ctx.db
+          .query("projects")
+          .withIndex("byClient", (q) => q.eq("clientId", client._id))
+          .filter((q) => q.eq(q.field("archived"), false))
+          .collect();
+
+        // Calculate total amount across all projects for this client
+        let totalAmount = 0;
+        
+        for (const project of projects) {
+          // Get all completed time entries for this project
+          const timeEntries = await ctx.db
+            .query("timeEntries")
+            .withIndex("byProject", (q) => q.eq("projectId", project._id))
+            .filter((q) => q.neq(q.field("stoppedAt"), undefined))
+            .collect();
+
+          // Calculate total amount for this project
+          const projectTotal = timeEntries.reduce((sum, entry) => {
+            if (entry.seconds && entry.stoppedAt) {
+              const hours = entry.seconds / 3600;
+              return sum + (hours * project.hourlyRate);
+            }
+            return sum;
+          }, 0);
+
+          totalAmount += projectTotal;
+        }
+
+        return {
+          ...client,
+          totalAmountSpent: totalAmount,
+        };
+      })
+    );
+
+    return clientsWithTotals;
   },
 });
 
@@ -22,6 +64,7 @@ export const create = mutation({
   args: {
     name: v.string(),
     note: v.optional(v.string()),
+    color: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -33,6 +76,7 @@ export const create = mutation({
       ownerId: userId,
       name: args.name,
       note: args.note,
+      color: args.color,
       archived: false,
     });
   },
@@ -43,6 +87,7 @@ export const update = mutation({
     id: v.id("clients"),
     name: v.optional(v.string()),
     note: v.optional(v.string()),
+    color: v.optional(v.string()),
     archived: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
@@ -59,6 +104,7 @@ export const update = mutation({
     await ctx.db.patch(args.id, {
       ...(args.name !== undefined && { name: args.name }),
       ...(args.note !== undefined && { note: args.note }),
+      ...(args.color !== undefined && { color: args.color }),
       ...(args.archived !== undefined && { archived: args.archived }),
     });
   },

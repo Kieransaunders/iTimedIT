@@ -60,18 +60,54 @@ export const listAll = query({
       .filter((q) => q.eq(q.field("archived"), false))
       .collect();
 
-    // Get clients for each project
-    const projectsWithClients = await Promise.all(
+    // Get clients and calculate budget remaining for each project
+    const projectsWithClientsAndStats = await Promise.all(
       projects.map(async (project) => {
         const client = await ctx.db.get(project.clientId);
+        
+        // Calculate budget remaining
+        const entries = await ctx.db
+          .query("timeEntries")
+          .withIndex("byProject", (q) => q.eq("projectId", project._id))
+          .filter((q) => q.eq(q.field("isOverrun"), false))
+          .collect();
+
+        const totalSeconds = entries.reduce((sum, entry) => {
+          const seconds = entry.seconds || (entry.stoppedAt ? entry.stoppedAt - entry.startedAt : 0) / 1000;
+          return sum + seconds;
+        }, 0);
+
+        const totalAmount = (totalSeconds / 3600) * project.hourlyRate;
+
+        let budgetRemaining = 0;
+        let budgetRemainingFormatted = "N/A";
+
+        if (project.budgetType === "hours" && project.budgetHours) {
+          const budgetSeconds = project.budgetHours * 3600;
+          budgetRemaining = Math.max(0, budgetSeconds - totalSeconds);
+          const hoursRemaining = budgetRemaining / 3600;
+          budgetRemainingFormatted = `${hoursRemaining.toFixed(1)} hours`;
+        } else if (project.budgetType === "amount" && project.budgetAmount) {
+          budgetRemaining = Math.max(0, project.budgetAmount - totalAmount);
+          budgetRemainingFormatted = `$${budgetRemaining.toFixed(2)}`;
+        }
+
+        const totalHours = totalSeconds / 3600;
+        const totalHoursFormatted = `${totalHours.toFixed(1)}h`;
+
         return {
           ...project,
           client,
+          budgetRemaining,
+          budgetRemainingFormatted,
+          totalSeconds,
+          totalHours,
+          totalHoursFormatted,
         };
       })
     );
 
-    return projectsWithClients;
+    return projectsWithClientsAndStats;
   },
 });
 
@@ -155,6 +191,12 @@ export const getStats = query({
       throw new Error("Project not found");
     }
 
+    // Get user settings for warning thresholds
+    const userSettings = await ctx.db
+      .query("userSettings")
+      .withIndex("byUser", (q) => q.eq("userId", userId))
+      .unique();
+
     const entries = await ctx.db
       .query("timeEntries")
       .withIndex("byProject", (q) => q.eq("projectId", args.projectId))
@@ -170,14 +212,32 @@ export const getStats = query({
 
     let budgetRemaining = 0;
     let timeRemaining = 0;
+    let isNearBudgetLimit = false;
+    let warningType: "time" | "amount" | null = null;
 
     if (project.budgetType === "hours" && project.budgetHours) {
       const budgetSeconds = project.budgetHours * 3600;
       budgetRemaining = Math.max(0, budgetSeconds - totalSeconds);
       timeRemaining = budgetRemaining / 3600;
+
+      // Check if near budget limit for time-based projects
+      if (userSettings?.budgetWarningEnabled && userSettings.budgetWarningThresholdHours) {
+        if (timeRemaining > 0 && timeRemaining <= userSettings.budgetWarningThresholdHours) {
+          isNearBudgetLimit = true;
+          warningType = "time";
+        }
+      }
     } else if (project.budgetType === "amount" && project.budgetAmount) {
       budgetRemaining = Math.max(0, project.budgetAmount - totalAmount);
       timeRemaining = budgetRemaining / project.hourlyRate;
+
+      // Check if near budget limit for amount-based projects
+      if (userSettings?.budgetWarningEnabled && userSettings.budgetWarningThresholdAmount) {
+        if (budgetRemaining > 0 && budgetRemaining <= userSettings.budgetWarningThresholdAmount) {
+          isNearBudgetLimit = true;
+          warningType = "amount";
+        }
+      }
     }
 
     return {
@@ -185,6 +245,8 @@ export const getStats = query({
       totalAmount,
       budgetRemaining,
       timeRemaining,
+      isNearBudgetLimit,
+      warningType,
     };
   },
 });
