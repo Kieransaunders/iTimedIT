@@ -1,5 +1,24 @@
 ## Install and Run (from a fresh clone)
 
+### Quick Start (Testers)
+- Clone and install:
+  ```bash
+  git clone https://github.com/Kieransaunders/freelancer_time_tracker_app.git
+  cd freelancer_time_tracker_app
+  npm install
+  ```
+- Create `.env.local`:
+  - Option A: Use a shared dev deployment value provided by the team:
+    ```bash
+    CONVEX_DEPLOYMENT=dev:<shared-dev-deployment>
+    CONVEX_SITE_URL=http://localhost:5173
+    ```
+
+ 
+  npm run dev
+  ```
+  Frontend: http://localhost:5173 (backend runs via Convex cloud dev)
+
 ### Prerequisites
 - Node.js 18+ (recommend 20 LTS)
 - npm 9+ (bundled with Node)
@@ -63,4 +82,5 @@ npm test
 ### Troubleshooting
 - If `npm ci` fails due to missing lockfile, use `npm install`.
 - If Convex fails to start, ensure `.env.local` has a valid `CONVEX_DEPLOYMENT` or re-run `npx convex dev` to create one.
+
 

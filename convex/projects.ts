@@ -1,22 +1,28 @@
 import { query, mutation } from "./_generated/server";
-import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
+import {
+  requireMembership,
+  ensureMembershipWithRole,
+  requireMembershipWithRole,
+} from "./orgContext";
 
 export const listByClient = query({
   args: {
     clientId: v.id("clients"),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("Not authenticated");
+    const { organizationId } = await requireMembership(ctx);
+
+    const client = await ctx.db.get(args.clientId);
+    if (!client || client.organizationId !== organizationId) {
+      throw new Error("Client not found");
     }
 
     return await ctx.db
       .query("projects")
       .withIndex("byClient", (q) => q.eq("clientId", args.clientId))
       .filter((q) => q.and(
-        q.eq(q.field("ownerId"), userId),
+        q.eq(q.field("organizationId"), organizationId),
         q.eq(q.field("archived"), false)
       ))
       .collect();
@@ -28,13 +34,10 @@ export const get = query({
     id: v.id("projects"),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("Not authenticated");
-    }
+    const { organizationId } = await requireMembership(ctx);
 
     const project = await ctx.db.get(args.id);
-    if (!project || project.ownerId !== userId) {
+    if (!project || project.organizationId !== organizationId) {
       throw new Error("Project not found");
     }
 
@@ -49,14 +52,11 @@ export const get = query({
 export const listAll = query({
   args: {},
   handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("Not authenticated");
-    }
+    const { organizationId } = await requireMembership(ctx);
 
     const projects = await ctx.db
       .query("projects")
-      .withIndex("byOwner", (q) => q.eq("ownerId", userId))
+      .withIndex("byOrganization", (q) => q.eq("organizationId", organizationId))
       .filter((q) => q.eq(q.field("archived"), false))
       .collect();
 
@@ -121,18 +121,19 @@ export const create = mutation({
     budgetAmount: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("Not authenticated");
-    }
+    const { organizationId, userId } = await ensureMembershipWithRole(ctx, [
+      "owner",
+      "admin",
+    ]);
 
     const client = await ctx.db.get(args.clientId);
-    if (!client || client.ownerId !== userId) {
+    if (!client || client.organizationId !== organizationId) {
       throw new Error("Client not found");
     }
 
     return await ctx.db.insert("projects", {
-      ownerId: userId,
+      organizationId,
+      createdBy: userId,
       clientId: args.clientId,
       name: args.name,
       hourlyRate: args.hourlyRate,
@@ -155,13 +156,10 @@ export const update = mutation({
     archived: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("Not authenticated");
-    }
+    const { organizationId } = await requireMembershipWithRole(ctx, ["owner", "admin"]);
 
     const project = await ctx.db.get(args.id);
-    if (!project || project.ownerId !== userId) {
+    if (!project || project.organizationId !== organizationId) {
       throw new Error("Project not found");
     }
 
@@ -181,13 +179,10 @@ export const getStats = query({
     projectId: v.id("projects"),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("Not authenticated");
-    }
+    const { organizationId, userId } = await requireMembership(ctx);
 
     const project = await ctx.db.get(args.projectId);
-    if (!project || project.ownerId !== userId) {
+    if (!project || project.organizationId !== organizationId) {
       throw new Error("Project not found");
     }
 

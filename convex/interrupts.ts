@@ -5,15 +5,22 @@ import { Id } from "./_generated/dataModel";
 
 export const check = action({
   args: {
+    organizationId: v.id("organizations"),
     userId: v.id("users"),
   },
   handler: async (ctx, args) => {
     const timer = await ctx.runMutation(internal.interrupts.getTimerForInterrupt, {
+      organizationId: args.organizationId,
       userId: args.userId,
     });
 
     if (!timer) {
       return { action: "no_timer", graceJobScheduled: false, graceJobTime: null };
+    }
+
+    if (!timer.organizationId || !timer.userId) {
+      // Legacy timer without organization linkage; skip until backfilled
+      return { action: "legacy_timer", graceJobScheduled: false, graceJobTime: null };
     }
 
     // Check if timer is already awaiting interrupt acknowledgment
@@ -34,6 +41,7 @@ export const check = action({
     if (heartbeatStale) {
       // Timer is stale, auto-stop it
       await ctx.runMutation(internal.interrupts.autoStopStaleTimer, {
+        organizationId: args.organizationId,
         userId: args.userId,
         timerId: timer._id,
       });
@@ -43,6 +51,7 @@ export const check = action({
     // Trigger interruption prompt
     const interruptAt = now;
     await ctx.runMutation(internal.interrupts.setAwaitingInterrupt, {
+      organizationId: args.organizationId,
       userId: args.userId,
       timerId: timer._id,
       interruptAt,
@@ -51,7 +60,8 @@ export const check = action({
     // Schedule auto-stop if no acknowledgment after grace period
     const graceJobTime: number = interruptAt + gracePeriodMs;
     await ctx.scheduler.runAt(graceJobTime, api.interrupts.autoStopIfNoAck, {
-      userId: args.userId,
+      organizationId: timer.organizationId,
+      userId: timer.userId,
       interruptAt,
     });
 
@@ -65,20 +75,26 @@ export const check = action({
 
 export const autoStopIfNoAck = action({
   args: {
+    organizationId: v.id("organizations"),
     userId: v.id("users"),
     interruptAt: v.number(),
   },
   handler: async (ctx, args): Promise<{
-    action: "auto_stopped" | "already_acked" | "stale_job";
+    action: "auto_stopped" | "already_acked" | "stale_job" | "legacy_timer";
     stoppedEntryId: Id<"timeEntries"> | null;
     overrunEntryId: Id<"timeEntries"> | null;
   }> => {
     const timer = await ctx.runMutation(internal.interrupts.getTimerForInterrupt, {
+      organizationId: args.organizationId,
       userId: args.userId,
     });
 
     if (!timer) {
       return { action: "stale_job", stoppedEntryId: null, overrunEntryId: null };
+    }
+
+    if (!timer.organizationId || !timer.userId) {
+      return { action: "legacy_timer", stoppedEntryId: null, overrunEntryId: null };
     }
 
     // Check if this is the right interrupt (not already acknowledged)
@@ -95,6 +111,7 @@ export const autoStopIfNoAck = action({
 
     // Just auto-stop the timer without creating overrun
     await ctx.runMutation(internal.interrupts.autoStopStaleTimer, {
+      organizationId: args.organizationId,
       userId: args.userId,
       timerId: timer._id,
     });
@@ -121,11 +138,16 @@ export const sweep = action({
     for (const timer of timers) {
       checkedTimers++;
 
+      if (!timer.organizationId || !timer.userId) {
+        continue;
+      }
+
       // Check for stale timers (no heartbeat for 5+ minutes)
       const heartbeatStale = now - timer.lastHeartbeatAt > 5 * 60 * 1000;
       if (heartbeatStale) {
         await ctx.runMutation(internal.interrupts.autoStopStaleTimer, {
-          userId: timer.ownerId,
+          organizationId: timer.organizationId,
+          userId: timer.userId,
           timerId: timer._id,
         });
         staleTimersStopped++;
@@ -135,19 +157,21 @@ export const sweep = action({
       // Check for timers awaiting interrupt ack for too long
       if (timer.awaitingInterruptAck && timer.interruptShownAt) {
         const userSettings = await ctx.runMutation(internal.interrupts.getUserSettings, {
-          userId: timer.ownerId,
+          userId: timer.userId,
         });
         const gracePeriodMs: number = (userSettings?.gracePeriod ?? 5) * 1000;
         const timeSinceInterrupt = now - timer.interruptShownAt;
         if (timeSinceInterrupt > gracePeriodMs) {
           // COMMENTED OUT: Create overrun entry
           // await ctx.runMutation(internal.interrupts.autoStopAndCreateOverrun, {
-          //   userId: timer.ownerId,
+          //   organizationId: timer.organizationId,
+          //   userId: timer.userId,
           //   timerId: timer._id,
           //   projectId: timer.projectId,
           // });
           await ctx.runMutation(internal.interrupts.autoStopStaleTimer, {
-            userId: timer.ownerId,
+            organizationId: timer.organizationId,
+            userId: timer.userId,
             timerId: timer._id,
           });
           autoStoppedTimers++;
@@ -159,20 +183,22 @@ export const sweep = action({
       if (timer.nextInterruptAt && now >= timer.nextInterruptAt && !timer.awaitingInterruptAck) {
         const interruptAt = now;
         await ctx.runMutation(internal.interrupts.setAwaitingInterrupt, {
-          userId: timer.ownerId,
+          organizationId: timer.organizationId,
+          userId: timer.userId,
           timerId: timer._id,
           interruptAt,
         });
 
         // Get user's grace period setting
         const userSettings = await ctx.runMutation(internal.interrupts.getUserSettings, {
-          userId: timer.ownerId,
+          userId: timer.userId,
         });
         const gracePeriodMs: number = (userSettings?.gracePeriod ?? 5) * 1000;
 
         // Schedule auto-stop
         await ctx.scheduler.runAt(interruptAt + gracePeriodMs, api.interrupts.autoStopIfNoAck, {
-          userId: timer.ownerId,
+          organizationId: timer.organizationId,
+          userId: timer.userId,
           interruptAt,
         });
 
@@ -193,12 +219,15 @@ export const sweep = action({
 
 export const getTimerForInterrupt = internalMutation({
   args: {
+    organizationId: v.id("organizations"),
     userId: v.id("users"),
   },
   handler: async (ctx, args) => {
     return await ctx.db
       .query("runningTimers")
-      .withIndex("byOwner", (q) => q.eq("ownerId", args.userId))
+      .withIndex("byOrgUser", (q) =>
+        q.eq("organizationId", args.organizationId).eq("userId", args.userId)
+      )
       .unique();
   },
 });
@@ -212,6 +241,7 @@ export const getAllTimersForSweep = internalMutation({
 
 export const setAwaitingInterrupt = internalMutation({
   args: {
+    organizationId: v.id("organizations"),
     userId: v.id("users"),
     timerId: v.id("runningTimers"),
     interruptAt: v.number(),
@@ -226,12 +256,17 @@ export const setAwaitingInterrupt = internalMutation({
 
 export const autoStopStaleTimer = internalMutation({
   args: {
+    organizationId: v.id("organizations"),
     userId: v.id("users"),
     timerId: v.id("runningTimers"),
   },
   handler: async (ctx, args) => {
     const timer = await ctx.db.get(args.timerId);
     if (!timer) return;
+
+    if (!timer.organizationId || !timer.userId) {
+      return;
+    }
 
     const now = Date.now();
 
@@ -240,7 +275,8 @@ export const autoStopStaleTimer = internalMutation({
       .query("timeEntries")
       .withIndex("byProject", (q) => q.eq("projectId", timer.projectId))
       .filter((q) => q.and(
-        q.eq(q.field("ownerId"), args.userId),
+        q.eq(q.field("organizationId"), args.organizationId),
+        q.eq(q.field("userId"), args.userId),
         q.eq(q.field("stoppedAt"), undefined),
         q.eq(q.field("isOverrun"), false)
       ))

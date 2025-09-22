@@ -2,6 +2,7 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useState } from "react";
 import { Id } from "../../convex/_generated/dataModel";
+import { notifyMutationError } from "../lib/notifyMutationError";
 
 interface ProjectsPageProps {
   onProjectSelect?: (projectId: string) => void;
@@ -54,8 +55,12 @@ export function ProjectsPage({ onProjectSelect }: ProjectsPageProps) {
       
       resetForm();
     } catch (error) {
-      console.error("Error saving project:", error);
-      alert("Error saving project. Please try again.");
+      notifyMutationError(error, {
+        fallbackMessage: editingProject
+          ? "Unable to update project. Please try again."
+          : "Unable to create project. Please try again.",
+        unauthorizedMessage: "You need owner or admin access to manage projects.",
+      });
     }
   };
 
@@ -82,7 +87,14 @@ export function ProjectsPage({ onProjectSelect }: ProjectsPageProps) {
   };
 
   const handleArchive = async (projectId: Id<"projects">) => {
-    await updateProject({ id: projectId, archived: true });
+    try {
+      await updateProject({ id: projectId, archived: true });
+    } catch (error) {
+      notifyMutationError(error, {
+        fallbackMessage: "Unable to archive project. Please try again.",
+        unauthorizedMessage: "You need owner or admin access to manage projects.",
+      });
+    }
   };
 
   if (!clients || !projects) {

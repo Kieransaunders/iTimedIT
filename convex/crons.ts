@@ -28,7 +28,8 @@ export const checkMissedInterrupts = internalMutation({
         .query("timeEntries")
         .withIndex("byProject", (q) => q.eq("projectId", timer.projectId))
         .filter((q) => q.and(
-          q.eq(q.field("ownerId"), timer.ownerId),
+          q.eq(q.field("organizationId"), timer.organizationId),
+          q.eq(q.field("userId"), timer.userId),
           q.eq(q.field("stoppedAt"), undefined),
           q.eq(q.field("isOverrun"), false)
         ))
@@ -48,7 +49,8 @@ export const checkMissedInterrupts = internalMutation({
 
       // Create overrun placeholder
       await ctx.db.insert("timeEntries", {
-        ownerId: timer.ownerId,
+        organizationId: timer.organizationId,
+        userId: timer.userId,
         projectId: timer.projectId,
         startedAt: now,
         source: "overrun",

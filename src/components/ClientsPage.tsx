@@ -2,6 +2,7 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useState } from "react";
 import { Id } from "../../convex/_generated/dataModel";
+import { notifyMutationError } from "../lib/notifyMutationError";
 
 // Default color palette for clients
 const DEFAULT_COLORS = [
@@ -29,23 +30,32 @@ export function ClientsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (editingClient) {
-      await updateClient({
-        id: editingClient._id,
-        name,
-        note,
-        color,
+
+    try {
+      if (editingClient) {
+        await updateClient({
+          id: editingClient._id,
+          name,
+          note,
+          color,
+        });
+      } else {
+        await createClient({ name, note, color });
+      }
+
+      setName("");
+      setNote("");
+      setColor("#8b5cf6");
+      setShowForm(false);
+      setEditingClient(null);
+    } catch (error) {
+      notifyMutationError(error, {
+        fallbackMessage: editingClient
+          ? "Unable to update client. Please try again."
+          : "Unable to create client. Please try again.",
+        unauthorizedMessage: "You need owner or admin access to manage clients.",
       });
-    } else {
-      await createClient({ name, note, color });
     }
-    
-    setName("");
-    setNote("");
-    setColor("#8b5cf6");
-    setShowForm(false);
-    setEditingClient(null);
   };
 
   const handleEdit = (client: any) => {
@@ -57,7 +67,14 @@ export function ClientsPage() {
   };
 
   const handleArchive = async (clientId: Id<"clients">) => {
-    await updateClient({ id: clientId, archived: true });
+    try {
+      await updateClient({ id: clientId, archived: true });
+    } catch (error) {
+      notifyMutationError(error, {
+        fallbackMessage: "Unable to archive client. Please try again.",
+        unauthorizedMessage: "You need owner or admin access to manage clients.",
+      });
+    }
   };
 
   if (!clients) {
