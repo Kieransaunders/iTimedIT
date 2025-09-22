@@ -1,0 +1,186 @@
+"use node";
+
+import { action } from "./_generated/server";
+import { v } from "convex/values";
+import { internal } from "./_generated/api";
+
+// Send push notification action
+export const sendTimerAlert = action({
+  args: {
+    userId: v.id("users"),
+    title: v.string(),
+    body: v.string(),
+    alertType: v.union(
+      v.literal("interrupt"),
+      v.literal("overrun"),
+      v.literal("budget_warning"),
+      v.literal("break_reminder")
+    ),
+    projectName: v.optional(v.string()),
+    clientName: v.optional(v.string()),
+    data: v.optional(v.any()),
+  },
+  handler: async (ctx, args): Promise<{
+    success: boolean;
+    reason?: string;
+    results?: Array<{
+      subscriptionId: string;
+      success: boolean;
+      error?: string;
+    }>;
+    totalSubscriptions?: number;
+  }> => {
+    // Get active push subscriptions for this user
+    const subscriptions = await ctx.runQuery(internal.pushNotifications.getUserSubscriptionsForUser, {
+      userId: args.userId,
+    });
+    
+    if (subscriptions.length === 0) {
+      console.log("No active push subscriptions for user");
+      return { success: false, reason: "no_subscriptions" };
+    }
+
+    // Get user notification preferences
+    const prefs = await ctx.runQuery(internal.pushNotifications.getNotificationPrefsForUser, {
+      userId: args.userId,
+    });
+    
+    if (!prefs || !prefs.webPushEnabled) {
+      console.log("Push notifications disabled for user");
+      return { success: false, reason: "notifications_disabled" };
+    }
+
+    // Check quiet hours
+    if (prefs.quietHoursStart && prefs.quietHoursEnd) {
+      const now = new Date();
+      const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+      
+      if (isInQuietHours(currentTime, prefs.quietHoursStart, prefs.quietHoursEnd)) {
+        console.log("Currently in quiet hours, skipping notification");
+        return { success: false, reason: "quiet_hours" };
+      }
+    }
+
+    const webpush = await import("web-push");
+    
+    // Configure VAPID details
+    webpush.setVapidDetails(
+      'mailto:support@timer-app.com',
+      process.env.VAPID_PUBLIC_KEY!,
+      process.env.VAPID_PRIVATE_KEY!
+    );
+
+    const payload = JSON.stringify({
+      title: args.title,
+      body: args.body,
+      data: {
+        alertType: args.alertType,
+        projectName: args.projectName,
+        clientName: args.clientName,
+        timestamp: Date.now(),
+        ...args.data,
+      },
+      actions: getActionsForAlertType(args.alertType),
+    });
+
+    const results: Array<{
+      subscriptionId: string;
+      success: boolean;
+      error?: string;
+    }> = [];
+
+    for (const subscription of subscriptions) {
+      try {
+        await webpush.sendNotification(
+          {
+            endpoint: subscription.endpoint,
+            keys: {
+              p256dh: subscription.p256dhKey,
+              auth: subscription.authKey,
+            },
+          },
+          payload
+        );
+
+        // Update last used timestamp
+        await ctx.runMutation(internal.pushNotifications.updateSubscriptionLastUsed, {
+          subscriptionId: subscription._id,
+        });
+
+        results.push({ subscriptionId: subscription._id, success: true });
+      } catch (error) {
+        console.error("Failed to send push notification:", error);
+        
+        // If the subscription is invalid, deactivate it
+        if (error instanceof Error && (error.message.includes('410') || error.message.includes('invalid'))) {
+          await ctx.runMutation(internal.pushNotifications.deactivateSubscription, {
+            subscriptionId: subscription._id,
+          });
+        }
+        
+        results.push({ 
+          subscriptionId: subscription._id, 
+          success: false, 
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
+      }
+    }
+
+    return { 
+      success: results.some(r => r.success), 
+      results,
+      totalSubscriptions: subscriptions.length 
+    };
+  },
+});
+
+// Helper functions
+function isInQuietHours(currentTime: string, startTime: string, endTime: string): boolean {
+  const current = timeToMinutes(currentTime);
+  const start = timeToMinutes(startTime);
+  const end = timeToMinutes(endTime);
+
+  if (start <= end) {
+    // Same day quiet hours (e.g., 22:00 to 08:00)
+    return current >= start && current <= end;
+  } else {
+    // Overnight quiet hours (e.g., 22:00 to 08:00)
+    return current >= start || current <= end;
+  }
+}
+
+function timeToMinutes(time: string): number {
+  const [hours, minutes] = time.split(':').map(Number);
+  return hours * 60 + minutes;
+}
+
+function getActionsForAlertType(alertType: string) {
+  switch (alertType) {
+    case 'interrupt':
+      return [
+        { action: 'stop', title: 'Stop Timer', icon: '/icons/stop.svg' },
+        { action: 'snooze', title: 'Snooze 5min', icon: '/icons/snooze.svg' },
+        { action: 'switch', title: 'Switch Project', icon: '/icons/switch.svg' },
+      ];
+    case 'overrun':
+      return [
+        { action: 'stop', title: 'Stop Timer', icon: '/icons/stop.svg' },
+        { action: 'snooze', title: 'Snooze 5min', icon: '/icons/snooze.svg' },
+      ];
+    case 'budget_warning':
+      return [
+        { action: 'stop', title: 'Stop Timer', icon: '/icons/stop.svg' },
+        { action: 'switch', title: 'Switch Project', icon: '/icons/switch.svg' },
+      ];
+    case 'break_reminder':
+      return [
+        { action: 'stop', title: 'Take a Break', icon: '/icons/stop.svg' },
+        { action: 'switch', title: 'Switch Focus', icon: '/icons/switch.svg' },
+      ];
+    default:
+      return [
+        { action: 'stop', title: 'Stop Timer', icon: '/icons/stop.svg' },
+        { action: 'snooze', title: 'Snooze 5min', icon: '/icons/snooze.svg' },
+      ];
+  }
+}

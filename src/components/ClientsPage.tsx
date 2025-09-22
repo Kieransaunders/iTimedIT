@@ -3,6 +3,7 @@ import { api } from "../../convex/_generated/api";
 import { useState } from "react";
 import { Id } from "../../convex/_generated/dataModel";
 import { notifyMutationError } from "../lib/notifyMutationError";
+import { useOrganization } from "../lib/organization-context";
 
 // Default color palette for clients
 const DEFAULT_COLORS = [
@@ -23,8 +24,9 @@ export function ClientsPage() {
   const [name, setName] = useState("");
   const [note, setNote] = useState("");
   const [color, setColor] = useState("#8b5cf6");
+  const { isReady } = useOrganization();
 
-  const clients = useQuery(api.clients.list);
+  const clients = useQuery(api.clients.list, isReady ? {} : "skip");
   const createClient = useMutation(api.clients.create);
   const updateClient = useMutation(api.clients.update);
 
@@ -77,7 +79,7 @@ export function ClientsPage() {
     }
   };
 
-  if (!clients) {
+  if (!isReady || !clients) {
     return <div className="animate-pulse bg-gray-200 dark:bg-gray-700 h-64 rounded-lg"></div>;
   }
 

@@ -1,7 +1,15 @@
-import { mutation, query, MutationCtx } from "./_generated/server";
-import { ensureMembership, MembershipContext, requireMembership } from "./orgContext";
+import { mutation, query, MutationCtx, QueryCtx } from "./_generated/server";
+import {
+  ensureMembership,
+  MembershipContext,
+  requireMembership,
+  requireMembershipWithRole,
+  ensureMembershipWithRole,
+  MembershipRole,
+} from "./orgContext";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
+import type { Doc, Id } from "./_generated/dataModel";
 
 export const ensurePersonalWorkspace = mutation({
   args: {},
@@ -59,6 +67,40 @@ export const listMemberships = query({
   },
 });
 
+export const listOrganizationMembers = query({
+  args: {},
+  handler: async (ctx) => {
+    const membership = await safeRequireMembershipWithRole(ctx, ["owner", "admin"]);
+    if (!membership) {
+      return [];
+    }
+
+    const memberships = await ctx.db
+      .query("memberships")
+      .withIndex("byOrganization", (q) => q.eq("organizationId", membership.organizationId))
+      .filter((q) => q.eq(q.field("inactiveAt"), undefined))
+      .collect();
+
+    const users = await Promise.all(
+      memberships.map((membership) => ctx.db.get(membership.userId))
+    );
+
+    return memberships.map((membership, index) => ({
+      membership,
+      user: users[index],
+    }));
+  },
+});
+
+export const cleanLegacyOwnerFields = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const { organizationId, userId } = await ensureMembershipWithRole(ctx, ["owner"]);
+    await removeLegacyOwnerFieldsForOrganization(ctx, organizationId, userId);
+    return { success: true };
+  },
+});
+
 export const setActiveOrganization = mutation({
   args: {
     organizationId: v.id("organizations"),
@@ -109,73 +151,207 @@ async function backfillLegacyData(
 ) {
   const { organizationId, userId } = membership;
 
-  // Clients without organization linkage
-  const legacyClients = await ctx.db
-    .query("clients")
-    .filter((q) => q.eq(q.field("organizationId"), undefined))
-    .collect();
+  await migrateClients(ctx, organizationId, userId);
+  await migrateProjects(ctx, organizationId, userId);
+  await migrateTimeEntries(ctx, organizationId, userId);
+  await migrateRunningTimers(ctx, organizationId, userId);
+  await migrateImports(ctx, organizationId, userId);
+}
 
-  for (const client of legacyClients) {
-    const createdBy = (client as any).createdBy ?? (client as any).ownerId ?? userId;
-    await ctx.db.patch(client._id, {
-      organizationId,
-      createdBy,
-    });
+async function safeRequireMembershipWithRole(
+  ctx: QueryCtx | MutationCtx,
+  roles: MembershipRole[]
+) {
+  try {
+    return await requireMembershipWithRole(ctx, roles);
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("No active organization membership")) {
+      return null;
+    }
+    throw error;
   }
+}
+async function migrateClients(
+  ctx: MutationCtx,
+  organizationId: Id<"organizations">,
+  userId: Id<"users">
+) {
+  const clients = await ctx.db.query("clients").collect();
 
-  // Projects without organization linkage
-  const legacyProjects = await ctx.db
-    .query("projects")
-    .filter((q) => q.eq(q.field("organizationId"), undefined))
-    .collect();
+  for (const client of clients) {
+    const legacy = client as any;
+    const legacyOwnerId = legacy.ownerId as Id<"users"> | undefined;
+    const belongsToOrg =
+      client.organizationId === organizationId || client.organizationId === undefined;
+    const belongsToUser = legacyOwnerId === undefined || legacyOwnerId === userId;
 
-  for (const project of legacyProjects) {
-    const createdBy = (project as any).createdBy ?? (project as any).ownerId ?? userId;
-    await ctx.db.patch(project._id, {
-      organizationId,
-      createdBy,
-    });
+    if (!belongsToOrg || !belongsToUser) {
+      continue;
+    }
+
+    const needsUpdate =
+      legacyOwnerId !== undefined || client.organizationId === undefined || client.createdBy === undefined;
+    if (!needsUpdate) {
+      continue;
+    }
+
+    const sanitized: any = { ...client };
+    delete sanitized._id;
+    delete sanitized._creationTime;
+    delete sanitized.ownerId;
+    sanitized.organizationId = sanitized.organizationId ?? organizationId;
+    sanitized.createdBy = sanitized.createdBy ?? legacyOwnerId ?? userId;
+
+    await ctx.db.replace(client._id, sanitized);
   }
+}
 
-  // Time entries without organization or user linkage
-  const legacyEntries = await ctx.db
-    .query("timeEntries")
-    .filter((q) => q.eq(q.field("organizationId"), undefined))
-    .collect();
+async function migrateProjects(
+  ctx: MutationCtx,
+  organizationId: Id<"organizations">,
+  userId: Id<"users">
+) {
+  const projects = await ctx.db.query("projects").collect();
 
-  for (const entry of legacyEntries) {
-    const entryUserId = (entry as any).userId ?? (entry as any).ownerId ?? userId;
-    await ctx.db.patch(entry._id, {
-      organizationId,
-      userId: entryUserId,
-    });
+  for (const project of projects) {
+    const legacy = project as any;
+    const legacyOwnerId = legacy.ownerId as Id<"users"> | undefined;
+    const belongsToOrg =
+      project.organizationId === organizationId || project.organizationId === undefined;
+    const belongsToUser = legacyOwnerId === undefined || legacyOwnerId === userId;
+
+    if (!belongsToOrg || !belongsToUser) {
+      continue;
+    }
+
+    const needsUpdate =
+      legacyOwnerId !== undefined || project.organizationId === undefined || project.createdBy === undefined;
+    if (!needsUpdate) {
+      continue;
+    }
+
+    const sanitized: any = { ...project };
+    delete sanitized._id;
+    delete sanitized._creationTime;
+    delete sanitized.ownerId;
+    sanitized.organizationId = sanitized.organizationId ?? organizationId;
+    sanitized.createdBy = sanitized.createdBy ?? legacyOwnerId ?? userId;
+
+    await ctx.db.replace(project._id, sanitized);
   }
+}
 
-  // Running timers without organization linkage
-  const legacyTimers = await ctx.db
-    .query("runningTimers")
-    .filter((q) => q.eq(q.field("organizationId"), undefined))
-    .collect();
+async function migrateTimeEntries(
+  ctx: MutationCtx,
+  organizationId: Id<"organizations">,
+  userId: Id<"users">
+) {
+  const entries = await ctx.db.query("timeEntries").collect();
 
-  for (const timer of legacyTimers) {
-    const timerUserId = (timer as any).userId ?? (timer as any).ownerId ?? userId;
-    await ctx.db.patch(timer._id, {
-      organizationId,
-      userId: timerUserId,
-    });
+  for (const entry of entries) {
+    const legacy = entry as any;
+    const legacyOwnerId = legacy.ownerId as Id<"users"> | undefined;
+    const belongsToOrg =
+      entry.organizationId === organizationId || entry.organizationId === undefined;
+    const belongsToUser = legacyOwnerId === undefined || legacyOwnerId === userId;
+
+    if (!belongsToOrg || !belongsToUser) {
+      continue;
+    }
+
+    const needsUpdate = legacyOwnerId !== undefined || entry.organizationId === undefined || entry.userId === undefined;
+    if (!needsUpdate) {
+      continue;
+    }
+
+    const sanitized: any = { ...entry };
+    delete sanitized._id;
+    delete sanitized._creationTime;
+    delete sanitized.ownerId;
+    sanitized.organizationId = sanitized.organizationId ?? organizationId;
+    sanitized.userId = sanitized.userId ?? legacyOwnerId ?? userId;
+
+    await ctx.db.replace(entry._id, sanitized);
   }
+}
 
-  // Imports without organization linkage
-  const legacyImports = await ctx.db
-    .query("imports")
-    .filter((q) => q.eq(q.field("organizationId"), undefined))
-    .collect();
+async function migrateRunningTimers(
+  ctx: MutationCtx,
+  organizationId: Id<"organizations">,
+  userId: Id<"users">
+) {
+  const timers = await ctx.db.query("runningTimers").collect();
 
-  for (const importJob of legacyImports) {
-    const requestedBy = (importJob as any).requestedBy ?? (importJob as any).ownerId ?? userId;
-    await ctx.db.patch(importJob._id, {
-      organizationId,
-      requestedBy,
-    });
+  for (const timer of timers) {
+    const legacy = timer as any;
+    const legacyOwnerId = legacy.ownerId as Id<"users"> | undefined;
+    const belongsToOrg =
+      timer.organizationId === organizationId || timer.organizationId === undefined;
+    const belongsToUser = legacyOwnerId === undefined || legacyOwnerId === userId;
+
+    if (!belongsToOrg || !belongsToUser) {
+      continue;
+    }
+
+    const needsUpdate = legacyOwnerId !== undefined || timer.organizationId === undefined || timer.userId === undefined;
+    if (!needsUpdate) {
+      continue;
+    }
+
+    const sanitized: any = { ...timer };
+    delete sanitized._id;
+    delete sanitized._creationTime;
+    delete sanitized.ownerId;
+    sanitized.organizationId = sanitized.organizationId ?? organizationId;
+    sanitized.userId = sanitized.userId ?? legacyOwnerId ?? userId;
+
+    await ctx.db.replace(timer._id, sanitized);
   }
+}
+
+async function migrateImports(
+  ctx: MutationCtx,
+  organizationId: Id<"organizations">,
+  userId: Id<"users">
+) {
+  const imports = await ctx.db.query("imports").collect();
+
+  for (const importJob of imports) {
+    const legacy = importJob as any;
+    const legacyOwnerId = legacy.ownerId as Id<"users"> | undefined;
+    const belongsToOrg =
+      importJob.organizationId === organizationId || importJob.organizationId === undefined;
+    const belongsToUser = legacyOwnerId === undefined || legacyOwnerId === userId;
+
+    if (!belongsToOrg || !belongsToUser) {
+      continue;
+    }
+
+    const needsUpdate =
+      legacyOwnerId !== undefined || importJob.organizationId === undefined || importJob.requestedBy === undefined;
+    if (!needsUpdate) {
+      continue;
+    }
+
+    const sanitized: any = { ...importJob };
+    delete sanitized._id;
+    delete sanitized._creationTime;
+    delete sanitized.ownerId;
+    sanitized.organizationId = sanitized.organizationId ?? organizationId;
+    sanitized.requestedBy = sanitized.requestedBy ?? legacyOwnerId ?? userId;
+
+    await ctx.db.replace(importJob._id, sanitized);
+  }
+}
+
+async function removeLegacyOwnerFieldsForOrganization(
+  ctx: MutationCtx,
+  organizationId: Id<"organizations">,
+  userId: Id<"users">
+) {
+  await migrateClients(ctx, organizationId, userId);
+  await migrateProjects(ctx, organizationId, userId);
+  await migrateTimeEntries(ctx, organizationId, userId);
+  await migrateRunningTimers(ctx, organizationId, userId);
+  await migrateImports(ctx, organizationId, userId);
 }

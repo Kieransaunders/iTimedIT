@@ -56,6 +56,7 @@ const applicationTables = {
   clients: defineTable({
     organizationId: v.optional(v.id("organizations")),
     createdBy: v.optional(v.id("users")),
+    ownerId: v.optional(v.id("users")),
     name: v.string(),
     note: v.optional(v.string()),
     color: v.optional(v.string()),
@@ -68,6 +69,7 @@ const applicationTables = {
   projects: defineTable({
     organizationId: v.optional(v.id("organizations")),
     createdBy: v.optional(v.id("users")),
+    ownerId: v.optional(v.id("users")),
     clientId: v.id("clients"),
     name: v.string(),
     hourlyRate: v.number(),
@@ -84,6 +86,7 @@ const applicationTables = {
   timeEntries: defineTable({
     organizationId: v.optional(v.id("organizations")),
     userId: v.optional(v.id("users")),
+    ownerId: v.optional(v.id("users")),
     projectId: v.id("projects"),
     startedAt: v.number(),
     stoppedAt: v.optional(v.number()),
@@ -105,12 +108,17 @@ const applicationTables = {
   runningTimers: defineTable({
     organizationId: v.optional(v.id("organizations")),
     userId: v.optional(v.id("users")),
+    ownerId: v.optional(v.id("users")),
     projectId: v.id("projects"),
     startedAt: v.number(),
     lastHeartbeatAt: v.number(),
     awaitingInterruptAck: v.boolean(),
     interruptShownAt: v.optional(v.number()),
     nextInterruptAt: v.optional(v.number()),
+    budgetWarningSentAt: v.optional(v.number()),
+    budgetWarningType: v.optional(v.union(v.literal("time"), v.literal("amount"))),
+    overrunAlertSentAt: v.optional(v.number()),
+    lastNudgeSentAt: v.optional(v.number()),
   })
     .index("byOrganization", ["organizationId"])
     .index("byOrgUser", ["organizationId", "userId"])
@@ -144,6 +152,7 @@ const applicationTables = {
   imports: defineTable({
     organizationId: v.optional(v.id("organizations")),
     requestedBy: v.optional(v.id("users")),
+    ownerId: v.optional(v.id("users")),
     provider: v.literal("toggl"),
     status: v.union(v.literal("pending"), v.literal("done"), v.literal("error")),
     createdAt: v.number(),
@@ -153,6 +162,39 @@ const applicationTables = {
     .index("byOrganization", ["organizationId"])
     .index("byRequester", ["requestedBy"])
     .index("byStatus", ["status"]),
+
+  pushSubscriptions: defineTable({
+    userId: v.id("users"),
+    endpoint: v.string(),
+    p256dhKey: v.string(),
+    authKey: v.string(),
+    userAgent: v.optional(v.string()),
+    createdAt: v.number(),
+    lastUsedAt: v.optional(v.number()),
+    isActive: v.boolean(),
+  })
+    .index("byUser", ["userId"])
+    .index("byEndpoint", ["endpoint"])
+    .index("byUserActive", ["userId", "isActive"]),
+
+  notificationPrefs: defineTable({
+    userId: v.id("users"),
+    webPushEnabled: v.boolean(),
+    soundEnabled: v.boolean(),
+    vibrationEnabled: v.boolean(),
+    wakeLockEnabled: v.boolean(),
+    emailEnabled: v.boolean(),
+    smsEnabled: v.boolean(),
+    slackEnabled: v.boolean(),
+    quietHoursStart: v.optional(v.string()), // "HH:MM" format
+    quietHoursEnd: v.optional(v.string()),   // "HH:MM" format
+    escalationDelayMinutes: v.number(), // Default 2 minutes
+    timezone: v.optional(v.string()),
+    doNotDisturbEnabled: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("byUser", ["userId"]),
 };
 
 // Custom users table to include the gender field that exists in your data

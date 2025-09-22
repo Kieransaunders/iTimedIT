@@ -57,6 +57,31 @@ export const check = action({
       interruptAt,
     });
 
+    // Send push notification for interrupt - IMMEDIATELY at interrupt time
+    try {
+      console.log(`🔔 Sending push notification for interrupt at ${new Date().toISOString()}`);
+      
+      // Get project and client info for notification
+      const projectData = await ctx.runMutation(internal.interrupts.getProjectAndClientInfo, {
+        projectId: timer.projectId,
+      });
+      
+      const pushResult = await ctx.runAction(api.pushActions.sendTimerAlert, {
+        userId: args.userId,
+        title: "Timer Interruption",
+        body: `Are you still working on ${projectData?.projectName || 'this project'}?`,
+        alertType: "interrupt",
+        projectName: projectData?.projectName,
+        clientName: projectData?.clientName,
+        data: { timerId: timer._id, projectId: timer.projectId }
+      });
+      
+      console.log(`📱 Push notification result:`, pushResult);
+    } catch (error) {
+      console.error("Failed to send interrupt push notification:", error);
+      // Continue without failing the interrupt
+    }
+
     // Schedule auto-stop if no acknowledgment after grace period
     const graceJobTime: number = interruptAt + gracePeriodMs;
     await ctx.scheduler.runAt(graceJobTime, api.interrupts.autoStopIfNoAck, {
@@ -188,6 +213,25 @@ export const sweep = action({
           timerId: timer._id,
           interruptAt,
         });
+
+        // Send push notification for missed interrupt
+        try {
+          const projectData = await ctx.runMutation(internal.interrupts.getProjectAndClientInfo, {
+            projectId: timer.projectId,
+          });
+          
+          await ctx.runAction(api.pushActions.sendTimerAlert, {
+            userId: timer.userId,
+            title: "Timer Interruption",
+            body: `Are you still working on ${projectData?.projectName || 'this project'}?`,
+            alertType: "interrupt",
+            projectName: projectData?.projectName,
+            clientName: projectData?.clientName,
+            data: { timerId: timer._id, projectId: timer.projectId }
+          });
+        } catch (error) {
+          console.error("Failed to send missed interrupt push notification:", error);
+        }
 
         // Get user's grace period setting
         const userSettings = await ctx.runMutation(internal.interrupts.getUserSettings, {
@@ -355,5 +399,24 @@ export const getUserSettings = internalMutation({
       .query("userSettings")
       .withIndex("byUser", (q) => q.eq("userId", args.userId))
       .unique();
+  },
+});
+
+export const getProjectAndClientInfo = internalMutation({
+  args: {
+    projectId: v.id("projects"),
+  },
+  handler: async (ctx, args) => {
+    const project = await ctx.db.get(args.projectId);
+    if (!project) {
+      return null;
+    }
+
+    const client = await ctx.db.get(project.clientId);
+    
+    return {
+      projectName: project.name,
+      clientName: client?.name,
+    };
   },
 });

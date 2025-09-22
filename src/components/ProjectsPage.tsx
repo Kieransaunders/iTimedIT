@@ -3,6 +3,7 @@ import { api } from "../../convex/_generated/api";
 import { useState } from "react";
 import { Id } from "../../convex/_generated/dataModel";
 import { notifyMutationError } from "../lib/notifyMutationError";
+import { useOrganization } from "../lib/organization-context";
 
 interface ProjectsPageProps {
   onProjectSelect?: (projectId: string) => void;
@@ -17,9 +18,10 @@ export function ProjectsPage({ onProjectSelect }: ProjectsPageProps) {
   const [budgetType, setBudgetType] = useState<"hours" | "amount">("hours");
   const [budgetHours, setBudgetHours] = useState("");
   const [budgetAmount, setBudgetAmount] = useState("");
+  const { isReady } = useOrganization();
 
-  const clients = useQuery(api.clients.list);
-  const projects = useQuery(api.projects.listAll);
+  const clients = useQuery(api.clients.list, isReady ? {} : "skip");
+  const projects = useQuery(api.projects.listAll, isReady ? {} : "skip");
   const createProject = useMutation(api.projects.create);
   const updateProject = useMutation(api.projects.update);
 
@@ -97,7 +99,7 @@ export function ProjectsPage({ onProjectSelect }: ProjectsPageProps) {
     }
   };
 
-  if (!clients || !projects) {
+  if (!isReady || !clients || !projects) {
     return <div className="animate-pulse bg-gray-200 dark:bg-gray-700 h-64 rounded-lg"></div>;
   }
 

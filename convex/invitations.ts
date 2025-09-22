@@ -1,26 +1,37 @@
 import { v } from "convex/values";
-import { httpAction, mutation, query } from "./_generated/server";
-import { requireMembershipWithRole, MembershipRole, ensureActiveOrganizationSetting } from "./orgContext";
+import { api, internal } from "./_generated/api";
+import {
+  httpAction,
+  internalQuery,
+  mutation,
+  query,
+  type MutationCtx,
+  type QueryCtx,
+} from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
-import { Id } from "./_generated/dataModel";
+import {
+  ensureActiveOrganizationSetting,
+  requireMembershipWithRole,
+  type MembershipRole,
+} from "./orgContext";
+import type { Id } from "./_generated/dataModel";
+import {
+  deriveInvitationStatus,
+  InvitationWithDerivedStatus,
+  normalizeInvitationEmail,
+} from "./invitationsHelpers";
 
-const INVITATION_TTL_MS = 1000 * 60 * 60 * 24 * 7; // 7 days
+const INVITATION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
-function normalizeEmail(email: string): string {
-  return email.trim().toLowerCase();
-}
-
-async function ensureNotExistingMember(
-  ctx: Parameters<typeof mutation>[0],
+async function ensureInviteCanBeCreated(
+  ctx: MutationCtx,
   organizationId: Id<"organizations">,
-  email: string
+  normalizedEmail: string
 ) {
-  const normalized = normalizeEmail(email);
-
   const existingInvite = await ctx.db
     .query("invitations")
     .withIndex("byOrg", (q) => q.eq("organizationId", organizationId))
-    .filter((q) => q.eq(q.field("email"), normalized))
+    .filter((q) => q.eq(q.field("email"), normalizedEmail))
     .filter((q) => q.eq(q.field("status"), "pending"))
     .first();
 
@@ -30,52 +41,89 @@ async function ensureNotExistingMember(
 
   const existingUser = await ctx.db
     .query("users")
-    .filter((q) => q.eq(q.field("email"), normalized))
+    .filter((q) => q.eq(q.field("email"), normalizedEmail))
     .first();
 
   if (!existingUser) {
     return;
   }
 
-  const membership = await ctx.db
+  const activeMembership = await ctx.db
     .query("memberships")
-    .withIndex("byOrgUser", (q) => q.eq("organizationId", organizationId).eq("userId", existingUser._id))
+    .withIndex("byOrgUser", (q) =>
+      q.eq("organizationId", organizationId).eq("userId", existingUser._id)
+    )
     .filter((q) => q.eq(q.field("inactiveAt"), undefined))
     .first();
 
-  if (membership) {
+  if (activeMembership) {
     throw new Error("User is already a member of this organization");
   }
 }
 
-function computeStatus(invitation: Doc<"invitations">): Doc<"invitations"> & { effectiveStatus: Doc<"invitations">["status"] } {
-  const now = Date.now();
-  const expired = invitation.status === "pending" && invitation.expiresAt <= now;
-  return {
-    ...invitation,
-    effectiveStatus: expired ? "expired" : invitation.status,
-  };
+async function generateToken(): Promise<string> {
+  if (typeof crypto !== "undefined") {
+    if (typeof crypto.randomUUID === "function") {
+      return crypto.randomUUID().replace(/-/g, "");
+    }
+
+    if (typeof crypto.getRandomValues === "function") {
+      const bytes = new Uint8Array(32);
+      crypto.getRandomValues(bytes);
+      return Array.from(bytes)
+        .map((byte) => byte.toString(16).padStart(2, "0"))
+        .join("");
+    }
+  }
+
+  // Fallback: concatenate timestamp with Math.random derived entropy.
+  return (
+    Date.now().toString(36) + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2)
+  );
 }
 
 export const listForCurrentOrganization = query({
   args: {},
   handler: async (ctx) => {
-    const { organizationId } = await requireMembershipWithRole(ctx, ["owner", "admin"]);
+    const membership = await safeRequireMembership(ctx, ["owner", "admin"]);
+    if (!membership) {
+      return [];
+    }
 
     const invitations = await ctx.db
       .query("invitations")
-      .withIndex("byOrg", (q) => q.eq("organizationId", organizationId))
-      .order("desc")
+      .withIndex("byOrg", (q) => q.eq("organizationId", membership.organizationId))
       .collect();
 
-    return invitations.map((invitation) => ({
-      ...invitation,
-      email: normalizeEmail(invitation.email),
-      effectiveStatus:
-        invitation.status === "pending" && invitation.expiresAt <= Date.now()
-          ? "expired"
-          : invitation.status,
-    }));
+    return invitations.map(deriveInvitationStatus);
+  },
+});
+
+export const infoForToken = query({
+  args: {
+    token: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const invitation = await ctx.db
+      .query("invitations")
+      .withIndex("byToken", (q) => q.eq("token", args.token))
+      .unique();
+
+    if (!invitation) {
+      return null;
+    }
+
+    const { effectiveStatus } = deriveInvitationStatus(invitation);
+    const organization = await ctx.db.get(invitation.organizationId);
+
+    return {
+      status: effectiveStatus,
+      email: invitation.email,
+      role: invitation.role,
+      expiresAt: invitation.expiresAt,
+      organizationId: invitation.organizationId,
+      organizationName: organization?.name ?? "Workspace",
+    };
   },
 });
 
@@ -85,14 +133,16 @@ export const create = mutation({
     role: v.union(v.literal("owner"), v.literal("admin"), v.literal("member")),
   },
   handler: async (ctx, args) => {
-    const { organizationId, userId } = await requireMembershipWithRole(ctx, ["owner", "admin"]);
+    const { organizationId, userId } = await requireMembershipWithRole(ctx, [
+      "owner",
+      "admin",
+    ]);
 
-    const normalizedEmail = normalizeEmail(args.email);
+    const normalizedEmail = normalizeInvitationEmail(args.email);
+    await ensureInviteCanBeCreated(ctx, organizationId, normalizedEmail);
 
-    await ensureNotExistingMember(ctx, organizationId, normalizedEmail);
-
-    const token = await generateToken(ctx);
     const now = Date.now();
+    const token = await generateToken();
 
     const invitationId = await ctx.db.insert("invitations", {
       organizationId,
@@ -107,7 +157,7 @@ export const create = mutation({
       revokedAt: undefined,
     });
 
-    return { _id: invitationId, token };
+    return { invitationId, token };
   },
 });
 
@@ -116,9 +166,12 @@ export const resend = mutation({
     invitationId: v.id("invitations"),
   },
   handler: async (ctx, args) => {
-    const { organizationId, userId } = await requireMembershipWithRole(ctx, ["owner", "admin"]);
-    const invitation = await ctx.db.get(args.invitationId);
+    const { organizationId, userId } = await requireMembershipWithRole(ctx, [
+      "owner",
+      "admin",
+    ]);
 
+    const invitation = await ctx.db.get(args.invitationId);
     if (!invitation || invitation.organizationId !== organizationId) {
       throw new Error("Invitation not found");
     }
@@ -128,7 +181,7 @@ export const resend = mutation({
     }
 
     const now = Date.now();
-    const token = await generateToken(ctx);
+    const token = await generateToken();
 
     await ctx.db.patch(invitation._id, {
       token,
@@ -147,9 +200,12 @@ export const revoke = mutation({
     invitationId: v.id("invitations"),
   },
   handler: async (ctx, args) => {
-    const { organizationId } = await requireMembershipWithRole(ctx, ["owner", "admin"]);
-    const invitation = await ctx.db.get(args.invitationId);
+    const { organizationId } = await requireMembershipWithRole(ctx, [
+      "owner",
+      "admin",
+    ]);
 
+    const invitation = await ctx.db.get(args.invitationId);
     if (!invitation || invitation.organizationId !== organizationId) {
       throw new Error("Invitation not found");
     }
@@ -196,17 +252,15 @@ export const accept = mutation({
       throw new Error("Invitation has expired");
     }
 
-    if (invitation.status === "accepted") {
-      return { membershipId: undefined, organizationId: invitation.organizationId };
-    }
-
-    const existingMembership = await ctx.db
+    const activeMembership = await ctx.db
       .query("memberships")
-      .withIndex("byOrgUser", (q) => q.eq("organizationId", invitation.organizationId).eq("userId", userId))
+      .withIndex("byOrgUser", (q) =>
+        q.eq("organizationId", invitation.organizationId).eq("userId", userId)
+      )
       .filter((q) => q.eq(q.field("inactiveAt"), undefined))
       .first();
 
-    if (!existingMembership) {
+    if (!activeMembership) {
       await ctx.db.insert("memberships", {
         organizationId: invitation.organizationId,
         userId,
@@ -227,26 +281,57 @@ export const accept = mutation({
   },
 });
 
+async function safeRequireMembership(
+  ctx: QueryCtx,
+  roles: MembershipRole[]
+) {
+  try {
+    return await requireMembershipWithRole(ctx, roles);
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("No active organization membership")) {
+      return null;
+    }
+    throw error;
+  }
+}
+
+export const getByToken = internalQuery({
+  args: {
+    token: v.string(),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("invitations")
+      .withIndex("byToken", (q) => q.eq("token", args.token))
+      .unique();
+  },
+});
+
 export const invitationInfo = httpAction(async (ctx, request) => {
-  const { token } = request.params as { token: string };
+  const url = new URL(request.url);
+  let token = url.searchParams.get("token") ?? "";
+
+  if (!token) {
+    const segments = url.pathname.split("/").filter(Boolean);
+    token = segments.length > 1 ? segments[segments.length - 1] : "";
+  }
+
   if (!token) {
     return new Response("Missing token", { status: 400 });
   }
 
-  const invitation = await ctx.runQuery(invitationsByToken, { token });
-
+  const invitation = await ctx.runQuery(internal.invitations.getByToken, { token });
   if (!invitation) {
-    return new Response(JSON.stringify({ valid: false }), {
-      status: 404,
-      headers: { "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ valid: false, status: "not_found" }),
+      {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      }
+    );
   }
 
-  const effectiveStatus =
-    invitation.status === "pending" && invitation.expiresAt <= Date.now()
-      ? "expired"
-      : invitation.status;
-
+  const { effectiveStatus } = deriveInvitationStatus(invitation);
   return new Response(
     JSON.stringify({
       valid: effectiveStatus === "pending",
@@ -262,23 +347,3 @@ export const invitationInfo = httpAction(async (ctx, request) => {
     }
   );
 });
-
-const invitationsByToken = query({
-  args: {
-    token: v.string(),
-  },
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("invitations")
-      .withIndex("byToken", (q) => q.eq("token", args.token))
-      .unique();
-  },
-});
-
-async function generateToken(ctx: Parameters<typeof mutation>[0]) {
-  const tokenBytes = await ctx.db.system.get("generateUid");
-  if (typeof tokenBytes === "string") {
-    return tokenBytes;
-  }
-  return crypto.randomUUID().replace(/-/g, "");
-}

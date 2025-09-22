@@ -1,7 +1,7 @@
 import { query, mutation, internalMutation, MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { internal, api } from "./_generated/api";
-import { Id } from "./_generated/dataModel";
+import { Doc, Id } from "./_generated/dataModel";
 import { ensureMembership, requireMembership } from "./orgContext";
 
 export const getRunningTimer = query({
@@ -178,11 +178,14 @@ export const heartbeat = mutation({
       )
       .unique();
 
-    if (timer) {
-      await ctx.db.patch(timer._id, {
-        lastHeartbeatAt: Date.now(),
-      });
-    }
+  if (timer) {
+    const now = Date.now();
+    await ctx.db.patch(timer._id, {
+      lastHeartbeatAt: now,
+    });
+
+    await maybeSendBudgetAlerts(ctx, timer);
+  }
   },
 });
 
@@ -265,12 +268,31 @@ export const ackInterrupt = mutation({
 
       return { success: true, action: "continued", nextInterruptAt };
     } else {
+      const projectId = timer.projectId;
       await stopInternal(
         ctx,
         organizationId,
         userId,
         "timer"
       );
+
+      try {
+        const projectData = await ctx.runMutation(internal.interrupts.getProjectAndClientInfo, {
+          projectId,
+        });
+
+        await ctx.runAction(api.pushActions.sendTimerAlert, {
+          userId,
+          title: "Break time",
+          body: `Take a short break before jumping back into ${projectData?.projectName || 'your next task'}.`,
+          alertType: "break_reminder",
+          projectName: projectData?.projectName,
+          clientName: projectData?.clientName,
+          data: { projectId },
+        });
+      } catch (error) {
+        console.error("Failed to send break reminder notification:", error);
+      }
       return { success: true, action: "stopped", nextInterruptAt: null };
     }
   },
@@ -377,3 +399,148 @@ export const autoStopForMissedAck = internalMutation({
     }
   },
 });
+
+const BUDGET_WARNING_RESEND_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
+const BUDGET_OVERRUN_RESEND_INTERVAL_MS = 60 * 60 * 1000; // 60 minutes
+
+async function maybeSendBudgetAlerts(ctx: MutationCtx, timer: Doc<"runningTimers">) {
+  if (!timer.organizationId || !timer.userId) {
+    return;
+  }
+
+  const project = await ctx.db.get(timer.projectId);
+  if (!project || project.organizationId !== timer.organizationId) {
+    return;
+  }
+
+  const userSettings = await ctx.db
+    .query("userSettings")
+    .withIndex("byUser", (q) => q.eq("userId", timer.userId!))
+    .unique();
+
+  const now = Date.now();
+
+  const entries = await ctx.db
+    .query("timeEntries")
+    .withIndex("byProject", (q) => q.eq("projectId", timer.projectId))
+    .filter((q) => q.eq(q.field("isOverrun"), false))
+    .collect();
+
+  const totalSecondsFromEntries = entries.reduce((sum, entry) => {
+    const seconds = entry.seconds ?? (entry.stoppedAt ? Math.floor((entry.stoppedAt - entry.startedAt) / 1000) : 0);
+    return sum + seconds;
+  }, 0);
+
+  const runningSeconds = Math.max(0, Math.floor((now - timer.startedAt) / 1000));
+  const totalSeconds = totalSecondsFromEntries + runningSeconds;
+  const totalAmount = (totalSeconds / 3600) * project.hourlyRate;
+
+  const client = await ctx.db.get(project.clientId);
+
+  let overBudget = false;
+  let overrunBody = "";
+  let warningType: "time" | "amount" | null = null;
+  let warningBody = "";
+
+  if (project.budgetType === "hours" && project.budgetHours) {
+    const budgetSeconds = project.budgetHours * 3600;
+    const remainingSeconds = budgetSeconds - totalSeconds;
+    if (remainingSeconds <= 0) {
+      overBudget = true;
+      overrunBody = `You've exceeded the ${project.budgetHours}h time budget for ${project.name}.`;
+    } else if ((userSettings?.budgetWarningEnabled ?? true) && userSettings?.budgetWarningThresholdHours) {
+      const hoursRemaining = remainingSeconds / 3600;
+      if (hoursRemaining <= userSettings.budgetWarningThresholdHours) {
+        warningType = "time";
+        warningBody = `${project.name} has less than ${userSettings.budgetWarningThresholdHours} hours remaining.`;
+      }
+    }
+  } else if (project.budgetType === "amount" && project.budgetAmount) {
+    const remainingAmount = project.budgetAmount - totalAmount;
+    if (remainingAmount <= 0) {
+      overBudget = true;
+      overrunBody = `You've exceeded the $${project.budgetAmount.toFixed(2)} budget for ${project.name}.`;
+    } else if ((userSettings?.budgetWarningEnabled ?? true) && userSettings?.budgetWarningThresholdAmount) {
+      if (remainingAmount <= userSettings.budgetWarningThresholdAmount) {
+        warningType = "amount";
+        warningBody = `${project.name} has less than $${userSettings.budgetWarningThresholdAmount.toFixed(2)} remaining.`;
+      }
+    }
+  }
+
+  const update: Partial<Doc<"runningTimers">> = {};
+
+  if (overBudget) {
+    const lastOverrun = timer.overrunAlertSentAt ?? 0;
+    if (now - lastOverrun > BUDGET_OVERRUN_RESEND_INTERVAL_MS) {
+      try {
+        const result = await ctx.runAction(api.pushActions.sendTimerAlert, {
+          userId: timer.userId!,
+          title: "Budget exceeded",
+          body: overrunBody || `The timer for ${project.name} is over its planned limits.`,
+          alertType: "overrun",
+          projectName: project.name,
+          clientName: client?.name ?? undefined,
+          data: {
+            projectId: project._id,
+            organizationId: timer.organizationId,
+          },
+        });
+        if (!result.success) {
+          console.log("Budget overrun notification skipped", result.reason);
+          return;
+        }
+        update.overrunAlertSentAt = now;
+      } catch (error) {
+        console.error("Failed to send budget overrun notification:", error);
+      }
+    }
+
+    if (Object.keys(update).length > 0) {
+      try {
+        await ctx.db.patch(timer._id, update);
+      } catch (error) {
+        console.error("Failed to persist timer overrun metadata:", error);
+      }
+    }
+    return;
+  }
+
+  if (warningType) {
+    const lastWarning = timer.budgetWarningSentAt ?? 0;
+    const previousType = timer.budgetWarningType;
+    if (previousType !== warningType || now - lastWarning > BUDGET_WARNING_RESEND_INTERVAL_MS) {
+      try {
+        const result = await ctx.runAction(api.pushActions.sendTimerAlert, {
+          userId: timer.userId!,
+          title: "Budget warning",
+          body: warningBody || `The timer for ${project.name} is approaching its limits.`,
+          alertType: "budget_warning",
+          projectName: project.name,
+          clientName: client?.name ?? undefined,
+          data: {
+            projectId: project._id,
+            organizationId: timer.organizationId,
+            warningType,
+          },
+        });
+        if (!result.success) {
+          console.log("Budget warning notification skipped", result.reason);
+          return;
+        }
+        update.budgetWarningSentAt = now;
+        update.budgetWarningType = warningType;
+      } catch (error) {
+        console.error("Failed to send budget warning notification:", error);
+      }
+    }
+  }
+
+  if (Object.keys(update).length > 0) {
+    try {
+      await ctx.db.patch(timer._id, update);
+    } catch (error) {
+      console.error("Failed to persist timer warning metadata:", error);
+    }
+  }
+}

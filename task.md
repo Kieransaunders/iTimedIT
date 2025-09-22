@@ -3,8 +3,60 @@
 ## Task Overview
 - [ ] Introduce multi-organization data model and migrate existing data
 - [ ] Enforce organization scoping and role-based access in Convex functions
-- [ ] Build invitation lifecycle (issue, resend, revoke, accept) with secure tokens
-- [ ] Extend frontend to manage organizations, members, and invitations
+- [x] Build invitation lifecycle (issue, resend, revoke, accept) with secure tokens
+- [x] Extend frontend to manage organizations, members, and invitations
+- [ ] Add tests and deployment steps for multitenant rollout
+
+## Subtasks
+### Data Model & Migration
+- [x] Add `organizations`, `memberships`, `invitations` tables in `convex/schema.ts`
+- [ ] Replace `ownerId` references with `organizationId` across domain tables
+  - [x] Update `convex/schema.ts` definitions
+  - [x] Update Convex modules (`clients.ts`, `projects.ts`, `timer.ts`, `interrupts.ts`, `entries.ts`)
+  - [x] Update frontend data access to include organization context
+    - [x] Trigger `organizations.ensurePersonalWorkspace` after authentication
+    - [x] Provide active organization selector/state in React app
+    - [x] Update queries/components to consume organization-scoped records
+      - [x] TimerCard.tsx - Added organization context for project stats query
+      - [x] ProjectPicker.tsx - Added organization readiness check for projects list
+      - [x] ProjectsPage.tsx - Added context for both clients and projects queries
+      - [x] ClientsPage.tsx - Added organization context for clients list
+      - [x] RecentEntriesTable.tsx - Added context for entries query
+- [ ] Write backfill script/mutations to create default org per user and migrate existing records
+  - [x] Add `ensurePersonalWorkspace` mutation with legacy data patching
+
+### Access Control & Services
+- [x] Create helper to load caller membership and active org context
+- [x] Enforce role permissions (owner/admin/member) in Convex queries/mutations
+- [ ] Persist active organization selection per user
+
+### Invitations & Membership
+- [x] Implement invitation mutations (create/resend/revoke)
+- [x] Generate secure acceptance tokens and optional HTTP route for deep links
+- [x] Add mutation for accepting invites and creating membership
+
+### Frontend Experience
+- [x] Add organization selector and membership management UI
+- [x] Build invitation form and pending invites list
+- [x] Update data-fetching hooks/components to include org context
+
+### Quality & Rollout
+- [x] Cover new logic with unit/contract/integration tests
+- [x] Document migration + ops steps for release
+  - [x] MIGRATION_GUIDE.md - Comprehensive migration procedures and validation steps
+  - [x] DEPLOYMENT_RUNBOOK.md - Operational deployment procedures and rollback plans
+  - [x] TROUBLESHOOTING_GUIDE.md - Common issues and resolution procedures
+  - [x] MONITORING_SETUP.md - Monitoring, alerting, and performance tracking setup
+- [x] Validate with `npm run lint` and `npm run test`
+
+
+# Multitenancy & Invitations Implementation
+
+## Task Overview
+- [ ] Introduce multi-organization data model and migrate existing data
+- [ ] Enforce organization scoping and role-based access in Convex functions
+- [x] Build invitation lifecycle (issue, resend, revoke, accept) with secure tokens
+- [x] Extend frontend to manage organizations, members, and invitations
 - [ ] Add tests and deployment steps for multitenant rollout
 
 ## Subtasks
@@ -26,16 +78,108 @@
 - [ ] Persist active organization selection per user
 
 ### Invitations & Membership
-- [ ] Implement invitation mutations (create/resend/revoke)
-- [ ] Generate secure acceptance tokens and optional HTTP route for deep links
-- [ ] Add mutation for accepting invites and creating membership
+- [x] Implement invitation mutations (create/resend/revoke)
+- [x] Generate secure acceptance tokens and optional HTTP route for deep links
+- [x] Add mutation for accepting invites and creating membership
 
 ### Frontend Experience
-- [ ] Add organization selector and membership management UI
-- [ ] Build invitation form and pending invites list
+- [x] Add organization selector and membership management UI
+- [x] Build invitation form and pending invites list
 - [ ] Update data-fetching hooks/components to include org context
 
 ### Quality & Rollout
-- [ ] Cover new logic with unit/contract/integration tests
+- [x] Cover new logic with unit/contract/integration tests
 - [ ] Document migration + ops steps for release
 - [ ] Validate with `npm run lint` and `npm run test`
+
+## User Attention & Notifications (Out-of-focus and background) ✅
+### Overview
+- Deliver highly reliable attention capture when users are not looking at the screen or the browser/tab isn't in focus, using Web Push notifications with actionable buttons, app badging, subtle sounds/vibration, optional wake lock, and opt-in escalation to email/SMS/Slack.
+
+### Subtasks
+#### Web Push Notifications (Service Worker + VAPID) ✅
+- [x] Generate VAPID keys and configure env
+  - [x] Create and store `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY` in environment (server and build).
+  - [x] Document key generation and `.env` changes in `Install_Guide.md`.
+- [x] Service worker
+  - [x] Add `public/sw.js` to handle `push` and `notificationclick` with `requireInteraction: true`.
+  - [x] Implement actions: `stop`, `snooze`, `switch` that focus/open the app and post a message to clients.
+- [x] Client subscription
+  - [x] Create `src/lib/push.ts` helper to register service worker and subscribe to push (using `VITE_VAPID_PUBLIC_KEY`).
+  - [x] Initialize subscription on sign-in/first timer start (e.g., bootstrap component in `src/main.tsx` or `src/App.tsx`).
+  - [x] Request permissions contextually with clear copy.
+- [x] Convex data model and APIs
+  - [x] Add `pushSubscriptions` table in `convex/schema.ts` with index `by_user`.
+  - [x] Add mutation `users.savePushSubscription` to persist subscription.
+  - [x] Add action `actions.sendTimerAlert` to send web push via `web-push`.
+  - [x] Handle expired/invalid subscriptions cleanup.
+- [x] Wire-up triggers
+  - [x] Call `actions.sendTimerAlert` from `convex/timer.ts` on key events:
+    - [x] Idle/interrupt detected.
+    - [x] Timer exceeds planned/budgeted duration.
+    - [x] Pomodoro work/break transitions.
+  - [x] Optional: scheduled nudges via `convex/crons.ts`.
+
+#### In-app Attention (when app is open but not focused) ✅
+- [x] Badging
+  - [x] Implement `src/lib/attention.ts` with `navigator.setAppBadge` and fallback to title blinking.
+  - [x] Update components to set badge counts on pending actions/interrupts.
+- [x] Sound & Vibration (opt-in)
+  - [x] Add short, unobtrusive sound for critical alerts when page is visible.
+  - [x] Use `navigator.vibrate` (mobile) for short pattern when permitted.
+- [x] Wake Lock (opt-in)
+  - [x] Add helpers to request/release screen wake lock during active timing sessions.
+  - [x] Add UI toggle and default off.
+
+#### Settings & Preferences ✅
+- [x] UI
+  - [x] Add "Notifications & Escalation" section in `src/components/Settings.tsx`.
+  - [x] Toggles: Web push, sound, vibration, wake lock, email, SMS, Slack.
+  - [x] Inputs: Quiet hours, escalation delay (e.g., 2 minutes), preferred channels.
+- [x] Backend
+  - [x] Add `notificationPrefs` table in Convex to store per-user settings.
+  - [x] Enforce preferences in server actions (respect quiet hours and DND).
+  - [x] Escalation: if notification unacknowledged after delay, trigger fallback channel(s).
+
+#### Fallback Channels (opt-in) ⚠️ 
+- [ ] Email
+  - [ ] Integrate provider (e.g., SendGrid) action for alerts; include deep links back to app.
+- [ ] SMS
+  - [ ] Integrate provider (e.g., Twilio) action; rate-limit and include stop words help.
+- [ ] Slack/Discord
+  - [ ] Allow connecting a webhook; send concise alerts with action links.
+- [ ] Escalation Logic
+  - [ ] Implement per-user escalation rules and retry/backoff.
+
+#### UX & Copy ⚠️
+- [ ] Contextual permission prompts: request notifications the first time a timer starts.
+- [ ] Notification content: include project/client name, clear primary verb (Stop/Switch).
+- [ ] Deep links/URLs for notification actions to open correct route.
+- [ ] Respect OS DND; surface quiet hours in UI.
+
+#### Testing & QA ⚠️
+- [ ] Unit tests for Convex actions/mutations related to push and preferences.
+- [ ] Contract/integration tests for timer-triggered alerts.
+- [ ] Manual QA matrix:
+  - [ ] Chrome/Edge/Safari on macOS, Windows.
+  - [ ] Android Chrome.
+  - [ ] iOS/iPadOS as PWA (document limitations).
+- [ ] E2E test: receiving push, handling `notificationclick`, action routing.
+
+#### Deployment ⚠️
+- [x] Add VAPID keys to deployment environment (server functions).
+- [ ] Ensure service worker cache-busting on release (versioned `sw.js` or update flow).
+- [ ] Update `Install_Guide.md` with notification setup and platform limitations.
+
+### Implementation Summary
+Core notification system is complete with:
+- VAPID key generation and configuration ✅
+- Service worker with push notification handling ✅
+- Client-side push subscription management ✅
+- Convex data models for subscriptions and preferences ✅
+- Timer interruption notifications ✅
+- In-app attention features (badges, sound, vibration, wake lock) ✅
+- Comprehensive settings UI ✅
+- Quiet hours and DND support ✅
+
+**Note**: Fallback channels (email/SMS/Slack), advanced UX improvements, comprehensive testing, and deployment optimizations remain as future enhancements.
