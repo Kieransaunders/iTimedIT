@@ -11,22 +11,43 @@ self.addEventListener('activate', event => {
 
 self.addEventListener('push', event => {
   console.log('Push received:', event);
+  console.log('Has data:', !!event.data);
   
   if (!event.data) {
     console.log('Push event but no data');
     return;
   }
 
+  // Try to get the raw data first
+  let rawData;
+  try {
+    rawData = event.data.text();
+    console.log('Raw push data:', rawData);
+  } catch (e) {
+    console.error('Failed to get raw push data:', e);
+  }
+
   let data;
   try {
     data = event.data.json();
+    console.log('Parsed push data:', data);
   } catch (e) {
-    console.error('Failed to parse push data:', e);
-    data = {
-      title: 'Timer Alert',
-      body: event.data.text() || 'Time to check your timer!',
-      actions: []
-    };
+    console.error('Failed to parse push data as JSON:', e);
+    console.log('Attempting to parse as text...');
+    try {
+      const textData = event.data.text();
+      console.log('Text data:', textData);
+      // Try to parse the text as JSON
+      data = JSON.parse(textData);
+      console.log('Successfully parsed text as JSON:', data);
+    } catch (e2) {
+      console.error('Failed to parse text as JSON:', e2);
+      data = {
+        title: 'Timer Alert',
+        body: event.data.text() || 'Time to check your timer!',
+        actions: []
+      };
+    }
   }
 
   const options = {
@@ -38,7 +59,9 @@ self.addEventListener('push', event => {
     data: data.data || {},
     actions: normalizeActions(data.actions),
     vibrate: data.vibrate || [200, 100, 200],
-    timestamp: Date.now()
+    timestamp: Date.now(),
+    // Add URL for macOS system notifications
+    url: data.data?.url || '/'
   };
 
   event.waitUntil(
@@ -72,17 +95,25 @@ function normalizeActions(rawActions) {
 
 self.addEventListener('notificationclick', event => {
   console.log('Notification clicked:', event);
+  console.log('Action:', event.action);
+  console.log('Data:', event.notification.data);
   
   event.notification.close();
 
   const action = event.action;
-  const data = event.notification.data;
+  const data = event.notification.data || {};
+  // Try multiple sources for the URL
+  const targetUrl = data.url || event.notification.url || '/';
+  
+  console.log('Target URL:', targetUrl);
+  console.log('Notification URL:', event.notification.url);
+  console.log('Data URL:', data.url);
 
   // Handle notification actions
   if (action === 'stop') {
     // Focus the app and send stop action
     event.waitUntil(
-      focusOrOpenApp('/').then(client => {
+      focusOrOpenApp(targetUrl).then(client => {
         if (client) {
           client.postMessage({
             type: 'TIMER_ACTION',
@@ -95,7 +126,7 @@ self.addEventListener('notificationclick', event => {
   } else if (action === 'snooze') {
     // Focus the app and send snooze action
     event.waitUntil(
-      focusOrOpenApp('/').then(client => {
+      focusOrOpenApp(targetUrl).then(client => {
         if (client) {
           client.postMessage({
             type: 'TIMER_ACTION',
@@ -108,7 +139,7 @@ self.addEventListener('notificationclick', event => {
   } else if (action === 'switch') {
     // Focus the app and send switch action
     event.waitUntil(
-      focusOrOpenApp('/').then(client => {
+      focusOrOpenApp(targetUrl).then(client => {
         if (client) {
           client.postMessage({
             type: 'TIMER_ACTION',
@@ -121,7 +152,7 @@ self.addEventListener('notificationclick', event => {
   } else if (action === 'continue') {
     // Backwards compatibility for older notifications using continue
     event.waitUntil(
-      focusOrOpenApp('/').then(client => {
+      focusOrOpenApp(targetUrl).then(client => {
         if (client) {
           client.postMessage({
             type: 'TIMER_ACTION',
@@ -133,7 +164,8 @@ self.addEventListener('notificationclick', event => {
     );
   } else {
     // Default click - just focus the app
-    event.waitUntil(focusOrOpenApp('/'));
+    console.log('Default notification click - focusing app');
+    event.waitUntil(focusOrOpenApp(targetUrl));
   }
 });
 
@@ -144,6 +176,7 @@ self.addEventListener('notificationclose', event => {
 
 async function focusOrOpenApp(url = '/') {
   const urlToOpen = new URL(url, self.location.origin).href;
+  console.log('Attempting to focus/open app at:', urlToOpen);
 
   // Get all clients (open tabs/windows)
   const allClients = await self.clients.matchAll({
@@ -151,28 +184,47 @@ async function focusOrOpenApp(url = '/') {
     includeUncontrolled: true
   });
 
-  // Check if the app is already open
+  console.log('Found clients:', allClients.length);
+
+  // Check if the app is already open - be more specific about matching
   let clientToFocus = null;
   for (const client of allClients) {
-    if (client.url === urlToOpen || client.url.startsWith(self.location.origin)) {
+    console.log('Checking client URL:', client.url);
+    const clientOrigin = new URL(client.url).origin;
+    const targetOrigin = new URL(urlToOpen).origin;
+    
+    if (clientOrigin === targetOrigin) {
       clientToFocus = client;
       break;
     }
   }
 
   if (clientToFocus) {
-    // Focus existing client
-    if (clientToFocus.focus) {
-      await clientToFocus.focus();
+    console.log('Focusing existing client');
+    // For Safari, try to focus first
+    try {
+      if ('focus' in clientToFocus) {
+        await clientToFocus.focus();
+      }
+      // Navigate to the specific URL if different
+      if ('navigate' in clientToFocus && clientToFocus.url !== urlToOpen) {
+        await clientToFocus.navigate(urlToOpen);
+      }
+      return clientToFocus;
+    } catch (error) {
+      console.error('Error focusing client:', error);
+      // Fall back to opening new window
     }
-    if (clientToFocus.navigate && clientToFocus.url !== urlToOpen) {
-      await clientToFocus.navigate(urlToOpen);
-    }
-    return clientToFocus;
-  } else {
-    // Open new window/tab
+  }
+  
+  // Open new window/tab or if focusing failed
+  console.log('Opening new window');
+  try {
     const newClient = await self.clients.openWindow(urlToOpen);
     return newClient;
+  } catch (error) {
+    console.error('Error opening new window:', error);
+    return null;
   }
 }
 
