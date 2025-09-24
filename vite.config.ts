@@ -3,6 +3,8 @@ import react from "@vitejs/plugin-react";
 import path from "path";
 
 // https://vite.dev/config/
+const appVersion = process.env.VITE_APP_VERSION || process.env.npm_package_version || "dev";
+
 export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
@@ -39,5 +41,8 @@ window.addEventListener('message', async (message) => {
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
+  },
+  define: {
+    __APP_VERSION__: JSON.stringify(appVersion),
   },
 }));

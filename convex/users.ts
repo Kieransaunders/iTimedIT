@@ -34,6 +34,9 @@ export const getUserSettings = query({
       budgetWarningEnabled: true,
       budgetWarningThresholdHours: 1.0,
       budgetWarningThresholdAmount: 50.0,
+      pomodoroEnabled: false,
+      pomodoroWorkMinutes: 25,
+      pomodoroBreakMinutes: 5,
     };
   },
 });
@@ -60,6 +63,9 @@ export const ensureUserSettings = mutation({
         budgetWarningEnabled: true,
         budgetWarningThresholdHours: 1.0,
         budgetWarningThresholdAmount: 50.0,
+        pomodoroEnabled: false,
+        pomodoroWorkMinutes: 25,
+        pomodoroBreakMinutes: 5,
       };
       await ctx.db.insert("userSettings", defaultSettings);
       return defaultSettings;
@@ -81,6 +87,9 @@ export const updateSettings = mutation({
     budgetWarningEnabled: v.optional(v.boolean()),
     budgetWarningThresholdHours: v.optional(v.number()),
     budgetWarningThresholdAmount: v.optional(v.number()),
+    pomodoroEnabled: v.optional(v.boolean()),
+    pomodoroWorkMinutes: v.optional(v.number()),
+    pomodoroBreakMinutes: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -102,6 +111,9 @@ export const updateSettings = mutation({
         budgetWarningEnabled: args.budgetWarningEnabled ?? true,
         budgetWarningThresholdHours: args.budgetWarningThresholdHours ?? 1.0,
         budgetWarningThresholdAmount: args.budgetWarningThresholdAmount ?? 50.0,
+        pomodoroEnabled: args.pomodoroEnabled ?? false,
+        pomodoroWorkMinutes: args.pomodoroWorkMinutes ?? 25,
+        pomodoroBreakMinutes: args.pomodoroBreakMinutes ?? 5,
       });
     } else {
       await ctx.db.patch(settings._id, {
@@ -111,6 +123,9 @@ export const updateSettings = mutation({
         ...(args.budgetWarningEnabled !== undefined && { budgetWarningEnabled: args.budgetWarningEnabled }),
         ...(args.budgetWarningThresholdHours !== undefined && { budgetWarningThresholdHours: args.budgetWarningThresholdHours }),
         ...(args.budgetWarningThresholdAmount !== undefined && { budgetWarningThresholdAmount: args.budgetWarningThresholdAmount }),
+        ...(args.pomodoroEnabled !== undefined && { pomodoroEnabled: args.pomodoroEnabled }),
+        ...(args.pomodoroWorkMinutes !== undefined && { pomodoroWorkMinutes: args.pomodoroWorkMinutes }),
+        ...(args.pomodoroBreakMinutes !== undefined && { pomodoroBreakMinutes: args.pomodoroBreakMinutes }),
       });
     }
   },

@@ -73,7 +73,7 @@ export const check = action({
         alertType: "interrupt",
         projectName: projectData?.projectName,
         clientName: projectData?.clientName,
-        data: { timerId: timer._id, projectId: timer.projectId }
+        data: { timerId: timer._id, projectId: timer.projectId, organizationId: timer.organizationId }
       });
       
       console.log(`📱 Push notification result:`, pushResult);
@@ -227,7 +227,7 @@ export const sweep = action({
             alertType: "interrupt",
             projectName: projectData?.projectName,
             clientName: projectData?.clientName,
-            data: { timerId: timer._id, projectId: timer.projectId }
+            data: { timerId: timer._id, projectId: timer.projectId, organizationId: timer.organizationId }
           });
         } catch (error) {
           console.error("Failed to send missed interrupt push notification:", error);

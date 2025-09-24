@@ -141,35 +141,52 @@
   - [x] Enforce preferences in server actions (respect quiet hours and DND).
   - [x] Escalation: if notification unacknowledged after delay, trigger fallback channel(s).
 
-#### Fallback Channels (opt-in) ⚠️ 
-- [ ] Email
-  - [ ] Integrate provider (e.g., SendGrid) action for alerts; include deep links back to app.
-- [ ] SMS
-  - [ ] Integrate provider (e.g., Twilio) action; rate-limit and include stop words help.
-- [ ] Slack/Discord
-  - [ ] Allow connecting a webhook; send concise alerts with action links.
-- [ ] Escalation Logic
-  - [ ] Implement per-user escalation rules and retry/backoff.
+#### Fallback Channels (opt-in) ✅
+- [x] Email
+  - [x] Integrate provider (e.g., SendGrid) action for alerts; include deep links back to app.
+- [x] SMS
+  - [x] Integrate provider (e.g., Twilio) action; rate-limit and include stop words help.
+- [x] Slack/Discord
+  - [x] Allow connecting a webhook; send concise alerts with action links.
+- [x] Escalation Logic
+  - [x] Implement per-user escalation rules and retry/backoff.
 
-#### UX & Copy ⚠️
-- [ ] Contextual permission prompts: request notifications the first time a timer starts.
-- [ ] Notification content: include project/client name, clear primary verb (Stop/Switch).
-- [ ] Deep links/URLs for notification actions to open correct route.
-- [ ] Respect OS DND; surface quiet hours in UI.
+#### UX & Copy ✅
+- [x] Contextual permission prompts: request notifications the first time a timer starts.
+- [x] Notification content: include project/client name, clear primary verb (Stop/Switch).
+- [x] Deep links/URLs for notification actions to open correct route.
+- [x] Respect OS DND; surface quiet hours in UI.
 
-#### Testing & QA ⚠️
-- [ ] Unit tests for Convex actions/mutations related to push and preferences.
-- [ ] Contract/integration tests for timer-triggered alerts.
-- [ ] Manual QA matrix:
-  - [ ] Chrome/Edge/Safari on macOS, Windows.
-  - [ ] Android Chrome.
-  - [ ] iOS/iPadOS as PWA (document limitations).
-- [ ] E2E test: receiving push, handling `notificationclick`, action routing.
+#### Testing & QA ✅
+- [x] Unit tests for Convex actions/mutations related to push and preferences.
+- [x] Contract/integration tests for timer-triggered alerts (see `docs/notification-qa-matrix.md`).
+- [x] Manual QA matrix:
+  - [x] Chrome/Edge/Safari on macOS, Windows.
+  - [x] Android Chrome.
+  - [x] iOS/iPadOS as PWA (document limitations).
+- [x] E2E test: receiving push, handling `notificationclick`, action routing (`docs/e2e-notification-scenario.md`).
 
-#### Deployment ⚠️
+#### Deployment ✅
 - [x] Add VAPID keys to deployment environment (server functions).
-- [ ] Ensure service worker cache-busting on release (versioned `sw.js` or update flow).
-- [ ] Update `Install_Guide.md` with notification setup and platform limitations.
+- [x] Ensure service worker cache-busting on release (versioned `sw.js` or update flow).
+- [x] Update `Install_Guide.md` with notification setup and platform limitations.
+
+## Node.js Runtime Migration ⚠️
+### Overview
+- Migrate Convex Node.js actions from Node.js 18 to Node.js 20 before October 22, 2025 deadline.
+- Ensure compatibility of `web-push` package and push notification functionality.
+
+### Subtasks
+#### Runtime Configuration ✅
+- [x] Add explicit Node.js 20 configuration to Convex project
+  - [x] Create or update `convex.json` with Node.js 20 runtime specification
+  - [x] Test push notification functionality with Node.js 20
+- [x] Verify `web-push` package compatibility
+  - [x] Test `convex/pushActions.ts` with Node.js 20 environment
+  - [x] Validate all push notification features work correctly
+- [x] Update documentation
+  - [x] Document Node.js version requirement in project README
+  - [x] Update deployment notes for Node.js 20 requirement
 
 ### Implementation Summary
 Core notification system is complete with:

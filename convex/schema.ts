@@ -119,6 +119,11 @@ const applicationTables = {
     budgetWarningType: v.optional(v.union(v.literal("time"), v.literal("amount"))),
     overrunAlertSentAt: v.optional(v.number()),
     lastNudgeSentAt: v.optional(v.number()),
+    pomodoroEnabled: v.optional(v.boolean()),
+    pomodoroPhase: v.optional(v.union(v.literal("work"), v.literal("break"))),
+    pomodoroTransitionAt: v.optional(v.number()),
+    pomodoroWorkMinutes: v.optional(v.number()),
+    pomodoroBreakMinutes: v.optional(v.number()),
   })
     .index("byOrganization", ["organizationId"])
     .index("byOrgUser", ["organizationId", "userId"])
@@ -147,6 +152,9 @@ const applicationTables = {
     budgetWarningEnabled: v.optional(v.boolean()),
     budgetWarningThresholdHours: v.optional(v.number()),
     budgetWarningThresholdAmount: v.optional(v.number()),
+    pomodoroEnabled: v.optional(v.boolean()),
+    pomodoroWorkMinutes: v.optional(v.number()),
+    pomodoroBreakMinutes: v.optional(v.number()),
   }).index("byUser", ["userId"]),
 
   imports: defineTable({
@@ -186,6 +194,9 @@ const applicationTables = {
     emailEnabled: v.boolean(),
     smsEnabled: v.boolean(),
     slackEnabled: v.boolean(),
+    fallbackEmail: v.optional(v.string()),
+    smsNumber: v.optional(v.string()),
+    slackWebhookUrl: v.optional(v.string()),
     quietHoursStart: v.optional(v.string()), // "HH:MM" format
     quietHoursEnd: v.optional(v.string()),   // "HH:MM" format
     escalationDelayMinutes: v.number(), // Default 2 minutes

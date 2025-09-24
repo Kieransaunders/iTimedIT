@@ -148,6 +148,9 @@ export const updateNotificationPrefs = mutation({
     emailEnabled: v.optional(v.boolean()),
     smsEnabled: v.optional(v.boolean()),
     slackEnabled: v.optional(v.boolean()),
+    fallbackEmail: v.optional(v.string()),
+    smsNumber: v.optional(v.string()),
+    slackWebhookUrl: v.optional(v.string()),
     quietHoursStart: v.optional(v.string()),
     quietHoursEnd: v.optional(v.string()),
     escalationDelayMinutes: v.optional(v.number()),
@@ -157,37 +160,37 @@ export const updateNotificationPrefs = mutation({
   handler: async (ctx, args) => {
     const membership = await ensureMembership(ctx);
     
-    let prefs = await ctx.db
+    const prefs = await ctx.db
       .query("notificationPrefs")
       .withIndex("byUser", (q) => q.eq("userId", membership.userId))
       .unique();
 
     const now = Date.now();
-    const updateData = {
-      ...args,
+    const payload = {
+      userId: membership.userId,
+      webPushEnabled: args.webPushEnabled ?? prefs?.webPushEnabled ?? true,
+      soundEnabled: args.soundEnabled ?? prefs?.soundEnabled ?? false,
+      vibrationEnabled: args.vibrationEnabled ?? prefs?.vibrationEnabled ?? false,
+      wakeLockEnabled: args.wakeLockEnabled ?? prefs?.wakeLockEnabled ?? false,
+      emailEnabled: args.emailEnabled ?? prefs?.emailEnabled ?? false,
+      smsEnabled: args.smsEnabled ?? prefs?.smsEnabled ?? false,
+      slackEnabled: args.slackEnabled ?? prefs?.slackEnabled ?? false,
+      fallbackEmail: args.fallbackEmail ?? prefs?.fallbackEmail,
+      smsNumber: args.smsNumber ?? prefs?.smsNumber,
+      slackWebhookUrl: args.slackWebhookUrl ?? prefs?.slackWebhookUrl,
+      quietHoursStart: args.quietHoursStart ?? prefs?.quietHoursStart,
+      quietHoursEnd: args.quietHoursEnd ?? prefs?.quietHoursEnd,
+      escalationDelayMinutes: args.escalationDelayMinutes ?? prefs?.escalationDelayMinutes ?? 2,
+      timezone: args.timezone ?? prefs?.timezone,
+      doNotDisturbEnabled: args.doNotDisturbEnabled ?? prefs?.doNotDisturbEnabled ?? false,
+      createdAt: prefs?.createdAt ?? now,
       updatedAt: now,
-    };
+    } as const;
 
     if (prefs) {
-      await ctx.db.patch(prefs._id, updateData);
+      await ctx.db.patch(prefs._id, payload);
     } else {
-      await ctx.db.insert("notificationPrefs", {
-        userId: membership.userId,
-        webPushEnabled: args.webPushEnabled ?? true,
-        soundEnabled: args.soundEnabled ?? false,
-        vibrationEnabled: args.vibrationEnabled ?? false,
-        wakeLockEnabled: args.wakeLockEnabled ?? false,
-        emailEnabled: args.emailEnabled ?? false,
-        smsEnabled: args.smsEnabled ?? false,
-        slackEnabled: args.slackEnabled ?? false,
-        quietHoursStart: args.quietHoursStart,
-        quietHoursEnd: args.quietHoursEnd,
-        escalationDelayMinutes: args.escalationDelayMinutes ?? 2,
-        timezone: args.timezone,
-        doNotDisturbEnabled: args.doNotDisturbEnabled ?? false,
-        createdAt: now,
-        updatedAt: now,
-      });
+      await ctx.db.insert("notificationPrefs", payload);
     }
   },
 });
@@ -233,5 +236,4 @@ export const deactivateSubscription = internalMutation({
     });
   },
 });
-
 

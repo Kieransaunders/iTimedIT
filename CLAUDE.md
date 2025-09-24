@@ -6,6 +6,7 @@ Auto-generated from all feature plans. Last updated: 2025-09-19
 - TypeScript 5.7.2 + React 19 + Convex (001-timer-interruption-feature)
 - Vite build system + Tailwind CSS + shadcn/ui components
 - Convex scheduler.runAt for server-side timing
+- Node.js 20 runtime for Convex actions (required for push notifications)
 
 ## Project Structure
 ```
@@ -33,7 +34,7 @@ tests/
 - `npm run dev` - Start development server with Convex backend
 - `npm run build` - Build for production
 - `npm run lint` - TypeScript checks + linting
-- `npx convex dev` - Start Convex development backend
+- `npx convex dev` - Start Convex development backend (uses Node.js 20 runtime)
 
 ## Code Style
 - TypeScript: Strict mode, no `any` types

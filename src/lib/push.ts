@@ -8,6 +8,8 @@ export interface PushSubscriptionData {
   };
 }
 
+declare const __APP_VERSION__: string;
+
 let swRegistration: ServiceWorkerRegistration | null = null;
 let cachedSubscription: PushSubscriptionData | null = null;
 
@@ -18,8 +20,13 @@ export async function initializePushNotifications(): Promise<boolean> {
   }
 
   try {
+    const versionSuffix = import.meta.env.DEV
+      ? `dev-${Date.now()}`
+      : __APP_VERSION__;
+    const swUrl = `/sw.js?v=${versionSuffix}`;
+
     // Register service worker
-    swRegistration = await navigator.serviceWorker.register('/sw.js', {
+    swRegistration = await navigator.serviceWorker.register(swUrl, {
       scope: '/'
     });
 

@@ -39,6 +39,9 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
   const [budgetWarningEnabled, setBudgetWarningEnabled] = useState(true);
   const [budgetWarningThresholdHours, setBudgetWarningThresholdHours] = useState(1.0);
   const [budgetWarningThresholdAmount, setBudgetWarningThresholdAmount] = useState(50.0);
+  const [pomodoroEnabled, setPomodoroEnabled] = useState(false);
+  const [pomodoroWorkMinutes, setPomodoroWorkMinutes] = useState(25);
+  const [pomodoroBreakMinutes, setPomodoroBreakMinutes] = useState(5);
   const [isSaving, setIsSaving] = useState(false);
 
   // Notification preferences state
@@ -51,6 +54,12 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
   const [escalationDelayMinutes, setEscalationDelayMinutes] = useState(2);
   const [doNotDisturbEnabled, setDoNotDisturbEnabled] = useState(false);
   const [pushSubscribed, setPushSubscribed] = useState(false);
+  const [emailFallbackEnabled, setEmailFallbackEnabled] = useState(false);
+  const [smsFallbackEnabled, setSmsFallbackEnabled] = useState(false);
+  const [slackFallbackEnabled, setSlackFallbackEnabled] = useState(false);
+  const [fallbackEmail, setFallbackEmail] = useState("");
+  const [smsNumber, setSmsNumber] = useState("");
+  const [slackWebhookUrl, setSlackWebhookUrl] = useState("");
   const [permissionTroubleshooting, setPermissionTroubleshooting] = useState<{
     permission: NotificationPermission;
     canRequest: boolean;
@@ -58,6 +67,10 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
     isSecureContext: boolean;
     troubleshootingSteps: string[];
   } | null>(null);
+
+  const defaultTimezone = typeof Intl !== "undefined"
+    ? Intl.DateTimeFormat().resolvedOptions().timeZone
+    : "UTC";
 
   useEffect(() => {
     if (settings) {
@@ -67,6 +80,9 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
       setBudgetWarningEnabled(settings.budgetWarningEnabled ?? true);
       setBudgetWarningThresholdHours(settings.budgetWarningThresholdHours ?? 1.0);
       setBudgetWarningThresholdAmount(settings.budgetWarningThresholdAmount ?? 50.0);
+      setPomodoroEnabled(settings.pomodoroEnabled ?? false);
+      setPomodoroWorkMinutes(settings.pomodoroWorkMinutes ?? 25);
+      setPomodoroBreakMinutes(settings.pomodoroBreakMinutes ?? 5);
     } else {
       // Ensure settings exist
       ensureSettings();
@@ -83,6 +99,12 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
       setQuietHoursEnd(notificationPrefs.quietHoursEnd || "");
       setEscalationDelayMinutes(notificationPrefs.escalationDelayMinutes);
       setDoNotDisturbEnabled(notificationPrefs.doNotDisturbEnabled);
+      setEmailFallbackEnabled(notificationPrefs.emailEnabled);
+      setSmsFallbackEnabled(notificationPrefs.smsEnabled);
+      setSlackFallbackEnabled(notificationPrefs.slackEnabled);
+      setFallbackEmail(notificationPrefs.fallbackEmail || "");
+      setSmsNumber(notificationPrefs.smsNumber || "");
+      setSlackWebhookUrl(notificationPrefs.slackWebhookUrl || "");
     } else {
       // Ensure notification preferences exist
       ensureNotificationPrefs();
@@ -119,6 +141,9 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
         budgetWarningEnabled,
         budgetWarningThresholdHours,
         budgetWarningThresholdAmount,
+        pomodoroEnabled,
+        pomodoroWorkMinutes,
+        pomodoroBreakMinutes,
       });
 
       // Save notification preferences
@@ -127,10 +152,17 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
         soundEnabled,
         vibrationEnabled,
         wakeLockEnabled,
+        emailEnabled: emailFallbackEnabled,
+        smsEnabled: smsFallbackEnabled,
+        slackEnabled: slackFallbackEnabled,
+        fallbackEmail: fallbackEmail || undefined,
+        smsNumber: smsNumber || undefined,
+        slackWebhookUrl: slackWebhookUrl || undefined,
         quietHoursStart: quietHoursStart || undefined,
         quietHoursEnd: quietHoursEnd || undefined,
         escalationDelayMinutes,
         doNotDisturbEnabled,
+        timezone: notificationPrefs?.timezone ?? defaultTimezone,
       });
 
       toast.success("Settings saved successfully!", {
@@ -324,6 +356,73 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                         .find((option) => option.value === gracePeriod)
                         ?.label.toLowerCase()}.
                     </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <h3 className="text-lg font-medium mb-4">Focus Sessions (Pomodoro)</h3>
+              <p className="text-gray-600 mb-4">
+                Enable Pomodoro-style notifications to guide your work and break cadence. We'll send
+                alerts when it's time to take a break or get back to focus.
+              </p>
+
+              <div className="space-y-4">
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="pomodoroEnabled"
+                    checked={pomodoroEnabled}
+                    onChange={(event) => setPomodoroEnabled(event.target.checked)}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <label htmlFor="pomodoroEnabled" className="ml-2 block text-sm text-gray-900">
+                    Enable Pomodoro cycle notifications
+                  </label>
+                </div>
+
+                {pomodoroEnabled && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label htmlFor="pomodoroWorkMinutes" className="block text-sm font-medium text-gray-700 mb-2">
+                        Focus duration (minutes)
+                      </label>
+                      <input
+                        type="number"
+                        id="pomodoroWorkMinutes"
+                        value={pomodoroWorkMinutes}
+                        onChange={(event) =>
+                          setPomodoroWorkMinutes(Math.max(5, parseInt(event.target.value, 10) || 25))
+                        }
+                        min={5}
+                        max={120}
+                        className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      />
+                      <p className="mt-1 text-sm text-gray-500">
+                        We'll nudge you to take a break after this many minutes of focused work.
+                      </p>
+                    </div>
+
+                    <div>
+                      <label htmlFor="pomodoroBreakMinutes" className="block text-sm font-medium text-gray-700 mb-2">
+                        Break duration (minutes)
+                      </label>
+                      <input
+                        type="number"
+                        id="pomodoroBreakMinutes"
+                        value={pomodoroBreakMinutes}
+                        onChange={(event) =>
+                          setPomodoroBreakMinutes(Math.max(1, parseInt(event.target.value, 10) || 5))
+                        }
+                        min={1}
+                        max={60}
+                        className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      />
+                      <p className="mt-1 text-sm text-gray-500">
+                        We'll remind you to resume once this break time expires.
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>
@@ -537,6 +636,102 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                   )}
                 </div>
 
+                {/* Escalation Channels */}
+                <div>
+                  <h4 className="font-medium mb-3">Escalation Channels</h4>
+                  <p className="text-sm text-gray-500 mb-3">
+                    If push alerts go unanswered, we'll fall back to these channels after {escalationDelayMinutes} minute(s).
+                  </p>
+                  <div className="space-y-4">
+                    <div>
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          id="emailFallbackEnabled"
+                          checked={emailFallbackEnabled}
+                          onChange={(event) => setEmailFallbackEnabled(event.target.checked)}
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        />
+                        <label htmlFor="emailFallbackEnabled" className="ml-2 text-sm text-gray-900">
+                          Send an email alert
+                        </label>
+                      </div>
+                      {emailFallbackEnabled && (
+                        <div className="mt-2 ml-6 space-y-2">
+                          <input
+                            type="email"
+                            value={fallbackEmail}
+                            onChange={(event) => setFallbackEmail(event.target.value)}
+                            placeholder="you@example.com"
+                            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                          />
+                          <p className="text-xs text-gray-500">
+                            We'll email you with a deep link back to the running timer.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          id="smsFallbackEnabled"
+                          checked={smsFallbackEnabled}
+                          onChange={(event) => setSmsFallbackEnabled(event.target.checked)}
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        />
+                        <label htmlFor="smsFallbackEnabled" className="ml-2 text-sm text-gray-900">
+                          Send an SMS alert
+                        </label>
+                      </div>
+                      {smsFallbackEnabled && (
+                        <div className="mt-2 ml-6 space-y-2">
+                          <input
+                            type="tel"
+                            value={smsNumber}
+                            onChange={(event) => setSmsNumber(event.target.value)}
+                            placeholder="+1 (555) 123-4567"
+                            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                          />
+                          <p className="text-xs text-gray-500">
+                            Standard carrier rates apply. Reply STOP to opt out.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          id="slackFallbackEnabled"
+                          checked={slackFallbackEnabled}
+                          onChange={(event) => setSlackFallbackEnabled(event.target.checked)}
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        />
+                        <label htmlFor="slackFallbackEnabled" className="ml-2 text-sm text-gray-900">
+                          Post to Slack/Discord webhook
+                        </label>
+                      </div>
+                      {slackFallbackEnabled && (
+                        <div className="mt-2 ml-6 space-y-2">
+                          <input
+                            type="url"
+                            value={slackWebhookUrl}
+                            onChange={(event) => setSlackWebhookUrl(event.target.value)}
+                            placeholder="https://hooks.slack.com/services/..."
+                            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                          />
+                          <p className="text-xs text-gray-500">
+                            We'll send a concise alert with action links to this webhook URL.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
                 {/* Quiet Hours */}
                 <div>
                   <h4 className="font-medium mb-3">Quiet Hours</h4>
@@ -582,12 +777,15 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                         </div>
                       </div>
                     )}
+                    <p className="text-xs text-gray-500">
+                      We'll honor quiet hours in your {notificationPrefs?.timezone ?? defaultTimezone} timezone and pause alerts when your OS-level Do Not Disturb is active.
+                    </p>
                   </div>
                 </div>
 
                 {/* Escalation */}
                 <div>
-                  <h4 className="font-medium mb-3">Future Escalation Settings</h4>
+                  <h4 className="font-medium mb-3">Escalation Timing</h4>
                   <div>
                     <label htmlFor="escalationDelayMinutes" className="block text-sm font-medium text-gray-700 mb-2">
                       Escalation delay (minutes)
@@ -597,7 +795,6 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                       value={escalationDelayMinutes}
                       onChange={(event) => setEscalationDelayMinutes(Number(event.target.value))}
                       className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                      disabled
                     >
                       <option value={1}>1 minute</option>
                       <option value={2}>2 minutes</option>
@@ -605,7 +802,7 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                       <option value={10}>10 minutes</option>
                     </select>
                     <p className="mt-1 text-sm text-gray-500">
-                      Time to wait before escalating to email/SMS (feature coming soon)
+                      How long to wait before trying the backup channels above.
                     </p>
                   </div>
                 </div>

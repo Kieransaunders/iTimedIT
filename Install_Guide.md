@@ -43,6 +43,11 @@ CONVEX_DEPLOYMENT=dev:watchful-hedgehog-860
 
 # Public site URL used by auth/providers in dev
 CONVEX_SITE_URL=http://localhost:5173
+
+# Web Push (generate your own keys; see below)
+VAPID_PUBLIC_KEY="<your-vapid-public-key>"
+VAPID_PRIVATE_KEY="<your-vapid-private-key>"
+VITE_VAPID_PUBLIC_KEY="<your-vapid-public-key>"
 ```
 
 Notes:
@@ -50,6 +55,38 @@ Notes:
 - For production (e.g., on Netlify), set environment variables in the host:
   - `CONVEX_DEPLOYMENT=prod:<your-production-deployment-name>` (or just `prod`)
   - `CONVEX_SITE_URL=https://<your-netlify-site>.netlify.app`
+  - `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY`
+  - `VITE_VAPID_PUBLIC_KEY`
+
+#### Generating VAPID keys
+
+Run the helper script to create a fresh key pair:
+
+```bash
+npm run generate:vapid   # or: node scripts/generate-vapid-keys.js
+```
+
+The script prints three environment variables. Copy them into `.env.local` (for local dev) and into your hosting provider's environment configuration. Keep `VAPID_PRIVATE_KEY` secret; never commit it.
+
+On Convex, add `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY` in the dashboard under **Settings → Environment Variables** so server-side push actions can sign notifications.
+
+#### Optional fallback providers
+
+To enable email/SMS/Slack escalation, set the following environment variables:
+
+```bash
+SENDGRID_API_KEY="<sendgrid-api-key>"
+SENDGRID_FROM_EMAIL="alerts@your-domain.com"
+
+TWILIO_ACCOUNT_SID="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+TWILIO_AUTH_TOKEN="<twilio-auth-token>"
+TWILIO_FROM_NUMBER="+15551234567"
+
+SLACK_WEBHOOK_URL="https://hooks.slack.com/services/..."
+PUBLIC_APP_URL="https://your-production-domain.com"
+```
+
+Only the channels with valid credentials and user opt-in will be used. `PUBLIC_APP_URL` is recommended so deep links in emails/SMS point back to the deployed application.
 
 ### 4) Start the app (frontend + Convex backend)
 The project is wired to run both concurrently:
@@ -82,5 +119,3 @@ npm test
 ### Troubleshooting
 - If `npm ci` fails due to missing lockfile, use `npm install`.
 - If Convex fails to start, ensure `.env.local` has a valid `CONVEX_DEPLOYMENT` or re-run `npx convex dev` to create one.
-
-

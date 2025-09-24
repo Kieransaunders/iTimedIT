@@ -7,7 +7,7 @@ import { InterruptModal } from "./InterruptModal";
 import { ProjectSwitchModal } from "./ProjectSwitchModal";
 import { ProjectKpis } from "./ProjectKpis";
 import { RecentEntriesTable } from "./RecentEntriesTable";
-import { ensurePushSubscription } from "../lib/push";
+import { ensurePushSubscription, isPushSupported, getNotificationPermission } from "../lib/push";
 import { toast } from "sonner";
 
 interface ModernDashboardProps {
@@ -165,6 +165,12 @@ export function ModernDashboard({
   const earnedAmount = currentProject ? (totalSeconds / 3600) * currentProject.hourlyRate : 0;
 
   const ensurePushRegistered = useCallback(async (requestPermission: boolean) => {
+    if (isPushSupported() && getNotificationPermission() === 'default' && requestPermission) {
+      toast.info('Enable notifications to catch timer alerts', {
+        description: 'We only prompt when you start your first timer.',
+        duration: 4000,
+      });
+    }
     try {
       const subscription = await ensurePushSubscription({ requestPermission });
       if (!subscription) {

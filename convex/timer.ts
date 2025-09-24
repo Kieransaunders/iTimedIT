@@ -1,4 +1,4 @@
-import { query, mutation, internalMutation, MutationCtx } from "./_generated/server";
+import { query, mutation, internalMutation, action, MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { internal, api } from "./_generated/api";
 import { Doc, Id } from "./_generated/dataModel";
@@ -52,6 +52,9 @@ export const start = mutation({
 
     const interruptInterval = settings?.interruptInterval ?? 60; // default 60 minutes
     const interruptEnabled = settings?.interruptEnabled ?? true;
+    const pomodoroEnabled = settings?.pomodoroEnabled ?? false;
+    const pomodoroWorkMinutes = settings?.pomodoroWorkMinutes ?? 25;
+    const pomodoroBreakMinutes = settings?.pomodoroBreakMinutes ?? 5;
 
     // Stop any existing timer
     const existingTimer = await ctx.db
@@ -67,6 +70,7 @@ export const start = mutation({
 
     const now = Date.now();
     const nextInterruptAt = interruptEnabled ? now + (interruptInterval * 60 * 1000) : undefined;
+    const pomodoroTransitionAt = pomodoroEnabled ? now + pomodoroWorkMinutes * 60 * 1000 : undefined;
 
     // Create running timer
     const timerId = await ctx.db.insert("runningTimers", {
@@ -77,6 +81,11 @@ export const start = mutation({
       lastHeartbeatAt: now,
       awaitingInterruptAck: false,
       nextInterruptAt,
+      pomodoroEnabled,
+      pomodoroPhase: pomodoroEnabled ? "work" : undefined,
+      pomodoroTransitionAt,
+      pomodoroWorkMinutes: pomodoroEnabled ? pomodoroWorkMinutes : undefined,
+      pomodoroBreakMinutes: pomodoroEnabled ? pomodoroBreakMinutes : undefined,
     });
 
     // Schedule interrupt check if enabled
@@ -84,6 +93,12 @@ export const start = mutation({
       await ctx.scheduler.runAt(nextInterruptAt, api.interrupts.check, {
         organizationId,
         userId,
+      });
+    }
+
+    if (pomodoroEnabled && pomodoroTransitionAt) {
+      await ctx.scheduler.runAt(pomodoroTransitionAt, api.timer.handlePomodoroTransition, {
+        timerId,
       });
     }
 
@@ -288,7 +303,7 @@ export const ackInterrupt = mutation({
           alertType: "break_reminder",
           projectName: projectData?.projectName,
           clientName: projectData?.clientName,
-          data: { projectId },
+          data: { projectId, organizationId },
         });
       } catch (error) {
         console.error("Failed to send break reminder notification:", error);
@@ -396,6 +411,90 @@ export const autoStopForMissedAck = internalMutation({
       //   isOverrun: true,
       //   note: "Overrun placeholder - merge if you were still working",
       // });
+    }
+  },
+});
+
+export const handlePomodoroTransition = action({
+  args: {
+    timerId: v.id("runningTimers"),
+  },
+  handler: async (ctx, args) => {
+    await ctx.runMutation(internal.timer.processPomodoroTransition, {
+      timerId: args.timerId,
+    });
+  },
+});
+
+export const processPomodoroTransition = internalMutation({
+  args: {
+    timerId: v.id("runningTimers"),
+  },
+  handler: async (ctx, args) => {
+    const timer = await ctx.db.get(args.timerId);
+    if (!timer || !timer.pomodoroEnabled) {
+      return;
+    }
+
+    if (!timer.organizationId || !timer.userId) {
+      return;
+    }
+
+    const project = await ctx.db.get(timer.projectId);
+    const client = project ? await ctx.db.get(project.clientId) : null;
+
+    const now = Date.now();
+    const workMinutes = timer.pomodoroWorkMinutes ?? 25;
+    const breakMinutes = timer.pomodoroBreakMinutes ?? 5;
+
+    let nextPhase: "work" | "break" = timer.pomodoroPhase === "break" ? "work" : "break";
+    let nextTransitionAt: number | undefined = undefined;
+
+    if (timer.pomodoroPhase === "break") {
+      // Break finished, prompt to resume work
+      await ctx.scheduler.runAfter(0, api.pushActions.sendTimerAlert, {
+        userId: timer.userId,
+        title: "Break complete",
+        body: `Ready to get back to ${project?.name || 'work'}?`,
+        alertType: "interrupt",
+        projectName: project?.name,
+        clientName: client?.name,
+        data: {
+          projectId: project?._id,
+          organizationId: timer.organizationId,
+          pomodoroPhase: "work",
+          timerId: timer._id,
+        },
+      });
+      nextTransitionAt = now + workMinutes * 60 * 1000;
+    } else {
+      // Work session finished, notify to take a break
+      await ctx.scheduler.runAfter(0, api.pushActions.sendTimerAlert, {
+        userId: timer.userId,
+        title: "Time for a break",
+        body: `You've worked ${(workMinutes).toString()} minutes on ${project?.name || 'your task'}. Take ${breakMinutes} minutes to recharge.`,
+        alertType: "break_reminder",
+        projectName: project?.name,
+        clientName: client?.name,
+        data: {
+          projectId: project?._id,
+          organizationId: timer.organizationId,
+          pomodoroPhase: "break",
+          timerId: timer._id,
+        },
+      });
+      nextTransitionAt = now + breakMinutes * 60 * 1000;
+    }
+
+    await ctx.db.patch(timer._id, {
+      pomodoroPhase: nextPhase,
+      pomodoroTransitionAt: nextTransitionAt,
+    });
+
+    if (nextTransitionAt) {
+      await ctx.scheduler.runAt(nextTransitionAt, api.timer.handlePomodoroTransition, {
+        timerId: timer._id,
+      });
     }
   },
 });
