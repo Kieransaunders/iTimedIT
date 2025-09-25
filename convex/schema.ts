@@ -208,22 +208,9 @@ const applicationTables = {
     .index("byUser", ["userId"]),
 };
 
-// Custom users table to include the gender field that exists in your data
-const customAuthTables = {
-  ...authTables,
-  users: defineTable({
-    email: v.optional(v.string()),
-    emailVerificationTime: v.optional(v.number()),
-    image: v.optional(v.string()),
-    isAnonymous: v.optional(v.boolean()),
-    name: v.optional(v.string()),
-    phone: v.optional(v.string()),
-    phoneVerificationTime: v.optional(v.number()),
-    gender: v.optional(v.string()), // Added to match existing data
-  }),
-};
-
 export default defineSchema({
-  ...customAuthTables,
+  // Use auth tables as-is without modification
+  ...authTables,
+  // Add our application tables
   ...applicationTables,
 });

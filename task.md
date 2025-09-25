@@ -181,7 +181,7 @@
 - [x] Add explicit Node.js 20 configuration to Convex project
   - [x] Create or update `convex.json` with Node.js 20 runtime specification
   - [x] Test push notification functionality with Node.js 20
-- [x] Verify `web-push` package compatibility
+  - [x] Verify `web-push` package compatibility
   - [x] Test `convex/pushActions.ts` with Node.js 20 environment
   - [x] Validate all push notification features work correctly
 - [x] Update documentation
@@ -200,3 +200,10 @@ Core notification system is complete with:
 - Quiet hours and DND support ✅
 
 **Note**: Fallback channels (email/SMS/Slack), advanced UX improvements, comprehensive testing, and deployment optimizations remain as future enhancements.
+
+## Development Environment Setup
+
+- [x] Configure Vite proxy and Convex client for local authentication
+  - [x] Add `server.proxy` configuration to `vite.config.ts` to redirect `/api` requests to `VITE_CONVEX_URL`.
+  - [x] Modify `src/main.tsx` to conditionally use `/api` as the Convex client URL in development mode.
+  - [x] Ensure `CONVEX_SITE_URL` in `.env` points to the Convex deployment URL (e.g., `https://your-deployment.convex.cloud`) for correct auth provider domain configuration.

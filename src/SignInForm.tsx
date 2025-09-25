@@ -12,24 +12,41 @@ export function SignInForm() {
     <div className="w-full">
       <form
         className="flex flex-col gap-form-field"
-        onSubmit={(e) => {
-          e.preventDefault();
+        onSubmit={async (event) => {
+          event.preventDefault();
+          if (submitting) {
+            return;
+          }
           setSubmitting(true);
-          const formData = new FormData(e.target as HTMLFormElement);
+          const formData = new FormData(event.target as HTMLFormElement);
           formData.set("flow", flow);
-          void signIn("password", formData).catch((error) => {
+
+          try {
+            await signIn("password", formData);
+            toast.success(flow === "signIn" ? "Signed in successfully" : "Account created and signed in");
+            
+          } catch (error: any) {
+            const message: string = error?.message ?? "";
             let toastTitle = "";
-            if (error.message.includes("Invalid password")) {
-              toastTitle = "Invalid password. Please try again.";
+            if (message.includes("Invalid password") || message.includes("InvalidSecret")) {
+              toastTitle = "Incorrect email or password.";
+            } else if (message.includes("InvalidAccountId")) {
+              toastTitle =
+                flow === "signIn"
+                  ? "No account found for that email. Try signing up."
+                  : "Account already exists. Try signing in.";
+            } else if (message.includes("TooManyFailedAttempts")) {
+              toastTitle = "Too many attempts. Please wait a bit and try again.";
             } else {
               toastTitle =
                 flow === "signIn"
-                  ? "Could not sign in, did you mean to sign up?"
-                  : "Could not sign up, did you mean to sign in?";
+                  ? "Could not sign in. Please try again."
+                  : "Could not sign up. Please try again.";
             }
             toast.error(toastTitle);
+          } finally {
             setSubmitting(false);
-          });
+          }
         }}
       >
         <input

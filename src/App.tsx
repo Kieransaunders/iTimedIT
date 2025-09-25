@@ -34,6 +34,7 @@ export default function App() {
 function AppContent() {
   const [inviteToken, clearInviteToken] = useInviteToken();
 
+
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-dark-gradient">
       {inviteToken ? (
@@ -41,16 +42,24 @@ function AppContent() {
       ) : (
         <>
           <Authenticated>
-            <AuthenticatedApp />
+            <AuthenticatedAppWrapper />
           </Authenticated>
           <Unauthenticated>
-            <UnauthenticatedView />
+            <UnauthenticatedViewWrapper />
           </Unauthenticated>
         </>
       )}
       <Toaster />
     </div>
   );
+}
+
+function AuthenticatedAppWrapper() {
+  return <AuthenticatedApp />;
+}
+
+function UnauthenticatedViewWrapper() {
+  return <UnauthenticatedView />;
 }
 
 function AuthenticatedApp() {
@@ -64,12 +73,22 @@ function AuthenticatedApp() {
   const ackInterrupt = useMutation(api.timer.ackInterrupt);
   const savePushSubscription = useMutation(api.pushNotifications.savePushSubscription);
   const pushListenerCleanup = useRef<(() => void) | null>(null);
+  const hasAnnouncedAuth = useRef<boolean>(false);
 
+  // Do not auto sign out if query returns null; allow session to establish post sign-in.
+  // The <Authenticated>/<Unauthenticated> gates already handle rendering.
+
+  // One-time welcome toast after successful sign-in
   useEffect(() => {
-    if (loggedInUser === null) {
-      void signOut();
+    if (!hasAnnouncedAuth.current && loggedInUser) {
+      hasAnnouncedAuth.current = true;
+      toast.success("Welcome to iTrackIT", {
+        description: `Signed in as ${loggedInUser.email}`,
+      });
+      // Navigate to dashboard after successful sign-in
+      setCurrentPage("dashboard");
     }
-  }, [loggedInUser, signOut]);
+  }, [loggedInUser]);
 
   useEffect(() => {
     if (!loggedInUser) {
@@ -211,6 +230,10 @@ function AuthenticatedApp() {
 }
 
 function UnauthenticatedView() {
+  const loggedInUser = useQuery(api.auth.loggedInUser);
+  const debugAuth = useQuery(api.auth.debugAuth);
+  const { signOut } = useAuthActions();
+  
   return (
     <div className="flex-1 flex items-center justify-center p-8">
       <div className="max-w-md w-full">
@@ -218,6 +241,42 @@ function UnauthenticatedView() {
           <h1 className="text-4xl font-bold text-primary mb-4">iTrackIT</h1>
           <p className="text-xl text-secondary">Track time, manage budgets, stay focused</p>
         </div>
+        
+        {/* Debug info */}
+        <div className="mb-4 p-4 bg-gray-100 dark:bg-gray-800 rounded-lg">
+          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Debug Info:</h3>
+          <p className="text-xs text-gray-600 dark:text-gray-400">
+            User: {loggedInUser === undefined ? 'Loading...' : loggedInUser === null ? 'Not logged in' : `${loggedInUser.email || 'Anonymous'} (${loggedInUser._id})`}
+          </p>
+          <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+            Port: {window.location.port} | SITE_URL updated to match
+          </p>
+          <div className="mt-2 space-y-1">
+            <button
+              onClick={() => {
+                // Clear all localStorage
+                localStorage.clear();
+                window.location.reload();
+              }}
+              className="block w-full text-xs px-2 py-1 bg-purple-500 text-white rounded hover:bg-purple-600"
+            >
+              Clear Storage & Refresh
+            </button>
+            <button
+              onClick={() => window.location.reload()}
+              className="block w-full text-xs px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+            >
+              Refresh Page
+            </button>
+            <button
+              onClick={() => signOut()}
+              className="block w-full text-xs px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600"
+            >
+              Force Sign Out
+            </button>
+          </div>
+        </div>
+        
         <SignInForm />
       </div>
     </div>
