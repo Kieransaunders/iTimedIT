@@ -231,7 +231,6 @@ function AuthenticatedApp() {
 
 function UnauthenticatedView() {
   const loggedInUser = useQuery(api.auth.loggedInUser);
-  const debugAuth = useQuery(api.auth.debugAuth);
   const { signOut } = useAuthActions();
   
   return (
