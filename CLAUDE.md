@@ -12,16 +12,17 @@ Auto-generated from all feature plans. Last updated: 2025-09-19
 ```
 convex/
 ├── timer.ts            # Timer mutations and queries
+├── categories.ts       # Category management functions
 ├── interrupts.ts       # Scheduled actions for interruptions
-├── schema.ts           # Updated with interrupt fields
+├── schema.ts           # Updated with interrupt and category fields
 └── _generated/
 
 src/
 ├── components/
 │   ├── ui/             # shadcn/ui components (Button, Card, Dialog, etc.)
-│   ├── TimerCard.tsx   # Timer UI component
-│   ├── InterruptModal.tsx  # New: Interruption acknowledgment modal
-│   └── OverrunBanner.tsx   # New: Overrun merge notification
+│   ├── ModernDashboard.tsx  # ACTIVE: Main timer interface (App.tsx line 198)
+│   ├── InterruptModal.tsx   # Interruption acknowledgment modal
+│   └── OverrunBanner.tsx    # Overrun merge notification
 └── lib/
 
 tests/
@@ -29,6 +30,17 @@ tests/
 ├── integration/        # User flow tests
 └── unit/              # Component tests
 ```
+
+## Component Architecture
+### Active Components (Currently Used)
+- **ModernDashboard.tsx** - Main timer interface with project selection, category dropdown, and timer controls
+- **App.tsx** - Main application routing and authenticated wrapper
+- **Settings/**, **ClientsPage.tsx**, **ProjectsPage.tsx** - Management interfaces
+
+### Component Development Guidelines
+- **ALWAYS verify component usage** before implementing features by searching for imports
+- **Check App.tsx** to see which components are actually rendered in the UI flow
+- **ModernDashboard.tsx is the ONLY active timer interface** - do not confuse with legacy code
 
 ## Commands
 - `npm run dev` - Start development server with Convex backend
@@ -45,6 +57,8 @@ tests/
 
 ## Recent Changes
 - 001-timer-interruption-feature: Added server-side timer interruptions with scheduler.runAt, 60-second grace periods, and overrun tracking
+- Category system: Added time entry categories with dropdown selection and management functions
+- Code cleanup: Removed unused TimerCard.tsx component to eliminate confusion
 
 <!-- MANUAL ADDITIONS START -->
 <!-- MANUAL ADDITIONS END -->

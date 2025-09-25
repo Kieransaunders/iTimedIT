@@ -1,4 +1,20 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+/**
+ * ModernDashboard - ACTIVE MAIN TIMER INTERFACE
+ * 
+ * This is the primary timer interface that users interact with in the application.
+ * Used in: App.tsx (line 198) as the main dashboard component
+ * 
+ * Key Features:
+ * - Modern purple gradient design with large timer display
+ * - Project selection with client/project cards
+ * - Timer start/stop functionality with category selection
+ * - Push notifications for interrupts and alerts
+ * - Budget tracking and warnings
+ * - Recent entries and project KPIs
+ * 
+ * DO NOT confuse with TimerCard.tsx - that component is unused legacy code.
+ */
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
@@ -6,6 +22,7 @@ import { cn } from "../lib/utils";
 import { InterruptModal } from "./InterruptModal";
 import { ProjectSwitchModal } from "./ProjectSwitchModal";
 import { ProjectKpis } from "./ProjectKpis";
+import { ProjectSummaryGrid } from "./ProjectSummaryGrid";
 import { RecentEntriesTable } from "./RecentEntriesTable";
 import { ensurePushSubscription, isPushSupported, getNotificationPermission } from "../lib/push";
 import { toast } from "sonner";
@@ -86,6 +103,12 @@ export function ModernDashboard({
   const [showInterruptModal, setShowInterruptModal] = useState(false);
   const [showProjectSwitchModal, setShowProjectSwitchModal] = useState(false);
   const [pendingProjectId, setPendingProjectId] = useState<Id<"projects"> | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [showCategoryManager, setShowCategoryManager] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const projects = useQuery(api.projects.listAll);
   const runningTimer = useQuery(api.timer.getRunningTimer);
@@ -94,6 +117,10 @@ export function ModernDashboard({
   const stopTimer = useMutation(api.timer.stop);
   const heartbeat = useMutation(api.timer.heartbeat);
   const requestInterrupt = useMutation(api.timer.requestInterrupt);
+  const categories = useQuery(api.categories.getCategories);
+  const initializeCategories = useMutation(api.categories.initializeDefaultCategories);
+  const createCategory = useMutation(api.categories.createCategory);
+  const deleteCategory = useMutation(api.categories.deleteCategory);
   const projectStats = useQuery(api.projects.getStats, runningTimer?.projectId ? { projectId: runningTimer.projectId } : "skip");
   const savePushSubscription = useMutation(api.pushNotifications.savePushSubscription);
 
@@ -105,6 +132,16 @@ export function ModernDashboard({
       color: project.client.color || getClientColor(project.client._id),
     }));
   }, [projects]);
+
+  // Filter projects based on search term
+  const filteredProjects = useMemo(() => {
+    if (!searchTerm.trim()) return projectsWithColors;
+    const term = searchTerm.toLowerCase();
+    return projectsWithColors.filter(project => 
+      project.name.toLowerCase().includes(term) || 
+      project.client.name.toLowerCase().includes(term)
+    );
+  }, [projectsWithColors, searchTerm]);
 
   const currentProject = useMemo(() => {
     return projectsWithColors.find(p => p._id === currentProjectId) || projectsWithColors[0];
@@ -142,6 +179,30 @@ export function ModernDashboard({
       setShowInterruptModal(true);
     }
   }, [runningTimer?.awaitingInterruptAck]);
+
+  // Initialize categories on first load
+  useEffect(() => {
+    if (categories?.length === 0) {
+      initializeCategories();
+    }
+  }, [categories, initializeCategories]);
+
+  // Set default category when categories are loaded
+  useEffect(() => {
+    if (categories && categories.length > 0 && !selectedCategory) {
+      const defaultCategory = categories.find(cat => cat.isDefault);
+      if (defaultCategory) {
+        setSelectedCategory(defaultCategory.name);
+      }
+    }
+  }, [categories, selectedCategory]);
+
+  // Update selected category when timer is running
+  useEffect(() => {
+    if (runningTimer?.category) {
+      setSelectedCategory(runningTimer.category);
+    }
+  }, [runningTimer?.category]);
 
   // Timer state calculations
   const timerState = useMemo((): TimerState => {
@@ -195,7 +256,7 @@ export function ModernDashboard({
       await stopTimer();
     } else {
       await ensurePushRegistered(true);
-      await startTimer({ projectId: currentProject._id });
+      await startTimer({ projectId: currentProject._id, category: selectedCategory || undefined });
     }
   }, [currentProject, timerState.running, startTimer, stopTimer, ensurePushRegistered]);
 
@@ -222,7 +283,7 @@ export function ModernDashboard({
     await stopTimer();
     setCurrentProjectId(projectId);
     await ensurePushRegistered(false);
-    await startTimer({ projectId });
+    await startTimer({ projectId, category: selectedCategory || undefined });
   }, [stopTimer, startTimer, ensurePushRegistered]);
 
   const handleTransferTimer = useCallback(async () => {
@@ -232,10 +293,63 @@ export function ModernDashboard({
     setPendingProjectId(null);
   }, [pendingProjectId, transferTimerToProject]);
 
+  const handleAddCategory = useCallback(async () => {
+    if (!newCategoryName.trim()) return;
+    try {
+      await createCategory({ name: newCategoryName.trim() });
+      setNewCategoryName("");
+      toast.success(`Category "${newCategoryName.trim()}" added`);
+    } catch (error) {
+      toast.error("Failed to add category");
+    }
+  }, [newCategoryName, createCategory]);
+
+  const handleDeleteCategory = useCallback(async (categoryId: string, categoryName: string) => {
+    if (categoryName === "General") {
+      toast.error("Cannot delete the General category");
+      return;
+    }
+    try {
+      await deleteCategory({ categoryId });
+      toast.success(`Category "${categoryName}" deleted`);
+      // Reset selected category if it was deleted
+      if (selectedCategory === categoryName) {
+        const generalCategory = categories?.find(cat => cat.name === "General");
+        setSelectedCategory(generalCategory?.name || "");
+      }
+    } catch (error) {
+      toast.error("Failed to delete category");
+    }
+  }, [deleteCategory, selectedCategory, categories]);
+
   const handleCancelSwitch = useCallback(() => {
     setShowProjectSwitchModal(false);
     setPendingProjectId(null);
   }, []);
+
+  const handleProjectSelect = useCallback((projectId: Id<"projects">) => {
+    switchProject(projectId);
+    setShowDropdown(false);
+    setSearchTerm("");
+  }, [switchProject]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+        setSearchTerm("");
+      }
+    };
+
+    if (showDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showDropdown]);
 
   useEffect(() => {
     if (!pushSwitchRequest) {
@@ -284,8 +398,11 @@ export function ModernDashboard({
       <div className="container mx-auto flex min-h-full flex-col items-center justify-center gap-6 py-10">
         {/* Project Switcher */}
         <div className="w-full flex flex-col items-center gap-3">
-          <div className="w-full max-w-md relative">
-            <div className="bg-white/70 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-300/50 dark:border-gray-700/50 rounded-xl p-4 shadow-lg">
+          <div className="w-full max-w-md relative" ref={dropdownRef}>
+            <div 
+              className="bg-white/70 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-300/50 dark:border-gray-700/50 rounded-xl p-4 shadow-lg cursor-pointer"
+              onClick={() => setShowDropdown(!showDropdown)}
+            >
               <div className="flex items-center gap-3">
                 <span
                   className="h-3 w-3 rounded-full"
@@ -295,24 +412,66 @@ export function ModernDashboard({
                   <div className="text-gray-900 dark:text-white font-medium">{currentProject.client.name}</div>
                   <div className="text-gray-600 dark:text-gray-300 text-sm">– {currentProject.name}</div>
                 </div>
-                <svg className="w-4 h-4 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg 
+                  className={`w-4 h-4 text-gray-500 dark:text-gray-400 transition-transform ${showDropdown ? 'rotate-180' : ''}`} 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </div>
             </div>
-            <select
-              value={currentProject._id}
-              onChange={(e) => switchProject(e.target.value as Id<"projects">)}
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-            >
-              {projectsWithColors.map((project) => (
-                <option key={project._id} value={project._id}>
-                  {project.client.name} – {project.name}
-                </option>
-              ))}
-            </select>
+            
+            {/* Dropdown */}
+            {showDropdown && (
+              <div className="absolute top-full left-0 right-0 mt-2 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border border-gray-300/50 dark:border-gray-700/50 rounded-xl shadow-lg z-50 max-h-80 overflow-hidden">
+                {/* Search Input */}
+                <div className="p-3 border-b border-gray-200/50 dark:border-gray-700/50">
+                  <input
+                    type="text"
+                    placeholder="Search projects..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full px-3 py-2 bg-transparent text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 border border-gray-300/50 dark:border-gray-600/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                    autoFocus
+                  />
+                </div>
+                
+                {/* Project List */}
+                <div className="max-h-60 overflow-y-auto">
+                  {filteredProjects.length > 0 ? (
+                    filteredProjects.map((project) => (
+                      <div
+                        key={project._id}
+                        className={cn(
+                          "flex items-center gap-3 p-3 hover:bg-gray-100/50 dark:hover:bg-gray-700/50 cursor-pointer transition-colors",
+                          project._id === currentProjectId && "bg-blue-50/50 dark:bg-blue-900/20"
+                        )}
+                        onClick={() => handleProjectSelect(project._id)}
+                      >
+                        <span
+                          className="h-3 w-3 rounded-full"
+                          style={{ backgroundColor: project.color }}
+                        />
+                        <div className="flex-1">
+                          <div className="text-gray-900 dark:text-white font-medium">{project.client.name}</div>
+                          <div className="text-gray-600 dark:text-gray-300 text-sm">– {project.name}</div>
+                        </div>
+                        <div className="text-gray-500 dark:text-gray-400 text-xs">
+                          {formatCurrency(project.hourlyRate)}/hr
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-3 text-center text-gray-500 dark:text-gray-400 text-sm">
+                      No projects found
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
-          <div className="text-sm text-gray-600 dark:text-gray-400">Swipe left/right to switch projects</div>
         </div>
 
         {/* Timer Display */}
@@ -359,6 +518,81 @@ export function ModernDashboard({
           </div>
         )}
 
+        {/* Category Selection */}
+        {!timerState.running && (
+          <div className="mb-8 w-full max-w-md">
+            <div className="flex items-center justify-between mb-2">
+              <label htmlFor="category" className="block text-sm font-medium text-gray-300">
+                Category
+              </label>
+              <button
+                onClick={() => setShowCategoryManager(!showCategoryManager)}
+                className="text-xs text-purple-400 hover:text-purple-300 underline"
+              >
+                {showCategoryManager ? 'Hide' : 'Manage'}
+              </button>
+            </div>
+            <select
+              id="category"
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="w-full px-4 py-2 bg-gray-800/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            >
+              <option value="">Select a category...</option>
+              {categories?.map((category) => (
+                <option key={category._id} value={category.name}>
+                  {category.name} {category.isDefault ? '(Default)' : ''}
+                </option>
+              ))}
+            </select>
+            
+            {/* Category Management */}
+            {showCategoryManager && (
+              <div className="mt-4 p-4 bg-gray-800/30 rounded-lg border border-gray-700">
+                <h4 className="text-sm font-medium text-gray-300 mb-3">Manage Categories</h4>
+                
+                {/* Add new category */}
+                <div className="flex gap-2 mb-3">
+                  <input
+                    type="text"
+                    value={newCategoryName}
+                    onChange={(e) => setNewCategoryName(e.target.value)}
+                    placeholder="New category name..."
+                    className="flex-1 px-3 py-2 bg-gray-700/50 border border-gray-600 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    onKeyPress={(e) => e.key === 'Enter' && handleAddCategory()}
+                  />
+                  <button
+                    onClick={handleAddCategory}
+                    disabled={!newCategoryName.trim()}
+                    className="px-3 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Add
+                  </button>
+                </div>
+                
+                {/* Existing categories */}
+                <div className="space-y-2">
+                  {categories?.map((category) => (
+                    <div key={category._id} className="flex items-center justify-between text-sm">
+                      <span className="text-gray-300">
+                        {category.name} {category.isDefault ? '(Default)' : ''}
+                      </span>
+                      {category.name !== "General" && (
+                        <button
+                          onClick={() => handleDeleteCategory(category._id, category.name)}
+                          className="text-red-400 hover:text-red-300 text-xs"
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Start/Stop Button */}
         <div className="mb-12">
           <button
@@ -372,6 +606,13 @@ export function ModernDashboard({
             {timerState.running ? "Stop" : "Start"}
           </button>
         </div>
+
+        {/* Project Summary */}
+        {currentProjectId && (
+          <section className="w-full max-w-5xl">
+            <ProjectSummaryGrid projectId={currentProjectId} />
+          </section>
+        )}
 
         {/* Recent Projects */}
         <section className="w-full max-w-5xl">
@@ -402,16 +643,8 @@ export function ModernDashboard({
           </div>
         </section>
 
-        {/* Project Summary */}
-        <section className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Project KPIs */}
-          {currentProjectId && (
-            <div className="bg-white/60 dark:bg-gray-800/30 backdrop-blur-sm border border-gray-300/50 dark:border-gray-700/50 rounded-xl p-6">
-              <ProjectKpis projectId={currentProjectId} />
-            </div>
-          )}
-          
-          {/* Recent Entries */}
+        {/* Recent Entries */}
+        <section className="w-full max-w-5xl">
           <div className="bg-white/60 dark:bg-gray-800/30 backdrop-blur-sm border border-gray-300/50 dark:border-gray-700/50 rounded-xl p-6">
             <RecentEntriesTable projectId={currentProjectId} />
           </div>

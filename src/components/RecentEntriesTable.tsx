@@ -14,6 +14,8 @@ export function RecentEntriesTable({ projectId }: RecentEntriesTableProps) {
   const [editingDuration, setEditingDuration] = useState<string | null>(null);
   const [editDurationHours, setEditDurationHours] = useState(0);
   const [editDurationMinutes, setEditDurationMinutes] = useState(0);
+  const [editingCategory, setEditingCategory] = useState<string | null>(null);
+  const [editCategoryValue, setEditCategoryValue] = useState("");
   const { isReady } = useOrganization();
 
   const entries = useQuery(api.entries.list, isReady ? {
@@ -23,6 +25,7 @@ export function RecentEntriesTable({ projectId }: RecentEntriesTableProps) {
 
   const editEntry = useMutation(api.entries.edit);
   const deleteEntry = useMutation(api.entries.deleteEntry);
+  const categories = useQuery(api.categories.getCategories, isReady ? {} : "skip");
   // COMMENTED OUT: Overrun merge functionality
   // const mergeOverrun = useMutation(api.entries.mergeOverrun);
 
@@ -48,6 +51,12 @@ export function RecentEntriesTable({ projectId }: RecentEntriesTableProps) {
     await editEntry({ id: entryId as Id<"timeEntries">, note });
     setEditingEntry(null);
     setEditNote("");
+  };
+
+  const handleEditCategory = async (entryId: string, category: string) => {
+    await editEntry({ id: entryId as Id<"timeEntries">, category: category || undefined });
+    setEditingCategory(null);
+    setEditCategoryValue("");
   };
 
   const handleEditDuration = async (entryId: string, hours: number, minutes: number) => {
@@ -147,6 +156,9 @@ export function RecentEntriesTable({ projectId }: RecentEntriesTableProps) {
                 Duration
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                Category
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                 Note
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
@@ -217,6 +229,50 @@ export function RecentEntriesTable({ projectId }: RecentEntriesTableProps) {
                         title="Click to edit duration"
                       >
                         {formatTime(duration)}
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {editingCategory === entry._id ? (
+                      <div className="flex gap-2">
+                        <select
+                          value={editCategoryValue}
+                          onChange={(e) => setEditCategoryValue(e.target.value)}
+                          className="px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700/50 text-gray-900 dark:text-gray-100"
+                          autoFocus
+                        >
+                          <option value="">No category</option>
+                          {categories?.map((category) => (
+                            <option key={category._id} value={category.name}>
+                              {category.name} {category.isDefault ? '(Default)' : ''}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          onClick={() => handleEditCategory(entry._id, editCategoryValue)}
+                          className="px-2 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                        >
+                          Save
+                        </button>
+                        <button
+                          onClick={() => {
+                            setEditingCategory(null);
+                            setEditCategoryValue("");
+                          }}
+                          className="px-2 py-1 text-sm bg-gray-600 text-white rounded hover:bg-gray-700"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <div
+                        onClick={() => {
+                          setEditingCategory(entry._id);
+                          setEditCategoryValue(entry.category || "");
+                        }}
+                        className="text-sm text-gray-900 dark:text-gray-100 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 p-1 rounded"
+                      >
+                        {entry.category || "No category"}
                       </div>
                     )}
                   </td>

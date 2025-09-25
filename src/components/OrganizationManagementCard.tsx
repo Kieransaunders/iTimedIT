@@ -24,11 +24,12 @@ const ROLE_OPTIONS: { value: MembershipRole; label: string }[] = [
 ];
 
 export function OrganizationManagementCard() {
-  const { activeOrganization, activeRole } = useOrganization();
+  const { activeOrganization, activeRole, activeMembershipId } = useOrganization();
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<MembershipRole>("member");
   const [isSending, setIsSending] = useState(false);
   const [invitationInProgress, setInvitationInProgress] = useState<Id<"invitations"> | null>(null);
+  const [memberInProgress, setMemberInProgress] = useState<Id<"memberships"> | null>(null);
 
   const canManage = activeRole === "owner" || activeRole === "admin";
   const hasOrganization = Boolean(activeOrganization);
@@ -47,6 +48,7 @@ export function OrganizationManagementCard() {
   const createInvitation = useMutation(api.invitations.create);
   const resendInvitation = useMutation(api.invitations.resend);
   const revokeInvitation = useMutation(api.invitations.revoke);
+  const removeMember = useMutation(api.organizations.removeMember);
 
   const sortedMembers = useMemo(() => {
     if (!members) {
@@ -150,6 +152,33 @@ export function OrganizationManagementCard() {
     }
   };
 
+  const handleRemoveMember = async (
+    membershipId: Id<"memberships">,
+    displayName: string
+  ) => {
+    const confirmation = window.confirm(
+      `Remove ${displayName} from ${activeOrganization?.name ?? "this organization"}?`
+    );
+
+    if (!confirmation) {
+      return;
+    }
+
+    try {
+      setMemberInProgress(membershipId);
+      await removeMember({ membershipId });
+      toast.success("Member removed", {
+        description: `${displayName} no longer has access to ${activeOrganization?.name ?? "this organization"}.`,
+      });
+    } catch (error) {
+      notifyMutationError(error, {
+        fallbackMessage: "Unable to remove the member. Please try again.",
+      });
+    } finally {
+      setMemberInProgress(null);
+    }
+  };
+
   const copyInviteLink = async (token: string) => {
     if (typeof navigator === "undefined" || !navigator.clipboard) {
       toast.error("Clipboard is not available in this environment.");
@@ -184,21 +213,38 @@ export function OrganizationManagementCard() {
           </p>
         ) : (
           <ul className="divide-y divide-gray-200 dark:divide-gray-700">
-            {sortedMembers.map(({ membership, user }) => (
-              <li key={membership._id} className="py-3 flex justify-between items-center">
-                <div>
-                  <p className="font-medium text-gray-900 dark:text-white">
-                    {user?.name ?? user?.email ?? "Member"}
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {user?.email ?? "Pending user setup"}
-                  </p>
-                </div>
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-100">
-                  {membership.role.charAt(0).toUpperCase() + membership.role.slice(1)}
-                </span>
-              </li>
-            ))}
+            {sortedMembers.map(({ membership, user }) => {
+              const displayName = user?.name ?? user?.email ?? "Member";
+              const canRemove =
+                membership._id !== activeMembershipId &&
+                (membership.role !== "owner" || activeRole === "owner");
+
+              return (
+                <li key={membership._id} className="flex items-center justify-between gap-3 py-3">
+                  <div>
+                    <p className="font-medium text-gray-900 dark:text-white">{displayName}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {user?.email ?? "Pending user setup"}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3 text-sm">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-100">
+                      {membership.role.charAt(0).toUpperCase() + membership.role.slice(1)}
+                    </span>
+                    {canRemove && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveMember(membership._id, displayName)}
+                        disabled={memberInProgress === membership._id}
+                        className="text-red-600 hover:underline disabled:text-gray-400"
+                      >
+                        {memberInProgress === membership._id ? "Removing..." : "Remove"}
+                      </button>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>

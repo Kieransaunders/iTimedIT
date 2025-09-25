@@ -92,6 +92,49 @@ export const listOrganizationMembers = query({
   },
 });
 
+export const removeMember = mutation({
+  args: {
+    membershipId: v.id("memberships"),
+  },
+  handler: async (ctx, args) => {
+    const actor = await requireMembershipWithRole(ctx, ["owner", "admin"]);
+
+    if (args.membershipId === actor.membershipId) {
+      throw new Error("You cannot remove yourself from the organization");
+    }
+
+    const membership = await ctx.db.get(args.membershipId);
+    if (!membership || membership.organizationId !== actor.organizationId) {
+      throw new Error("Membership not found");
+    }
+
+    if (membership.inactiveAt !== undefined) {
+      return { success: true };
+    }
+
+    if (membership.role === "owner" && actor.role !== "owner") {
+      throw new Error("Only owners can remove another owner");
+    }
+
+    if (membership.role === "owner") {
+      const activeMembers = await ctx.db
+        .query("memberships")
+        .withIndex("byOrganization", (q) => q.eq("organizationId", actor.organizationId))
+        .filter((q) => q.eq(q.field("inactiveAt"), undefined))
+        .collect();
+
+      const activeOwners = activeMembers.filter((member) => member.role === "owner");
+      if (activeOwners.length <= 1) {
+        throw new Error("Cannot remove the last owner");
+      }
+    }
+
+    await ctx.db.patch(args.membershipId, { inactiveAt: Date.now() });
+
+    return { success: true };
+  },
+});
+
 export const cleanLegacyOwnerFields = mutation({
   args: {},
   handler: async (ctx) => {

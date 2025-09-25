@@ -72,7 +72,7 @@ export function InvitePage({
             <p className="text-sm text-secondary text-center">
               Sign in or create an account to accept this invitation.
             </p>
-            <SignInForm />
+            <SignInForm defaultFlow="signUp" />
           </div>
         </Unauthenticated>
         <Authenticated>

@@ -107,12 +107,14 @@ export function ProjectsPage({ onProjectSelect }: ProjectsPageProps) {
     <div className="max-w-6xl mx-auto">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">Projects</h2>
-        <button
-          onClick={() => setShowForm(true)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-        >
-          Add Project
-        </button>
+        {!showForm && (
+          <button
+            onClick={() => setShowForm(true)}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+          >
+            Add Project
+          </button>
+        )}
       </div>
 
       {showForm && (

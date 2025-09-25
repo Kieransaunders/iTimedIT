@@ -34,6 +34,7 @@ export const getRunningTimer = query({
 export const start = mutation({
   args: {
     projectId: v.id("projects"),
+    category: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const membership = await ensureMembership(ctx);
@@ -86,6 +87,7 @@ export const start = mutation({
       pomodoroTransitionAt,
       pomodoroWorkMinutes: pomodoroEnabled ? pomodoroWorkMinutes : undefined,
       pomodoroBreakMinutes: pomodoroEnabled ? pomodoroBreakMinutes : undefined,
+      category: args.category,
     });
 
     // Schedule interrupt check if enabled
@@ -109,6 +111,7 @@ export const start = mutation({
       projectId: args.projectId,
       startedAt: now,
       source: "timer",
+      category: args.category,
       isOverrun: false,
     });
 

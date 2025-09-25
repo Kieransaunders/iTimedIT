@@ -3,7 +3,6 @@ import { api } from "../convex/_generated/api";
 import { SignInForm } from "./SignInForm";
 import { SignOutButton } from "./SignOutButton";
 import { Toaster, toast } from "sonner";
-import { Dashboard } from "./components/Dashboard";
 import { ModernDashboard } from "./components/ModernDashboard";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Settings } from "./components/Settings";
@@ -178,7 +177,6 @@ function AuthenticatedApp() {
             <OrganizationSwitcher />
             <nav className="flex gap-4">
               <NavButton label="Dashboard" isActive={currentPage === "dashboard"} onClick={() => setCurrentPage("dashboard")} />
-              <NavButton label="Modern" isActive={currentPage === "modern"} onClick={() => setCurrentPage("modern")} />
               <NavButton label="Clients" isActive={currentPage === "clients"} onClick={() => setCurrentPage("clients")} />
               <NavButton label="Projects" isActive={currentPage === "projects"} onClick={() => setCurrentPage("projects")} />
               <NavButton label="Settings" isActive={currentPage === "settings"} onClick={() => setCurrentPage("settings")} />
@@ -196,8 +194,7 @@ function AuthenticatedApp() {
         </header>
         <main className="flex-1 p-8">
           <div className="max-w-7xl mx-auto">
-            {currentPage === "dashboard" && <Dashboard />}
-            {currentPage === "modern" && (
+            {currentPage === "dashboard" && (
               <ModernDashboard
                 pushSwitchRequest={pushSwitchRequest}
                 onPushSwitchHandled={() => setPushSwitchRequest(null)}

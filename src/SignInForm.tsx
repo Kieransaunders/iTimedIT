@@ -1,12 +1,18 @@
 "use client";
 import { useAuthActions } from "@convex-dev/auth/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
-export function SignInForm() {
+type AuthFlow = "signIn" | "signUp";
+
+export function SignInForm({ defaultFlow = "signIn" }: { defaultFlow?: AuthFlow }) {
   const { signIn } = useAuthActions();
-  const [flow, setFlow] = useState<"signIn" | "signUp">("signIn");
+  const [flow, setFlow] = useState<AuthFlow>(defaultFlow);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    setFlow(defaultFlow);
+  }, [defaultFlow]);
 
   return (
     <div className="w-full">

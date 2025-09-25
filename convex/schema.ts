@@ -83,6 +83,18 @@ const applicationTables = {
     .index("byOrgName", ["organizationId", "name"])
     .index("byCreator", ["createdBy"]),
 
+  categories: defineTable({
+    organizationId: v.optional(v.id("organizations")),
+    userId: v.optional(v.id("users")),
+    name: v.string(),
+    isDefault: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("byOrganization", ["organizationId"])
+    .index("byUser", ["userId"])
+    .index("byOrgDefault", ["organizationId", "isDefault"]),
+
   timeEntries: defineTable({
     organizationId: v.optional(v.id("organizations")),
     userId: v.optional(v.id("users")),
@@ -98,6 +110,7 @@ const applicationTables = {
       v.literal("overrun")
     ),
     note: v.optional(v.string()),
+    category: v.optional(v.string()),
     isOverrun: v.boolean(),
   })
     .index("byProject", ["projectId"])
@@ -124,6 +137,7 @@ const applicationTables = {
     pomodoroTransitionAt: v.optional(v.number()),
     pomodoroWorkMinutes: v.optional(v.number()),
     pomodoroBreakMinutes: v.optional(v.number()),
+    category: v.optional(v.string()),
   })
     .index("byOrganization", ["organizationId"])
     .index("byOrgUser", ["organizationId", "userId"])

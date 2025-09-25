@@ -62,6 +62,7 @@ export const edit = mutation({
     stoppedAt: v.optional(v.number()),
     seconds: v.optional(v.number()),
     note: v.optional(v.string()),
+    category: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const { organizationId, userId } = await ensureMembership(ctx);
@@ -81,6 +82,9 @@ export const edit = mutation({
     }
     if (args.note !== undefined) {
       updates.note = args.note;
+    }
+    if (args.category !== undefined) {
+      updates.category = args.category;
     }
 
     // Recompute seconds if times changed
