@@ -34,7 +34,7 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
   const [interruptEnabled, setInterruptEnabled] = useState(true);
   const [interruptInterval, setInterruptInterval] = useState<
     0.0833 | 5 | 15 | 30 | 45 | 60 | 120
-  >(60);
+  >(45);
   const [gracePeriod, setGracePeriod] = useState<5 | 10 | 30 | 60 | 120>(5);
   const [budgetWarningEnabled, setBudgetWarningEnabled] = useState(true);
   const [budgetWarningThresholdHours, setBudgetWarningThresholdHours] = useState(1.0);
