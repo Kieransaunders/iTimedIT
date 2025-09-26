@@ -21,7 +21,7 @@ export const getRunningTimer = query({
     }
 
     const project = await ctx.db.get(timer.projectId);
-    const client = project ? await ctx.db.get(project.clientId) : null;
+    const client = project?.clientId ? await ctx.db.get(project.clientId) : null;
 
     return {
       ...timer,
@@ -444,7 +444,7 @@ export const processPomodoroTransition = internalMutation({
     }
 
     const project = await ctx.db.get(timer.projectId);
-    const client = project ? await ctx.db.get(project.clientId) : null;
+    const client = project?.clientId ? await ctx.db.get(project.clientId) : null;
 
     const now = Date.now();
     const workMinutes = timer.pomodoroWorkMinutes ?? 25;
@@ -579,7 +579,7 @@ async function maybeSendBudgetAlerts(ctx: MutationCtx, timer: Doc<"runningTimers
   const totalSeconds = totalSecondsFromEntries + runningSeconds;
   const totalAmount = (totalSeconds / 3600) * project.hourlyRate;
 
-  const client = await ctx.db.get(project.clientId);
+  const client = project.clientId ? await ctx.db.get(project.clientId) : null;
 
   let overBudget = false;
   let overrunBody = "";

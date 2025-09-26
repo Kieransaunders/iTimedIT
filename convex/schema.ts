@@ -61,27 +61,31 @@ const applicationTables = {
     note: v.optional(v.string()),
     color: v.optional(v.string()),
     archived: v.boolean(),
+    workspaceType: v.optional(v.union(v.literal("personal"), v.literal("team"))),
   })
     .index("byOrganization", ["organizationId"])
     .index("byOrgName", ["organizationId", "name"])
-    .index("byCreator", ["createdBy"]),
+    .index("byCreator", ["createdBy"])
+    .index("byOwnerPersonal", ["ownerId", "workspaceType"]),
 
   projects: defineTable({
     organizationId: v.optional(v.id("organizations")),
     createdBy: v.optional(v.id("users")),
     ownerId: v.optional(v.id("users")),
-    clientId: v.id("clients"),
+    clientId: v.optional(v.id("clients")),
     name: v.string(),
     hourlyRate: v.number(),
     budgetType: v.union(v.literal("hours"), v.literal("amount")),
     budgetHours: v.optional(v.number()),
     budgetAmount: v.optional(v.number()),
     archived: v.boolean(),
+    workspaceType: v.optional(v.union(v.literal("personal"), v.literal("team"))),
   })
     .index("byClient", ["clientId"])
     .index("byOrganization", ["organizationId"])
     .index("byOrgName", ["organizationId", "name"])
-    .index("byCreator", ["createdBy"]),
+    .index("byCreator", ["createdBy"])
+    .index("byOwnerPersonal", ["ownerId", "workspaceType"]),
 
   categories: defineTable({
     organizationId: v.optional(v.id("organizations")),

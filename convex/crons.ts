@@ -95,7 +95,7 @@ export const nudgeLongRunningTimers = internalMutation({
         continue;
       }
 
-      const client = await ctx.db.get(project.clientId);
+      const client = project.clientId ? await ctx.db.get(project.clientId) : null;
       const hours = Math.floor(elapsedMs / (60 * 60 * 1000));
       const minutes = Math.floor((elapsedMs % (60 * 60 * 1000)) / (60 * 1000));
       const durationLabel = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;

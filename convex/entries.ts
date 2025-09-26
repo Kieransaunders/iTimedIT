@@ -39,7 +39,7 @@ export const list = query({
     const entriesWithProjects = await Promise.all(
       result.page.map(async (entry) => {
         const project = await ctx.db.get(entry.projectId);
-        const client = project ? await ctx.db.get(project.clientId) : null;
+        const client = project?.clientId ? await ctx.db.get(project.clientId) : null;
         return {
           ...entry,
           project,

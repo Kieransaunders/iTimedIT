@@ -207,3 +207,35 @@ Core notification system is complete with:
   - [x] Add `server.proxy` configuration to `vite.config.ts` to redirect `/api` requests to `VITE_CONVEX_URL`.
   - [x] Modify `src/main.tsx` to conditionally use `/api` as the Convex client URL in development mode.
   - [x] Ensure `CONVEX_SITE_URL` in `.env` points to the Convex deployment URL (e.g., `https://your-deployment.convex.cloud`) for correct auth provider domain configuration.
+
+## Personal vs Team Workspace Implementation
+
+### Task Overview
+- [ ] Implement personal vs team workspace functionality for projects and clients
+- [ ] Add workspace type distinction while maintaining backward compatibility
+- [ ] Create separate UI flows for personal and team project management
+
+### Subtasks
+#### Data Model Updates
+- [ ] Update schema to add workspaceType field to projects and clients tables
+  - [x] Add `workspaceType` field as optional union type ("personal" | "team")
+  - [x] Add index for personal projects: `byOwnerPersonal` on `[ownerId, workspaceType]`
+  - [x] Make `clientId` optional for personal projects
+  - [ ] Test schema changes in development environment
+
+#### Backend API Development
+- [ ] Create personal projects API functions in new file
+- [ ] Create personal clients API functions  
+- [ ] Update existing projects API to handle workspace types
+- [ ] Update existing clients API to handle workspace types
+
+#### Frontend UI/UX Updates
+- [ ] Add UI workspace switcher component
+- [ ] Update ModernDashboard to support workspace filtering
+- [ ] Update ProjectsPage to support workspace management
+- [ ] Update ClientsPage to support workspace management
+
+#### Testing & Validation
+- [ ] Test implementation and verify backward compatibility
+- [ ] Run lint and typecheck commands
+- [ ] Validate existing functionality still works

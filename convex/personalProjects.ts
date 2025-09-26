@@ -1,95 +1,33 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import {
-  requireMembership,
-  ensureMembershipWithRole,
-  requireMembershipWithRole,
-} from "./orgContext";
+import { getAuthUserId } from "@convex-dev/auth/server";
 
-export const listByClient = query({
+export const listPersonal = query({
   args: {
-    clientId: v.id("clients"),
-  },
-  handler: async (ctx, args) => {
-    const { organizationId } = await requireMembership(ctx);
-
-    const client = await ctx.db.get(args.clientId);
-    if (!client || client.organizationId !== organizationId) {
-      throw new Error("Client not found");
-    }
-
-    return await ctx.db
-      .query("projects")
-      .withIndex("byClient", (q) => q.eq("clientId", args.clientId))
-      .filter((q) => q.and(
-        q.eq(q.field("organizationId"), organizationId),
-        q.eq(q.field("archived"), false)
-      ))
-      .collect();
-  },
-});
-
-export const get = query({
-  args: {
-    id: v.id("projects"),
-  },
-  handler: async (ctx, args) => {
-    const { organizationId } = await requireMembership(ctx);
-
-    const project = await ctx.db.get(args.id);
-    if (!project || project.organizationId !== organizationId) {
-      throw new Error("Project not found");
-    }
-
-    const client = project.clientId ? await ctx.db.get(project.clientId) : null;
-    return {
-      ...project,
-      client,
-    };
-  },
-});
-
-export const listAll = query({
-  args: {
-    clientId: v.optional(v.id("clients")),
     searchTerm: v.optional(v.string()),
-    workspaceType: v.optional(v.union(v.literal("personal"), v.literal("team"))),
   },
   handler: async (ctx, args) => {
-    const { organizationId } = await requireMembership(ctx);
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
 
     let projectsQuery = ctx.db
       .query("projects")
-      .withIndex("byOrganization", (q) => q.eq("organizationId", organizationId))
-      .filter((q) => q.and(
-        q.eq(q.field("archived"), false),
-        q.or(
-          q.eq(q.field("workspaceType"), undefined),
-          q.eq(q.field("workspaceType"), "team")
-        )
-      ));
-
-    // Apply workspace filter if specified
-    if (args.workspaceType === "team") {
-      projectsQuery = projectsQuery.filter((q) => q.or(
-        q.eq(q.field("workspaceType"), undefined),
-        q.eq(q.field("workspaceType"), "team")
-      ));
-    }
-
-    // Apply client filter if specified
-    if (args.clientId) {
-      projectsQuery = projectsQuery.filter((q) => q.eq(q.field("clientId"), args.clientId));
-    }
+      .withIndex("byOwnerPersonal", (q) => 
+        q.eq("ownerId", userId).eq("workspaceType", "personal")
+      )
+      .filter((q) => q.eq(q.field("archived"), false));
 
     const projects = await projectsQuery.collect();
 
-    // Get clients and calculate budget remaining for each project
     const projectsWithClientsAndStats = await Promise.all(
       projects.map(async (project) => {
-        const client = project.clientId ? await ctx.db.get(project.clientId) : null;
+        let client = null;
+        if (project.clientId) {
+          client = await ctx.db.get(project.clientId);
+        }
         
-        // Calculate budget remaining
         const entries = await ctx.db
           .query("timeEntries")
           .withIndex("byProject", (q) => q.eq("projectId", project._id))
@@ -119,7 +57,6 @@ export const listAll = query({
         const totalHours = totalSeconds / 3600;
         const totalHoursFormatted = `${totalHours.toFixed(1)}h`;
 
-        // Find the most recent activity (latest time entry)
         const mostRecentEntry = entries.length > 0 
           ? entries.reduce((latest, entry) => {
               const entryTime = entry.stoppedAt || entry.startedAt || entry._creationTime;
@@ -130,7 +67,7 @@ export const listAll = query({
 
         const lastActivityAt = mostRecentEntry 
           ? (mostRecentEntry.stoppedAt || mostRecentEntry.startedAt || mostRecentEntry._creationTime)
-          : project._creationTime; // Fall back to project creation time
+          : project._creationTime;
 
         return {
           ...project,
@@ -145,7 +82,6 @@ export const listAll = query({
       })
     );
 
-    // Apply search filter if specified
     let filteredProjects = projectsWithClientsAndStats;
     if (args.searchTerm && args.searchTerm.trim()) {
       const searchLower = args.searchTerm.toLowerCase().trim();
@@ -156,7 +92,6 @@ export const listAll = query({
       });
     }
 
-    // Sort projects by most recent activity (descending)
     const sortedProjects = filteredProjects.sort((a, b) => 
       b.lastActivityAt - a.lastActivityAt
     );
@@ -165,9 +100,39 @@ export const listAll = query({
   },
 });
 
-export const create = mutation({
+export const getPersonal = query({
   args: {
-    clientId: v.id("clients"),
+    id: v.id("projects"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
+
+    const project = await ctx.db.get(args.id);
+    if (!project || project.ownerId !== userId || project.workspaceType !== "personal") {
+      throw new Error("Personal project not found");
+    }
+
+    let client = null;
+    if (project.clientId) {
+      client = await ctx.db.get(project.clientId);
+      if (client && client.ownerId !== userId) {
+        client = null;
+      }
+    }
+
+    return {
+      ...project,
+      client,
+    };
+  },
+});
+
+export const createPersonal = mutation({
+  args: {
+    clientId: v.optional(v.id("clients")),
     name: v.string(),
     hourlyRate: v.number(),
     budgetType: v.union(v.literal("hours"), v.literal("amount")),
@@ -175,19 +140,22 @@ export const create = mutation({
     budgetAmount: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const { organizationId, userId } = await ensureMembershipWithRole(ctx, [
-      "owner",
-      "admin",
-    ]);
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
 
-    const client = await ctx.db.get(args.clientId);
-    if (!client || client.organizationId !== organizationId) {
-      throw new Error("Client not found");
+    if (args.clientId) {
+      const client = await ctx.db.get(args.clientId);
+      if (!client || client.ownerId !== userId || client.workspaceType !== "personal") {
+        throw new Error("Personal client not found");
+      }
     }
 
     return await ctx.db.insert("projects", {
-      organizationId,
+      organizationId: undefined,
       createdBy: userId,
+      ownerId: userId,
       clientId: args.clientId,
       name: args.name,
       hourlyRate: args.hourlyRate,
@@ -195,12 +163,12 @@ export const create = mutation({
       budgetHours: args.budgetHours,
       budgetAmount: args.budgetAmount,
       archived: false,
-      workspaceType: "team",
+      workspaceType: "personal",
     });
   },
 });
 
-export const update = mutation({
+export const updatePersonal = mutation({
   args: {
     id: v.id("projects"),
     name: v.optional(v.string()),
@@ -209,13 +177,24 @@ export const update = mutation({
     budgetHours: v.optional(v.number()),
     budgetAmount: v.optional(v.number()),
     archived: v.optional(v.boolean()),
+    clientId: v.optional(v.id("clients")),
   },
   handler: async (ctx, args) => {
-    const { organizationId } = await requireMembershipWithRole(ctx, ["owner", "admin"]);
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
 
     const project = await ctx.db.get(args.id);
-    if (!project || project.organizationId !== organizationId) {
-      throw new Error("Project not found");
+    if (!project || project.ownerId !== userId || project.workspaceType !== "personal") {
+      throw new Error("Personal project not found");
+    }
+
+    if (args.clientId) {
+      const client = await ctx.db.get(args.clientId);
+      if (!client || client.ownerId !== userId || client.workspaceType !== "personal") {
+        throw new Error("Personal client not found");
+      }
     }
 
     await ctx.db.patch(args.id, {
@@ -225,27 +204,25 @@ export const update = mutation({
       ...(args.budgetHours !== undefined && { budgetHours: args.budgetHours }),
       ...(args.budgetAmount !== undefined && { budgetAmount: args.budgetAmount }),
       ...(args.archived !== undefined && { archived: args.archived }),
+      ...(args.clientId !== undefined && { clientId: args.clientId }),
     });
   },
 });
 
-export const getStats = query({
+export const getStatsPersonal = query({
   args: {
     projectId: v.id("projects"),
   },
   handler: async (ctx, args) => {
-    const { organizationId, userId } = await requireMembership(ctx);
-
-    const project = await ctx.db.get(args.projectId);
-    if (!project || project.organizationId !== organizationId) {
-      throw new Error("Project not found");
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated");
     }
 
-    // Get user settings for warning thresholds
-    const userSettings = await ctx.db
-      .query("userSettings")
-      .withIndex("byUser", (q) => q.eq("userId", userId))
-      .unique();
+    const project = await ctx.db.get(args.projectId);
+    if (!project || project.ownerId !== userId || project.workspaceType !== "personal") {
+      throw new Error("Personal project not found");
+    }
 
     const entries = await ctx.db
       .query("timeEntries")
@@ -269,24 +246,18 @@ export const getStats = query({
       const budgetSeconds = project.budgetHours * 3600;
       budgetRemaining = Math.max(0, budgetSeconds - totalSeconds);
       timeRemaining = budgetRemaining / 3600;
-
-      // Check if near budget limit for time-based projects
-      if (userSettings?.budgetWarningEnabled && userSettings.budgetWarningThresholdHours) {
-        if (timeRemaining > 0 && timeRemaining <= userSettings.budgetWarningThresholdHours) {
-          isNearBudgetLimit = true;
-          warningType = "time";
-        }
+      
+      if (timeRemaining > 0 && timeRemaining <= 1.0) {
+        isNearBudgetLimit = true;
+        warningType = "time";
       }
     } else if (project.budgetType === "amount" && project.budgetAmount) {
       budgetRemaining = Math.max(0, project.budgetAmount - totalAmount);
       timeRemaining = budgetRemaining / project.hourlyRate;
-
-      // Check if near budget limit for amount-based projects
-      if (userSettings?.budgetWarningEnabled && userSettings.budgetWarningThresholdAmount) {
-        if (budgetRemaining > 0 && budgetRemaining <= userSettings.budgetWarningThresholdAmount) {
-          isNearBudgetLimit = true;
-          warningType = "amount";
-        }
+      
+      if (budgetRemaining > 0 && budgetRemaining <= 50.0) {
+        isNearBudgetLimit = true;
+        warningType = "amount";
       }
     }
 

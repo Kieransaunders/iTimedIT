@@ -1,48 +1,44 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
-import { requireMembership, ensureMembershipWithRole, requireMembershipWithRole } from "./orgContext";
+import { getAuthUserId } from "@convex-dev/auth/server";
 
-export const list = query({
-  args: {
-    workspaceType: v.optional(v.union(v.literal("personal"), v.literal("team"))),
-  },
-  handler: async (ctx, args) => {
-    const { organizationId } = await requireMembership(ctx);
+export const listPersonal = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
 
     const clients = await ctx.db
       .query("clients")
-      .withIndex("byOrganization", (q) => q.eq("organizationId", organizationId))
-      .filter((q) => q.and(
-        q.eq(q.field("archived"), false),
-        q.or(
-          q.eq(q.field("workspaceType"), undefined),
-          q.eq(q.field("workspaceType"), "team")
-        )
-      ))
+      .withIndex("byOwnerPersonal", (q) => 
+        q.eq("ownerId", userId).eq("workspaceType", "personal")
+      )
+      .filter((q) => q.eq(q.field("archived"), false))
       .collect();
 
-    // Calculate total amount spent for each client
     const clientsWithTotals = await Promise.all(
       clients.map(async (client) => {
-        // Get all projects for this client
         const projects = await ctx.db
           .query("projects")
           .withIndex("byClient", (q) => q.eq("clientId", client._id))
-          .filter((q) => q.eq(q.field("archived"), false))
+          .filter((q) => q.and(
+            q.eq(q.field("archived"), false),
+            q.eq(q.field("workspaceType"), "personal"),
+            q.eq(q.field("ownerId"), userId)
+          ))
           .collect();
 
-        // Calculate total amount across all projects for this client
         let totalAmount = 0;
         
         for (const project of projects) {
-          // Get all completed time entries for this project
           const timeEntries = await ctx.db
             .query("timeEntries")
             .withIndex("byProject", (q) => q.eq("projectId", project._id))
             .filter((q) => q.neq(q.field("stoppedAt"), undefined))
             .collect();
 
-          // Calculate total amount for this project
           const projectTotal = timeEntries.reduce((sum, entry) => {
             if (entry.seconds && entry.stoppedAt) {
               const hours = entry.seconds / 3600;
@@ -65,31 +61,32 @@ export const list = query({
   },
 });
 
-export const create = mutation({
+export const createPersonal = mutation({
   args: {
     name: v.string(),
     note: v.optional(v.string()),
     color: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { organizationId, userId } = await ensureMembershipWithRole(ctx, [
-      "owner",
-      "admin",
-    ]);
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
 
     return await ctx.db.insert("clients", {
-      organizationId,
+      organizationId: undefined,
       createdBy: userId,
+      ownerId: userId,
       name: args.name,
       note: args.note,
       color: args.color,
       archived: false,
-      workspaceType: "team",
+      workspaceType: "personal",
     });
   },
 });
 
-export const update = mutation({
+export const updatePersonal = mutation({
   args: {
     id: v.id("clients"),
     name: v.optional(v.string()),
@@ -98,11 +95,14 @@ export const update = mutation({
     archived: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const { organizationId } = await requireMembershipWithRole(ctx, ["owner", "admin"]);
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
 
     const client = await ctx.db.get(args.id);
-    if (!client || client.organizationId !== organizationId) {
-      throw new Error("Client not found");
+    if (!client || client.ownerId !== userId || client.workspaceType !== "personal") {
+      throw new Error("Personal client not found");
     }
 
     await ctx.db.patch(args.id, {
@@ -111,5 +111,24 @@ export const update = mutation({
       ...(args.color !== undefined && { color: args.color }),
       ...(args.archived !== undefined && { archived: args.archived }),
     });
+  },
+});
+
+export const getPersonal = query({
+  args: {
+    id: v.id("clients"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
+
+    const client = await ctx.db.get(args.id);
+    if (!client || client.ownerId !== userId || client.workspaceType !== "personal") {
+      throw new Error("Personal client not found");
+    }
+
+    return client;
   },
 });

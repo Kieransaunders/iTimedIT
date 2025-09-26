@@ -412,7 +412,7 @@ export const getProjectAndClientInfo = internalMutation({
       return null;
     }
 
-    const client = await ctx.db.get(project.clientId);
+    const client = project.clientId ? await ctx.db.get(project.clientId) : null;
     
     return {
       projectName: project.name,

@@ -24,6 +24,7 @@ import { ProjectSwitchModal } from "./ProjectSwitchModal";
 import { ProjectKpis } from "./ProjectKpis";
 import { ProjectSummaryGrid } from "./ProjectSummaryGrid";
 import { RecentEntriesTable } from "./RecentEntriesTable";
+import { WorkspaceSwitcher, WorkspaceType } from "./WorkspaceSwitcher";
 import { ensurePushSubscription, isPushSupported, getNotificationPermission } from "../lib/push";
 import { toast } from "sonner";
 import { Input } from "../components/ui/input";
@@ -114,6 +115,7 @@ export function ModernDashboard({
   const [searchTerm, setSearchTerm] = useState("");
   const [showCreateProject, setShowCreateProject] = useState(false);
   const [showCreateClient, setShowCreateClient] = useState(false);
+  const [currentWorkspace, setCurrentWorkspace] = useState<WorkspaceType>("team");
   const [newProjectForm, setNewProjectForm] = useState({
     name: "",
     clientId: "" as Id<"clients"> | "",
@@ -139,9 +141,11 @@ export function ModernDashboard({
   const [isSubmittingManualEntry, setIsSubmittingManualEntry] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const categoryDropdownRef = useRef<HTMLDivElement>(null);
-  const projectScrollRef = useRef<HTMLDivElement>(null);
 
-  const projects = useQuery(api.projects.listAll);
+  const teamProjects = useQuery(api.projects.listAll, { workspaceType: "team" });
+  const personalProjects = useQuery(api.personalProjects.listPersonal);
+  const projects = currentWorkspace === "personal" ? personalProjects : teamProjects;
+  
   const runningTimer = useQuery(api.timer.getRunningTimer);
   const userSettings = useQuery(api.users.getUserSettings);
   const startTimer = useMutation(api.timer.start);
@@ -152,11 +156,24 @@ export function ModernDashboard({
   const initializeCategories = useMutation(api.categories.initializeDefaultCategories);
   const createCategory = useMutation(api.categories.createCategory);
   const deleteCategory = useMutation(api.categories.deleteCategory);
-  const projectStats = useQuery(api.projects.getStats, runningTimer?.projectId ? { projectId: runningTimer.projectId } : "skip");
+  
+  const projectStats = useQuery(
+    runningTimer?.projectId 
+      ? (currentWorkspace === "personal" 
+          ? api.personalProjects.getStatsPersonal
+          : api.projects.getStats)
+      : "skip", 
+    runningTimer?.projectId ? { projectId: runningTimer.projectId } : "skip"
+  );
+  
   const savePushSubscription = useMutation(api.pushNotifications.savePushSubscription);
-  const createProject = useMutation(api.projects.create);
-  const createClient = useMutation(api.clients.create);
-  const clients = useQuery(api.clients.list);
+  const createProject = useMutation(currentWorkspace === "personal" ? api.personalProjects.createPersonal : api.projects.create);
+  const createClient = useMutation(currentWorkspace === "personal" ? api.personalClients.createPersonal : api.clients.create);
+  
+  const teamClients = useQuery(api.clients.list, { workspaceType: "team" });
+  const personalClients = useQuery(api.personalClients.listPersonal);
+  const clients = currentWorkspace === "personal" ? personalClients : teamClients;
+  
   const createManualEntry = useMutation(api.timer.createManualEntry);
 
   // Enhance projects with colors
@@ -181,6 +198,13 @@ export function ModernDashboard({
   const currentProject = useMemo(() => {
     return projectsWithColors.find(p => p._id === currentProjectId) || projectsWithColors[0];
   }, [projectsWithColors, currentProjectId]);
+
+  // Reset current project when switching workspaces
+  useEffect(() => {
+    if (projectsWithColors.length > 0 && (!currentProjectId || !projectsWithColors.find(p => p._id === currentProjectId))) {
+      setCurrentProjectId(projectsWithColors[0]._id);
+    }
+  }, [currentWorkspace, projectsWithColors]);
 
   // Set current project from running timer or default to first
   useEffect(() => {
@@ -420,8 +444,8 @@ export function ModernDashboard({
       toast.error("Project name is required");
       return;
     }
-    if (!newProjectForm.clientId) {
-      toast.error("Please select a client");
+    if (currentWorkspace === "team" && !newProjectForm.clientId) {
+      toast.error("Please select a client for team projects");
       return;
     }
     
@@ -429,7 +453,7 @@ export function ModernDashboard({
     try {
       const projectId = await createProject({
         name: newProjectForm.name.trim(),
-        clientId: newProjectForm.clientId,
+        clientId: newProjectForm.clientId || undefined,
         hourlyRate: newProjectForm.hourlyRate,
         budgetType: newProjectForm.budgetType,
         budgetHours: newProjectForm.budgetType === "hours" ? newProjectForm.budgetHours : undefined,
@@ -579,74 +603,6 @@ export function ModernDashboard({
     })();
   }, [pushSwitchRequest, runningTimer, projectsWithColors, transferTimerToProject, onPushSwitchHandled]);
 
-  // Horizontal scrolling with mouse wheel for project panel
-  useEffect(() => {
-    const handleWheelScroll = (e: WheelEvent) => {
-      if (!projectScrollRef.current) return;
-      
-      // Check if the target is within our scroll container
-      const scrollContainer = projectScrollRef.current;
-      const isTargetInside = scrollContainer.contains(e.target as Node);
-      
-      if (isTargetInside) {
-        e.preventDefault();
-        const scrollAmount = e.deltaY;
-        scrollContainer.scrollLeft += scrollAmount;
-      }
-    };
-
-    const scrollElement = projectScrollRef.current;
-    if (scrollElement) {
-      scrollElement.addEventListener('wheel', handleWheelScroll, { passive: false });
-    }
-
-    return () => {
-      if (scrollElement) {
-        scrollElement.removeEventListener('wheel', handleWheelScroll);
-      }
-    };
-  }, []);
-
-  // Update scroll fade indicators
-  useEffect(() => {
-    const updateScrollIndicators = () => {
-      if (!projectScrollRef.current) return;
-
-      const container = projectScrollRef.current;
-      const leftFade = document.getElementById('scroll-fade-left');
-      const rightFade = document.getElementById('scroll-fade-right');
-
-      if (!leftFade || !rightFade) return;
-
-      const { scrollLeft, scrollWidth, clientWidth } = container;
-      
-      // Show left fade if scrolled right
-      leftFade.style.opacity = scrollLeft > 10 ? '1' : '0';
-      
-      // Show right fade if there's more content to the right
-      rightFade.style.opacity = scrollLeft < scrollWidth - clientWidth - 10 ? '1' : '0';
-    };
-
-    const scrollElement = projectScrollRef.current;
-    if (scrollElement) {
-      // Initial check
-      updateScrollIndicators();
-      
-      // Update on scroll
-      scrollElement.addEventListener('scroll', updateScrollIndicators);
-      
-      // Update on resize
-      window.addEventListener('resize', updateScrollIndicators);
-    }
-
-    return () => {
-      if (scrollElement) {
-        scrollElement.removeEventListener('scroll', updateScrollIndicators);
-      }
-      window.removeEventListener('resize', updateScrollIndicators);
-    };
-  }, [projectsWithColors]);
-
   if (!currentProject) {
     return (
       <div className="flex justify-center items-center min-h-[400px]">
@@ -657,16 +613,15 @@ export function ModernDashboard({
 
   return (
     <div className="min-h-[calc(100vh-8rem)] bg-gray-50 dark:bg-gray-900">
-      <style>{`
-        .project-scroll-container::-webkit-scrollbar {
-          display: none;
-        }
-        .project-scroll-container {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
-      `}</style>
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex min-h-full flex-col items-center justify-center gap-6 sm:gap-8 py-6 sm:py-10">
+        {/* Workspace Switcher */}
+        <div className="w-full flex justify-center">
+          <WorkspaceSwitcher 
+            currentWorkspace={currentWorkspace}
+            onWorkspaceChange={setCurrentWorkspace}
+          />
+        </div>
+        
         {/* Project Switcher */}
         <div className="w-full flex flex-col items-center gap-3">
           <div className="w-full max-w-sm sm:max-w-md lg:max-w-lg relative" ref={dropdownRef}>
@@ -1145,51 +1100,30 @@ export function ModernDashboard({
 
         {/* Recent Projects */}
         <section className="w-full max-w-6xl px-4 sm:px-0">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Recent Projects
-            </h2>
-            {projectsWithColors.length > 4 && (
-              <span className="text-sm text-gray-500 dark:text-gray-400">
-                {projectsWithColors.length} projects • Scroll to see more →
-              </span>
-            )}
-          </div>
-          <div className="relative">
-            {/* Scroll fade indicators */}
-            <div className="absolute left-0 top-0 bottom-0 w-6 bg-gradient-to-r from-gray-50 dark:from-gray-900 to-transparent pointer-events-none z-10 opacity-0 transition-opacity duration-200" id="scroll-fade-left"></div>
-            <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-gray-50 dark:from-gray-900 to-transparent pointer-events-none z-10 opacity-0 transition-opacity duration-200" id="scroll-fade-right"></div>
-            
-            <div 
-              ref={projectScrollRef} 
-              className="project-scroll-container flex gap-3 sm:gap-4 overflow-x-auto scroll-smooth pb-2" 
-              style={{ 
-                WebkitOverflowScrolling: 'touch'
-              }}
-            >
-              {projectsWithColors.map((project) => (
-                <div
-                  key={project._id}
-                  className={cn(
-                    "bg-white/60 dark:bg-gray-800/30 backdrop-blur-sm border border-gray-300/50 dark:border-gray-700/50 rounded-xl p-4 cursor-pointer transition-all duration-200 hover:bg-gray-100/60 dark:hover:bg-gray-700/40 hover:scale-105 flex-shrink-0 w-64 sm:w-72",
-                    project._id === currentProjectId && "ring-2 ring-gray-400/50 dark:ring-white/20"
-                  )}
-                  onClick={() => switchProject(project._id)}
-                >
-                  <div className="flex items-center gap-2 mb-2">
-                    <span
-                      className="h-3 w-3 rounded-full"
-                      style={{ backgroundColor: project.color }}
-                    />
-                    <span className="font-medium text-gray-900 dark:text-white text-sm truncate">{project.name}</span>
-                  </div>
-                  <div className="text-gray-700 dark:text-gray-300 text-xs truncate font-medium">{project.client.name}</div>
-                  <div className="text-gray-600 dark:text-gray-400 text-xs mt-1">
-                    {formatCurrency(project.hourlyRate)}/hr
-                  </div>
+          <h2 className="sr-only">Recent projects</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            {projectsWithColors.slice(0, 4).map((project) => (
+              <div
+                key={project._id}
+                className={cn(
+                  "bg-white/60 dark:bg-gray-800/30 backdrop-blur-sm border border-gray-300/50 dark:border-gray-700/50 rounded-xl p-4 cursor-pointer transition-all duration-200 hover:bg-gray-100/60 dark:hover:bg-gray-700/40 hover:scale-105",
+                  project._id === currentProjectId && "ring-2 ring-gray-400/50 dark:ring-white/20"
+                )}
+                onClick={() => switchProject(project._id)}
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <span
+                    className="h-3 w-3 rounded-full"
+                    style={{ backgroundColor: project.color }}
+                  />
+                  <span className="font-medium text-gray-900 dark:text-white text-sm truncate">{project.name}</span>
                 </div>
-              ))}
-            </div>
+                <div className="text-gray-700 dark:text-gray-300 text-xs truncate font-medium">{project.client.name}</div>
+                <div className="text-gray-600 dark:text-gray-400 text-xs mt-1">
+                  {formatCurrency(project.hourlyRate)}/hr
+                </div>
+              </div>
+            ))}
           </div>
         </section>
 
@@ -1209,44 +1143,54 @@ export function ModernDashboard({
                     <DialogHeader>
                       <DialogTitle>Add Manual Time Entry</DialogTitle>
                     </DialogHeader>
-                    <div className="space-y-4 py-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium">Date</label>
-                          <Input
-                            type="date"
-                            value={manualEntryForm.date}
-                            onChange={(e) => setManualEntryForm(prev => ({ ...prev, date: e.target.value }))}
-                          />
-                        </div>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Date *
+                        </label>
+                        <Input
+                          type="date"
+                          value={manualEntryForm.date}
+                          onChange={(e) => setManualEntryForm(prev => ({ ...prev, date: e.target.value }))}
+                          className="text-gray-900 dark:text-white"
+                          autoFocus
+                        />
                       </div>
                       
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium">Start Time</label>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Start Time *
+                          </label>
                           <Input
                             type="time"
                             value={manualEntryForm.startTime}
                             onChange={(e) => setManualEntryForm(prev => ({ ...prev, startTime: e.target.value }))}
+                            className="text-gray-900 dark:text-white"
                           />
                         </div>
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium">End Time</label>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            End Time *
+                          </label>
                           <Input
                             type="time"
                             value={manualEntryForm.endTime}
                             onChange={(e) => setManualEntryForm(prev => ({ ...prev, endTime: e.target.value }))}
+                            className="text-gray-900 dark:text-white"
                           />
                         </div>
                       </div>
                       
                       {categories && categories.length > 0 && (
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium">Category (optional)</label>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Category (optional)
+                          </label>
                           <select
                             value={manualEntryForm.category}
                             onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setManualEntryForm(prev => ({ ...prev, category: e.target.value }))}
-                            className="w-full h-10 px-3 py-2 border border-input bg-background text-foreground rounded-md shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                            className="w-full h-9 px-3 py-1 border border-input bg-transparent text-gray-900 dark:text-white rounded-md shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                           >
                             <option value="">Select category...</option>
                             {categories.map(category => (
@@ -1258,17 +1202,19 @@ export function ModernDashboard({
                         </div>
                       )}
                       
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Note (optional)</label>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Note (optional)
+                        </label>
                         <textarea
                           placeholder="What did you work on?"
                           value={manualEntryForm.note}
                           onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setManualEntryForm(prev => ({ ...prev, note: e.target.value }))}
-                          className="w-full min-h-[80px] px-3 py-2 border border-input bg-background text-foreground rounded-md shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
+                          className="w-full min-h-[80px] px-3 py-2 border border-input bg-transparent text-gray-900 dark:text-white rounded-md shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none placeholder-gray-500 dark:placeholder-gray-400"
                         />
                       </div>
                       
-                      <div className="flex gap-2 pt-4">
+                      <div className="flex gap-2 pt-2">
                         <Button 
                           onClick={handleManualEntrySubmit}
                           disabled={isSubmittingManualEntry}
