@@ -26,6 +26,8 @@ import { ProjectSummaryGrid } from "./ProjectSummaryGrid";
 import { RecentEntriesTable } from "./RecentEntriesTable";
 import { ensurePushSubscription, isPushSupported, getNotificationPermission } from "../lib/push";
 import { toast } from "sonner";
+import { Input } from "../components/ui/input";
+import { Button } from "../components/ui/button";
 
 interface ModernDashboardProps {
   pushSwitchRequest?: any | null;
@@ -108,6 +110,22 @@ export function ModernDashboard({
   const [newCategoryName, setNewCategoryName] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [showCreateProject, setShowCreateProject] = useState(false);
+  const [showCreateClient, setShowCreateClient] = useState(false);
+  const [newProjectForm, setNewProjectForm] = useState({
+    name: "",
+    clientId: "" as Id<"clients"> | "",
+    hourlyRate: 100,
+    budgetType: "hours" as "hours" | "amount",
+    budgetHours: undefined as number | undefined,
+    budgetAmount: undefined as number | undefined
+  });
+  const [newClientForm, setNewClientForm] = useState({
+    name: "",
+    color: ""
+  });
+  const [isCreatingProject, setIsCreatingProject] = useState(false);
+  const [isCreatingClient, setIsCreatingClient] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const projects = useQuery(api.projects.listAll);
@@ -123,6 +141,9 @@ export function ModernDashboard({
   const deleteCategory = useMutation(api.categories.deleteCategory);
   const projectStats = useQuery(api.projects.getStats, runningTimer?.projectId ? { projectId: runningTimer.projectId } : "skip");
   const savePushSubscription = useMutation(api.pushNotifications.savePushSubscription);
+  const createProject = useMutation(api.projects.create);
+  const createClient = useMutation(api.clients.create);
+  const clients = useQuery(api.clients.list);
 
   // Enhance projects with colors
   const projectsWithColors = useMemo(() => {
@@ -149,9 +170,13 @@ export function ModernDashboard({
 
   // Set current project from running timer or default to first
   useEffect(() => {
-    if (runningTimer?.projectId && !currentProjectId) {
-      setCurrentProjectId(runningTimer.projectId);
+    if (runningTimer?.projectId) {
+      // Always prioritize the running timer's project
+      if (currentProjectId !== runningTimer.projectId) {
+        setCurrentProjectId(runningTimer.projectId);
+      }
     } else if (!currentProjectId && projectsWithColors.length > 0) {
+      // Only default to first project if no timer is running and no project selected
       setCurrentProjectId(projectsWithColors[0]._id);
     }
   }, [runningTimer, currentProjectId, projectsWithColors]);
@@ -267,17 +292,22 @@ export function ModernDashboard({
       setPendingProjectId(projectId);
       setShowProjectSwitchModal(true);
     } else {
+      // No timer running - switch project and auto-start timer
       setCurrentProjectId(projectId);
+      await ensurePushRegistered(true);
+      await startTimer({ projectId, category: selectedCategory || undefined });
     }
-  }, [currentProjectId, timerState.running]);
+  }, [currentProjectId, timerState.running, ensurePushRegistered, startTimer, selectedCategory]);
 
   const handleStopAndSwitch = useCallback(async () => {
     if (!pendingProjectId) return;
     await stopTimer();
     setCurrentProjectId(pendingProjectId);
+    await ensurePushRegistered(false);
+    await startTimer({ projectId: pendingProjectId, category: selectedCategory || undefined });
     setShowProjectSwitchModal(false);
     setPendingProjectId(null);
-  }, [pendingProjectId, stopTimer]);
+  }, [pendingProjectId, stopTimer, ensurePushRegistered, startTimer, selectedCategory]);
 
   const transferTimerToProject = useCallback(async (projectId: Id<"projects">) => {
     await stopTimer();
@@ -331,7 +361,100 @@ export function ModernDashboard({
     switchProject(projectId);
     setShowDropdown(false);
     setSearchTerm("");
+    setShowCreateProject(false);
+    setShowCreateClient(false);
   }, [switchProject]);
+
+  const handleCreateProjectClick = useCallback(() => {
+    setShowCreateProject(true);
+    setShowCreateClient(false);
+    setSearchTerm("");
+  }, []);
+
+  const handleCreateClientClick = useCallback(() => {
+    setShowCreateClient(true);
+    setNewClientForm({ name: "", color: "" });
+  }, []);
+
+  const handleClientCreated = useCallback(async () => {
+    if (!newClientForm.name.trim()) {
+      toast.error("Client name is required");
+      return;
+    }
+    
+    setIsCreatingClient(true);
+    try {
+      const clientId = await createClient({
+        name: newClientForm.name.trim(),
+        color: newClientForm.color || undefined
+      });
+      
+      setNewProjectForm(prev => ({ ...prev, clientId }));
+      setShowCreateClient(false);
+      setNewClientForm({ name: "", color: "" });
+      toast.success(`Client "${newClientForm.name.trim()}" created`);
+    } catch (error) {
+      console.error("Failed to create client:", error);
+      toast.error("Failed to create client");
+    } finally {
+      setIsCreatingClient(false);
+    }
+  }, [newClientForm, createClient]);
+
+  const handleProjectCreated = useCallback(async () => {
+    if (!newProjectForm.name.trim()) {
+      toast.error("Project name is required");
+      return;
+    }
+    if (!newProjectForm.clientId) {
+      toast.error("Please select a client");
+      return;
+    }
+    
+    setIsCreatingProject(true);
+    try {
+      const projectId = await createProject({
+        name: newProjectForm.name.trim(),
+        clientId: newProjectForm.clientId,
+        hourlyRate: newProjectForm.hourlyRate,
+        budgetType: newProjectForm.budgetType,
+        budgetHours: newProjectForm.budgetType === "hours" ? newProjectForm.budgetHours : undefined,
+        budgetAmount: newProjectForm.budgetType === "amount" ? newProjectForm.budgetAmount : undefined
+      });
+      
+      setCurrentProjectId(projectId);
+      setShowDropdown(false);
+      setShowCreateProject(false);
+      setNewProjectForm({
+        name: "",
+        clientId: "",
+        hourlyRate: 100,
+        budgetType: "hours",
+        budgetHours: undefined,
+        budgetAmount: undefined
+      });
+      toast.success(`Project "${newProjectForm.name.trim()}" created`);
+    } catch (error) {
+      console.error("Failed to create project:", error);
+      toast.error("Failed to create project");
+    } finally {
+      setIsCreatingProject(false);
+    }
+  }, [newProjectForm, createProject]);
+
+  const handleCancelCreate = useCallback(() => {
+    setShowCreateProject(false);
+    setShowCreateClient(false);
+    setNewProjectForm({
+      name: "",
+      clientId: "",
+      hourlyRate: 100,
+      budgetType: "hours",
+      budgetHours: undefined,
+      budgetAmount: undefined
+    });
+    setNewClientForm({ name: "", color: "" });
+  }, []);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -425,50 +548,263 @@ export function ModernDashboard({
             
             {/* Dropdown */}
             {showDropdown && (
-              <div className="absolute top-full left-0 right-0 mt-2 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border border-gray-300/50 dark:border-gray-700/50 rounded-xl shadow-lg z-50 max-h-80 overflow-hidden">
-                {/* Search Input */}
-                <div className="p-3 border-b border-gray-200/50 dark:border-gray-700/50">
-                  <input
-                    type="text"
-                    placeholder="Search projects..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full px-3 py-2 bg-transparent text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 border border-gray-300/50 dark:border-gray-600/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                    autoFocus
-                  />
-                </div>
-                
-                {/* Project List */}
-                <div className="max-h-60 overflow-y-auto">
-                  {filteredProjects.length > 0 ? (
-                    filteredProjects.map((project) => (
-                      <div
-                        key={project._id}
-                        className={cn(
-                          "flex items-center gap-3 p-3 hover:bg-gray-100/50 dark:hover:bg-gray-700/50 cursor-pointer transition-colors",
-                          project._id === currentProjectId && "bg-blue-50/50 dark:bg-blue-900/20"
-                        )}
-                        onClick={() => handleProjectSelect(project._id)}
+              <div className="absolute top-full left-0 right-0 mt-2 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border border-gray-300/50 dark:border-gray-700/50 rounded-xl shadow-lg z-50 max-h-[80vh] overflow-y-auto">
+                {!showCreateProject && !showCreateClient && (
+                  <>
+                    {/* Create New Project Button - Top */}
+                    <div className="border-b border-gray-200/50 dark:border-gray-700/50">
+                      <button
+                        onClick={handleCreateProjectClick}
+                        className="w-full flex items-center gap-3 p-3 text-blue-600 dark:text-blue-400 hover:bg-blue-50/50 dark:hover:bg-blue-900/20 transition-colors text-sm font-medium"
                       >
-                        <span
-                          className="h-3 w-3 rounded-full"
-                          style={{ backgroundColor: project.color }}
-                        />
-                        <div className="flex-1">
-                          <div className="text-gray-900 dark:text-white font-medium">{project.client.name}</div>
-                          <div className="text-gray-600 dark:text-gray-300 text-sm">– {project.name}</div>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                        Create New Project
+                      </button>
+                    </div>
+                    
+                    {/* Search Input */}
+                    <div className="p-3 border-b border-gray-200/50 dark:border-gray-700/50">
+                      <input
+                        type="text"
+                        placeholder="Search projects..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full px-3 py-2 bg-transparent text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 border border-gray-300/50 dark:border-gray-600/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                      />
+                    </div>
+                    
+                    {/* Project List */}
+                    <div className="max-h-60 overflow-y-auto">
+                      {filteredProjects.length > 0 ? (
+                        filteredProjects.map((project) => (
+                          <div
+                            key={project._id}
+                            className={cn(
+                              "flex items-center gap-3 p-3 hover:bg-gray-100/50 dark:hover:bg-gray-700/50 cursor-pointer transition-colors",
+                              project._id === currentProjectId && "bg-blue-50/50 dark:bg-blue-900/20"
+                            )}
+                            onClick={() => handleProjectSelect(project._id)}
+                          >
+                            <span
+                              className="h-3 w-3 rounded-full"
+                              style={{ backgroundColor: project.color }}
+                            />
+                            <div className="flex-1">
+                              <div className="text-gray-900 dark:text-white font-medium">{project.client?.name || 'No Client'}</div>
+                              <div className="text-gray-600 dark:text-gray-300 text-sm">– {project.name}</div>
+                            </div>
+                            <div className="text-gray-500 dark:text-gray-400 text-xs">
+                              {formatCurrency(project.hourlyRate)}/hr
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="p-3 text-center text-gray-500 dark:text-gray-400 text-sm">
+                          No projects found
                         </div>
-                        <div className="text-gray-500 dark:text-gray-400 text-xs">
-                          {formatCurrency(project.hourlyRate)}/hr
+                      )}
+                      
+                    </div>
+                  </>
+                )}
+                
+                {/* Create Client Form */}
+                {showCreateClient && (
+                  <div className="p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">New Client</h3>
+                      <button
+                        onClick={handleCancelCreate}
+                        className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Client Name *
+                        </label>
+                        <Input
+                          value={newClientForm.name}
+                          onChange={(e) => setNewClientForm(prev => ({ ...prev, name: e.target.value }))}
+                          placeholder="Enter client name"
+                          className="text-gray-900 dark:text-white"
+                          autoFocus
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Color (optional)
+                        </label>
+                        <input
+                          type="color"
+                          value={newClientForm.color || "#8b5cf6"}
+                          onChange={(e) => setNewClientForm(prev => ({ ...prev, color: e.target.value }))}
+                          className="w-full h-10 border border-input bg-transparent rounded-md shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        />
+                      </div>
+                      <div className="flex gap-2 pt-2">
+                        <Button
+                          onClick={handleClientCreated}
+                          disabled={isCreatingClient || !newClientForm.name.trim()}
+                          className="flex-1"
+                        >
+                          {isCreatingClient ? "Creating..." : "Create Client"}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => setShowCreateClient(false)}
+                          className="flex-1"
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Create Project Form */}
+                {showCreateProject && !showCreateClient && (
+                  <div className="p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">New Project</h3>
+                      <button
+                        onClick={handleCancelCreate}
+                        className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Project Name *
+                        </label>
+                        <Input
+                          value={newProjectForm.name}
+                          onChange={(e) => setNewProjectForm(prev => ({ ...prev, name: e.target.value }))}
+                          placeholder="Enter project name"
+                          className="text-gray-900 dark:text-white"
+                          autoFocus
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Client *
+                        </label>
+                        <div className="flex gap-2">
+                          <select
+                            value={newProjectForm.clientId}
+                            onChange={(e) => setNewProjectForm(prev => ({ ...prev, clientId: e.target.value as Id<"clients"> }))}
+                            className="flex-1 h-9 px-3 py-1 border border-input bg-transparent text-gray-900 dark:text-white rounded-md shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                          >
+                            <option value="">Select a client...</option>
+                            {clients?.map((client) => (
+                              <option key={client._id} value={client._id}>
+                                {client.name}
+                              </option>
+                            ))}
+                          </select>
+                          <Button
+                            variant="outline"
+                            onClick={handleCreateClientClick}
+                            className="whitespace-nowrap"
+                          >
+                            + New
+                          </Button>
                         </div>
                       </div>
-                    ))
-                  ) : (
-                    <div className="p-3 text-center text-gray-500 dark:text-gray-400 text-sm">
-                      No projects found
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Hourly Rate *
+                        </label>
+                        <Input
+                          type="number"
+                          value={newProjectForm.hourlyRate}
+                          onChange={(e) => setNewProjectForm(prev => ({ ...prev, hourlyRate: Number(e.target.value) }))}
+                          placeholder="100"
+                          className="text-gray-900 dark:text-white"
+                          min="0"
+                          step="0.01"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Budget Type
+                        </label>
+                        <select
+                          value={newProjectForm.budgetType}
+                          onChange={(e) => setNewProjectForm(prev => ({ ...prev, budgetType: e.target.value as "hours" | "amount" }))}
+                          className="w-full h-9 px-3 py-1 border border-input bg-transparent text-gray-900 dark:text-white rounded-md shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        >
+                          <option value="hours">Hours</option>
+                          <option value="amount">Amount</option>
+                        </select>
+                      </div>
+                      
+                      {newProjectForm.budgetType === "hours" && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Budget Hours
+                          </label>
+                          <Input
+                            type="number"
+                            value={newProjectForm.budgetHours || ""}
+                            onChange={(e) => setNewProjectForm(prev => ({ ...prev, budgetHours: e.target.value ? Number(e.target.value) : undefined }))}
+                            placeholder="40"
+                            className="text-gray-900 dark:text-white"
+                            min="0"
+                            step="0.5"
+                          />
+                        </div>
+                      )}
+                      
+                      {newProjectForm.budgetType === "amount" && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Budget Amount
+                          </label>
+                          <Input
+                            type="number"
+                            value={newProjectForm.budgetAmount || ""}
+                            onChange={(e) => setNewProjectForm(prev => ({ ...prev, budgetAmount: e.target.value ? Number(e.target.value) : undefined }))}
+                            placeholder="4000"
+                            className="text-gray-900 dark:text-white"
+                            min="0"
+                            step="0.01"
+                          />
+                        </div>
+                      )}
+                      
+                      <div className="flex gap-2 pt-2">
+                        <Button
+                          onClick={handleProjectCreated}
+                          disabled={isCreatingProject || !newProjectForm.name.trim() || !newProjectForm.clientId}
+                          className="flex-1"
+                        >
+                          {isCreatingProject ? "Creating..." : "Create Project"}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={handleCancelCreate}
+                          className="flex-1"
+                        >
+                          Cancel
+                        </Button>
+                      </div>
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

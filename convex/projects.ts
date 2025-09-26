@@ -95,6 +95,19 @@ export const listAll = query({
         const totalHours = totalSeconds / 3600;
         const totalHoursFormatted = `${totalHours.toFixed(1)}h`;
 
+        // Find the most recent activity (latest time entry)
+        const mostRecentEntry = entries.length > 0 
+          ? entries.reduce((latest, entry) => {
+              const entryTime = entry.stoppedAt || entry.startedAt || entry._creationTime;
+              const latestTime = latest.stoppedAt || latest.startedAt || latest._creationTime;
+              return entryTime > latestTime ? entry : latest;
+            })
+          : null;
+
+        const lastActivityAt = mostRecentEntry 
+          ? (mostRecentEntry.stoppedAt || mostRecentEntry.startedAt || mostRecentEntry._creationTime)
+          : project._creationTime; // Fall back to project creation time
+
         return {
           ...project,
           client,
@@ -103,11 +116,17 @@ export const listAll = query({
           totalSeconds,
           totalHours,
           totalHoursFormatted,
+          lastActivityAt,
         };
       })
     );
 
-    return projectsWithClientsAndStats;
+    // Sort projects by most recent activity (descending)
+    const sortedProjects = projectsWithClientsAndStats.sort((a, b) => 
+      b.lastActivityAt - a.lastActivityAt
+    );
+
+    return sortedProjects;
   },
 });
 
