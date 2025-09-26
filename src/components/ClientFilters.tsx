@@ -2,10 +2,10 @@ import { useState } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
+import { Search, SlidersHorizontal } from "lucide-react";
 
 interface FilterState {
   search: string;
-  status: string[];
   revenueRange: {
     min: number;
     max: number;
@@ -41,95 +41,61 @@ export function ClientFilters({
     });
   };
 
-  const toggleStatus = (status: string) => {
-    const currentStatuses = filters.status;
-    const newStatuses = currentStatuses.includes(status)
-      ? currentStatuses.filter(s => s !== status)
-      : [...currentStatuses, status];
-    
-    updateFilter('status', newStatuses);
-  };
+  const hasAdvancedFilters = filters.revenueRange.min > 0 ||
+                             filters.revenueRange.max < 100000 ||
+                             filters.healthScore.min > 0 ||
+                             filters.healthScore.max < 100 ||
+                             filters.activityDays !== null;
 
-  const hasActiveFilters = filters.search || 
-                          filters.status.length > 0 || 
-                          filters.revenueRange.min > 0 || 
-                          filters.revenueRange.max < 100000 ||
-                          filters.healthScore.min > 0 ||
-                          filters.healthScore.max < 100 ||
-                          filters.activityDays !== null;
+  const hasActiveFilters = Boolean(filters.search) || hasAdvancedFilters;
 
   return (
-    <div className="bg-white dark:bg-gray-800/50 dark:backdrop-blur-sm rounded-lg shadow dark:shadow-dark-card border-0 dark:border dark:border-gray-700/50 p-4 mb-6">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-          Filters
-        </h3>
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <Input
+            type="text"
+            placeholder="Search clients by name or notes..."
+            value={filters.search}
+            onChange={(e) => updateFilter('search', e.target.value)}
+            className="w-full pl-9"
+          />
+        </div>
+
         <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-500 dark:text-gray-400">
-            {filteredCount} of {totalClients} clients
+          <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+            Showing {filteredCount} / {totalClients}
           </span>
           {hasActiveFilters && (
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
               onClick={onReset}
-              className="text-xs"
+              className="h-8 text-xs text-gray-600 dark:text-gray-300"
             >
-              Clear All
+              Reset
             </Button>
           )}
+          <Button
+            type="button"
+            variant={showAdvanced ? "default" : "outline"}
+            size="icon"
+            onClick={() => setShowAdvanced(!showAdvanced)}
+            className="h-9 w-9"
+            aria-label="Toggle advanced options"
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+          </Button>
         </div>
-      </div>
-
-      {/* Search */}
-      <div className="mb-4">
-        <Input
-          type="text"
-          placeholder="Search clients by name or notes..."
-          value={filters.search}
-          onChange={(e) => updateFilter('search', e.target.value)}
-          className="w-full"
-        />
-      </div>
-
-      {/* Status Filter */}
-      <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-          Status
-        </label>
-        <div className="flex gap-2 flex-wrap">
-          {['active', 'at-risk', 'inactive'].map((status) => (
-            <Badge
-              key={status}
-              variant={filters.status.includes(status) ? "default" : "outline"}
-              className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
-              onClick={() => toggleStatus(status)}
-            >
-              {status}
-            </Badge>
-          ))}
-        </div>
-      </div>
-
-      {/* Advanced Filters Toggle */}
-      <div className="mb-4">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setShowAdvanced(!showAdvanced)}
-          className="text-sm text-gray-600 dark:text-gray-400 p-0"
-        >
-          {showAdvanced ? '↑' : '↓'} Advanced Filters
-        </Button>
       </div>
 
       {showAdvanced && (
-        <div className="space-y-4 border-t pt-4">
-          {/* Revenue Range */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Revenue Range ($)
-            </label>
+        <div className="grid gap-4 sm:grid-cols-3 bg-white dark:bg-gray-800/60 dark:backdrop-blur-sm border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+          <div className="space-y-2">
+            <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+              Revenue ($)
+            </span>
             <div className="flex gap-2 items-center">
               <Input
                 type="number"
@@ -155,11 +121,10 @@ export function ClientFilters({
             </div>
           </div>
 
-          {/* Health Score Range */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <div className="space-y-2">
+            <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
               Health Score
-            </label>
+            </span>
             <div className="flex gap-2 items-center">
               <Input
                 type="number"
@@ -189,11 +154,10 @@ export function ClientFilters({
             </div>
           </div>
 
-          {/* Activity Filter */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <div className="space-y-2">
+            <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
               Recent Activity
-            </label>
+            </span>
             <div className="flex gap-2 flex-wrap">
               {[
                 { label: 'All', value: null },
@@ -204,7 +168,7 @@ export function ClientFilters({
                 <Badge
                   key={option.label}
                   variant={filters.activityDays === option.value ? "default" : "outline"}
-                  className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                  className="cursor-pointer"
                   onClick={() => updateFilter('activityDays', option.value)}
                 >
                   {option.label}
@@ -215,37 +179,29 @@ export function ClientFilters({
         </div>
       )}
 
-      {/* Active Filter Summary */}
       {hasActiveFilters && (
-        <div className="mt-4 pt-4 border-t">
-          <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">Active filters:</div>
-          <div className="flex gap-1 flex-wrap">
-            {filters.search && (
-              <Badge variant="secondary" className="text-xs">
-                Search: "{filters.search}"
-              </Badge>
-            )}
-            {filters.status.map(status => (
-              <Badge key={status} variant="secondary" className="text-xs">
-                Status: {status}
-              </Badge>
-            ))}
-            {(filters.revenueRange.min > 0 || filters.revenueRange.max < 100000) && (
-              <Badge variant="secondary" className="text-xs">
-                Revenue: ${filters.revenueRange.min} - ${filters.revenueRange.max}
-              </Badge>
-            )}
-            {(filters.healthScore.min > 0 || filters.healthScore.max < 100) && (
-              <Badge variant="secondary" className="text-xs">
-                Health: {filters.healthScore.min} - {filters.healthScore.max}
-              </Badge>
-            )}
-            {filters.activityDays !== null && (
-              <Badge variant="secondary" className="text-xs">
-                Activity: Last {filters.activityDays} days
-              </Badge>
-            )}
-          </div>
+        <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+          <span className="font-medium">Active criteria:</span>
+          {filters.search && (
+            <Badge variant="secondary" className="text-xs">
+              Search: "{filters.search}"
+            </Badge>
+          )}
+          {(filters.revenueRange.min > 0 || filters.revenueRange.max < 100000) && (
+            <Badge variant="secondary" className="text-xs">
+              Revenue: ${filters.revenueRange.min} - ${filters.revenueRange.max}
+            </Badge>
+          )}
+          {(filters.healthScore.min > 0 || filters.healthScore.max < 100) && (
+            <Badge variant="secondary" className="text-xs">
+              Health: {filters.healthScore.min} - {filters.healthScore.max}
+            </Badge>
+          )}
+          {filters.activityDays !== null && (
+            <Badge variant="secondary" className="text-xs">
+              Activity: Last {filters.activityDays} days
+            </Badge>
+          )}
         </div>
       )}
     </div>
@@ -255,7 +211,6 @@ export function ClientFilters({
 // Default filter state
 export const defaultFilters: FilterState = {
   search: '',
-  status: [],
   revenueRange: {
     min: 0,
     max: 100000
