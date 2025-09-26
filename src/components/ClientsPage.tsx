@@ -11,6 +11,7 @@ import { ClientMetricsCards } from "./ClientMetricsCards";
 import { ClientFilters, defaultFilters } from "./ClientFilters";
 import { ClientAnalytics } from "./ClientAnalytics";
 import { ClientExportTools } from "./ClientExportTools";
+import { LayoutGrid, Table2 } from "lucide-react";
 
 // Default color palette for clients
 const DEFAULT_COLORS = [
@@ -77,13 +78,8 @@ export function ClientsPage() {
         if (!matchesName && !matchesNote) return false;
       }
 
-      // Status filter
-      if (filters.status.length > 0 && !filters.status.includes(client.status)) {
-        return false;
-      }
-
       // Revenue range filter
-      if (client.totalAmountSpent < filters.revenueRange.min || 
+      if (client.totalAmountSpent < filters.revenueRange.min ||
           client.totalAmountSpent > filters.revenueRange.max) {
         return false;
       }
@@ -226,39 +222,62 @@ export function ClientsPage() {
       />
       
       {/* Header with controls */}
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center gap-4">
-          <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">
-            Clients
-          </h2>
-          <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-700 rounded-md p-1">
+      <div className="flex flex-col gap-4 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="flex-1 w-full">
+            <ClientFilters
+              filters={filters}
+              onFiltersChange={setFilters}
+              onReset={resetFilters}
+              totalClients={clients.length}
+              filteredCount={filteredAndSortedClients.length}
+            />
+          </div>
+
+          {!showForm && (
             <Button
-              size="sm"
-              variant={viewMode === 'table' ? "default" : "ghost"}
-              onClick={() => setViewMode('table')}
-              className="h-8"
+              onClick={() => setShowForm(true)}
+              className="bg-primary hover:bg-primary-hover"
             >
-              📊 Table
+              Add Client
+            </Button>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm p-1">
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              onClick={() => setViewMode('table')}
+              className={`h-10 w-10 rounded-md transition-colors ${
+                viewMode === 'table'
+                  ? 'bg-primary text-white hover:bg-primary/90'
+                  : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
+              }`}
+              aria-label="Show table view"
+              title="Table view"
+            >
+              <Table2 className="h-5 w-5" />
             </Button>
             <Button
-              size="sm"
-              variant={viewMode === 'cards' ? "default" : "ghost"}
+              type="button"
+              size="icon"
+              variant="ghost"
               onClick={() => setViewMode('cards')}
-              className="h-8"
+              className={`h-10 w-10 rounded-md transition-colors ${
+                viewMode === 'cards'
+                  ? 'bg-primary text-white hover:bg-primary/90'
+                  : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
+              }`}
+              aria-label="Show card view"
+              title="Card view"
             >
-              🃏 Cards
+              <LayoutGrid className="h-5 w-5" />
             </Button>
           </div>
         </div>
-
-        {!showForm && (
-          <Button
-            onClick={() => setShowForm(true)}
-            className="bg-primary hover:bg-primary-hover"
-          >
-            Add Client
-          </Button>
-        )}
       </div>
 
       {/* Client Creation/Edit Form */}
@@ -350,15 +369,6 @@ export function ClientsPage() {
           </form>
         </div>
       )}
-
-      {/* Filters */}
-      <ClientFilters
-        filters={filters}
-        onFiltersChange={setFilters}
-        onReset={resetFilters}
-        totalClients={clients.length}
-        filteredCount={filteredAndSortedClients.length}
-      />
 
       {/* Client Display */}
       {viewMode === 'table' ? (
