@@ -4,27 +4,54 @@
 
 :root {
   --color-light: #ffffff;
-  --color-dark: #171717;
+  --color-dark: #1f2937;
   
-  /* iConnectIT Brand Colors */
+  /* Modern Clean Color Palette */
+  --primary-white: #ffffff;
+  --secondary-white: #fafafa;
+  --light-gray: #f8fafc;
+  --border-gray: #e2e8f0;
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  --text-muted: #94a3b8;
+  
+  /* iConnectIT Brand Colors - Used as Accents */
   --iconnectit-orange: #FF6B35;
   --iconnectit-orange-hover: #E55A2B;
+  --iconnectit-orange-light: #FFF7F5;
   --iconnectit-yellow: #FFD93D;
   --iconnectit-yellow-hover: #E6C335;
   --iconnectit-dark: #2D3748;
   --iconnectit-dark-lighter: #4A5568;
   --iconnectit-dark-darker: #1A202C;
+  
+  /* Modern Shadows */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
 }
 
-/* Dark mode overrides with iConnectIT branding */
+/* Clean Light Theme (Primary) */
+body {
+  background: var(--primary-white);
+  color: var(--text-primary);
+}
+
+/* Subtle Dark Mode Support */
 .dark {
   --color-light: var(--iconnectit-dark-darker);
   --color-dark: #ffffff;
+  --primary-white: #1e293b;
+  --secondary-white: #334155;
+  --light-gray: #0f172a;
+  --border-gray: #475569;
+  --text-primary: #f1f5f9;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
 }
 
-/* Dark mode specific styling */
 .dark body {
-  background: linear-gradient(135deg, #2D3748 0%, #1A202C 25%, #2A2D3A 50%, #1A202C 75%, #2D3748 100%);
+  background: var(--primary-white);
 }
 
 .accent-text {
