@@ -17,7 +17,7 @@ export function SignInForm({ defaultFlow = "signIn" }: { defaultFlow?: AuthFlow 
   return (
     <div className="w-full">
       <form
-        className="flex flex-col gap-form-field"
+        className="flex flex-col space-y-4"
         onSubmit={async (event) => {
           event.preventDefault();
           if (submitting) {
@@ -70,30 +70,43 @@ export function SignInForm({ defaultFlow = "signIn" }: { defaultFlow?: AuthFlow 
           required
         />
         <button className="auth-button" type="submit" disabled={submitting}>
-          {flow === "signIn" ? "Sign in" : "Sign up"}
+          {submitting ? (
+            <div className="flex items-center justify-center gap-2">
+              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+              {flow === "signIn" ? "Signing in..." : "Creating account..."}
+            </div>
+          ) : (
+            flow === "signIn" ? "Sign in" : "Create account"
+          )}
         </button>
-        <div className="text-center text-sm text-secondary">
-          <span>
+        
+        <div className="text-center text-sm">
+          <span className="text-slate-600">
             {flow === "signIn"
               ? "Don't have an account? "
               : "Already have an account? "}
           </span>
           <button
             type="button"
-            className="text-primary hover:text-primary-hover hover:underline font-medium cursor-pointer"
+            className="text-orange-600 hover:text-orange-700 hover:underline font-medium cursor-pointer transition-colors"
             onClick={() => setFlow(flow === "signIn" ? "signUp" : "signIn")}
           >
             {flow === "signIn" ? "Sign up instead" : "Sign in instead"}
           </button>
         </div>
       </form>
-      <div className="flex items-center justify-center my-3">
-        <hr className="my-4 grow border-gray-200" />
-        <span className="mx-4 text-secondary">or</span>
-        <hr className="my-4 grow border-gray-200" />
+      
+      <div className="flex items-center my-6">
+        <hr className="flex-1 border-slate-200" />
+        <span className="mx-4 text-slate-400 text-sm font-medium">or</span>
+        <hr className="flex-1 border-slate-200" />
       </div>
-      <button className="auth-button" onClick={() => void signIn("anonymous")}>
-        Sign in anonymously
+      
+      <button 
+        className="w-full px-6 py-3 rounded-xl font-semibold transition-all duration-200 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200"
+        onClick={() => void signIn("anonymous")}
+      >
+        Continue as Guest
       </button>
     </div>
   );
