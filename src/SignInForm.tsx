@@ -101,13 +101,23 @@ export function SignInForm({ defaultFlow = "signIn" }: { defaultFlow?: AuthFlow 
         <span className="mx-4 text-slate-400 text-sm font-medium">or</span>
         <hr className="flex-1 border-slate-200" />
       </div>
-      
-      <button 
-        className="w-full px-6 py-3 rounded-xl font-semibold transition-all duration-200 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200"
-        onClick={() => void signIn("anonymous")}
-      >
-        Continue as Guest
-      </button>
+
+      <div className="space-y-3">
+        <button
+          type="button"
+          className="w-full px-6 py-3 rounded-xl font-semibold transition-all duration-200 bg-white hover:bg-slate-100 text-slate-800 border border-slate-200"
+          onClick={() => void signIn("google")}
+        >
+          Sign in with Google
+        </button>
+        <button
+          type="button"
+          className="w-full px-6 py-3 rounded-xl font-semibold transition-all duration-200 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200"
+          onClick={() => void signIn("anonymous")}
+        >
+          Continue as Guest
+        </button>
+      </div>
     </div>
   );
 }
