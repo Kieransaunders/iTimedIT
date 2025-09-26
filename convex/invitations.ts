@@ -143,6 +143,7 @@ export const create = mutation({
 
     const now = Date.now();
     const token = await generateToken();
+    const expiresAt = now + INVITATION_TTL_MS;
 
     const invitationId = await ctx.db.insert("invitations", {
       organizationId,
@@ -152,9 +153,23 @@ export const create = mutation({
       status: "pending",
       invitedBy: userId,
       createdAt: now,
-      expiresAt: now + INVITATION_TTL_MS,
+      expiresAt,
       acceptedAt: undefined,
       revokedAt: undefined,
+    });
+
+    const [organization, inviter] = await Promise.all([
+      ctx.db.get(organizationId),
+      ctx.db.get(userId),
+    ]);
+
+    await ctx.scheduler.runAfter(0, internal.sendEmails.sendInvitationEmail, {
+      to: normalizedEmail,
+      organizationName: organization?.name ?? "Your iTrackIT workspace",
+      inviterDisplayName: inviter?.name ?? inviter?.email ?? "A teammate",
+      role: args.role,
+      token,
+      expiresAt,
     });
 
     return { invitationId, token };
@@ -182,13 +197,28 @@ export const resend = mutation({
 
     const now = Date.now();
     const token = await generateToken();
+    const expiresAt = now + INVITATION_TTL_MS;
 
     await ctx.db.patch(invitation._id, {
       token,
       status: "pending",
       invitedBy: userId,
-      expiresAt: now + INVITATION_TTL_MS,
+      expiresAt,
       revokedAt: undefined,
+    });
+
+    const [organization, inviter] = await Promise.all([
+      ctx.db.get(organizationId),
+      ctx.db.get(userId),
+    ]);
+
+    await ctx.scheduler.runAfter(0, internal.sendEmails.sendInvitationEmail, {
+      to: invitation.email,
+      organizationName: organization?.name ?? "Your iTrackIT workspace",
+      inviterDisplayName: inviter?.name ?? inviter?.email ?? "A teammate",
+      role: invitation.role,
+      token,
+      expiresAt,
     });
 
     return { success: true };

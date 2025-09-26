@@ -1,4 +1,5 @@
 ## Install and Run (from a fresh clone)
+iTimedIT
 
 ### Quick Start (
 - Clone and install:
@@ -24,6 +25,16 @@ Then open a new terminal windows and start claude with
 Claude
 
 Check Task.MD for any tasks to work on or test the recent ones developed.
+
+
+To deploy to:http://itimedit.com/
+npx convex deploy
+
+The site should deply in a few mins.
+
+
+
+
  
   
   ```

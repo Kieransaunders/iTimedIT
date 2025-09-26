@@ -81,7 +81,7 @@ function AuthenticatedApp() {
   useEffect(() => {
     if (!hasAnnouncedAuth.current && loggedInUser) {
       hasAnnouncedAuth.current = true;
-      toast.success("Welcome to iTrackIT", {
+      toast.success("Welcome to iTimedIT", {
         description: `Signed in as ${loggedInUser.email}`,
       });
       // Navigate to dashboard after successful sign-in
@@ -180,7 +180,7 @@ function AuthenticatedApp() {
                 alt="iConnectIT" 
                 className="h-6 w-6 sm:h-8 sm:w-8"
               />
-              <h2 className="text-lg sm:text-xl font-semibold text-[#F85E00]">iTrackIT</h2>
+              <h2 className="text-lg sm:text-xl font-semibold text-[#F85E00]">iTimedIT</h2>
             </div>
             <div className="hidden sm:block">
               <OrganizationSwitcher />
@@ -291,7 +291,7 @@ function UnauthenticatedView() {
                   className="h-12 w-12"
                 />
                 <h1 className="text-4xl lg:text-5xl font-bold hero-text">
-                  iTrackIT
+                  iTimedIT
                 </h1>
               </div>
               

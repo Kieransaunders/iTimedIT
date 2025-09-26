@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@convex-dev/auth": "^0.0.90",
+    "@convex-dev/resend": "^0.1.13",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-slot": "^1.2.3",
     "class-variance-authority": "^0.7.1",
