@@ -50,17 +50,37 @@ export async function requireMembership(
   };
 }
 
+function isMissingMembershipError(error: unknown): boolean {
+  if (!error) {
+    return false;
+  }
+
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === "object" && "message" in error
+        ? String((error as { message?: unknown }).message)
+        : null;
+
+  if (!message) {
+    return false;
+  }
+
+  return (
+    message === "Not authenticated" ||
+    message === "No active organization membership" ||
+    message.includes("Not authenticated") ||
+    message.includes("No active organization membership")
+  );
+}
+
 export async function maybeMembership(
   ctx: QueryCtx | MutationCtx
 ): Promise<MembershipContext | null> {
   try {
     return await requireMembership(ctx);
   } catch (error) {
-    if (
-      error instanceof Error &&
-      (error.message === "Not authenticated" ||
-        error.message === "No active organization membership")
-    ) {
+    if (isMissingMembershipError(error)) {
       return null;
     }
     throw error;
