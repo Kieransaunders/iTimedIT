@@ -109,6 +109,7 @@ export function ModernDashboard({
   const [showCategoryManager, setShowCategoryManager] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
+  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [showCreateProject, setShowCreateProject] = useState(false);
   const [showCreateClient, setShowCreateClient] = useState(false);
@@ -127,6 +128,7 @@ export function ModernDashboard({
   const [isCreatingProject, setIsCreatingProject] = useState(false);
   const [isCreatingClient, setIsCreatingClient] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const categoryDropdownRef = useRef<HTMLDivElement>(null);
 
   const projects = useQuery(api.projects.listAll);
   const runningTimer = useQuery(api.timer.getRunningTimer);
@@ -473,6 +475,23 @@ export function ModernDashboard({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [showDropdown]);
+
+  // Close category dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(event.target as Node)) {
+        setShowCategoryDropdown(false);
+      }
+    };
+
+    if (showCategoryDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showCategoryDropdown]);
 
   useEffect(() => {
     if (!pushSwitchRequest) {
@@ -868,19 +887,64 @@ export function ModernDashboard({
                 {showCategoryManager ? 'Hide' : 'Manage'}
               </button>
             </div>
-            <select
-              id="category"
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="w-full px-4 py-2 bg-white/70 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-300/50 dark:border-gray-700/50 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#F85E00] focus:border-transparent shadow-lg"
-            >
-              <option value="">Select a category...</option>
-              {categories?.map((category) => (
-                <option key={category._id} value={category.name}>
-                  {category.name} {category.isDefault ? '(Default)' : ''}
-                </option>
-              ))}
-            </select>
+            <div className="w-full relative" ref={categoryDropdownRef}>
+              <div 
+                className="bg-white/70 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-300/50 dark:border-gray-700/50 rounded-xl p-4 shadow-lg cursor-pointer"
+                onClick={() => setShowCategoryDropdown(!showCategoryDropdown)}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="text-gray-900 dark:text-white font-medium">
+                      {selectedCategory || "Select a category..."}
+                    </div>
+                  </div>
+                  <svg 
+                    className={`w-4 h-4 text-gray-500 dark:text-gray-400 transition-transform ${showCategoryDropdown ? 'rotate-180' : ''}`} 
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+              </div>
+              
+              {/* Category Dropdown */}
+              {showCategoryDropdown && (
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border border-gray-300/50 dark:border-gray-700/50 rounded-xl shadow-lg z-50 max-h-60 overflow-y-auto">
+                  <div className="py-2">
+                    <div
+                      className="flex items-center gap-3 p-3 hover:bg-gray-100/50 dark:hover:bg-gray-700/50 cursor-pointer transition-colors text-gray-500 dark:text-gray-400"
+                      onClick={() => {
+                        setSelectedCategory("");
+                        setShowCategoryDropdown(false);
+                      }}
+                    >
+                      <div className="text-sm">Select a category...</div>
+                    </div>
+                    {categories?.map((category) => (
+                      <div
+                        key={category._id}
+                        className={`flex items-center gap-3 p-3 hover:bg-gray-100/50 dark:hover:bg-gray-700/50 cursor-pointer transition-colors ${
+                          selectedCategory === category.name ? "bg-[#F85E00]/10 text-[#F85E00]" : "text-gray-900 dark:text-white"
+                        }`}
+                        onClick={() => {
+                          setSelectedCategory(category.name);
+                          setShowCategoryDropdown(false);
+                        }}
+                      >
+                        <div className="flex-1">
+                          <div className="font-medium">{category.name}</div>
+                          {category.isDefault && (
+                            <div className="text-xs text-gray-500 dark:text-gray-400">(Default)</div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
             
             {/* Category Management */}
             {showCategoryManager && (
