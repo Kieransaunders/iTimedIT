@@ -2,20 +2,30 @@
 
 ### Quick Start (Testers)
 - Clone and install:
-  ```bash
-  git clone https://github.com/Kieransaunders/freelancer_time_tracker_app.git
-  cd freelancer_time_tracker_app
-  npm install
-  ```
-- Create `.env.local`:
-  - Option A: Use a shared dev deployment value provided by the team:
-    ```bash
-    CONVEX_DEPLOYMENT=dev:<shared-dev-deployment>
-    CONVEX_SITE_URL=http://localhost:5173
-    ```
+Open new window in cursor and clone
+    https://github.com/Kieransaunders/iTrackIT
+  
+open termainl window in the bottom of curser to setup project
 
+  npm install
+
+Install Convex the database for local development: 
+  npm install convex
+  npx convex dev
+  then select "❯ choose an existing project 
+  ? Configure project iTrackIT (iTrackIT)? (Y/n) Y
+  ```
+
+To run server DB and Front end together:
+
+npm run dev
+
+Then open a new terminal windows and start claude with
+Claude
+
+Check Task.MD for any tasks to work on or test the recent ones developed.
  
-  npm run dev
+  
   ```
   Frontend: http://localhost:5173 (backend runs via Convex cloud dev)
 
