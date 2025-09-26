@@ -30,6 +30,7 @@ import { toast } from "sonner";
 import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
+import { Play, Square } from "lucide-react";
 
 interface ModernDashboardProps {
   pushSwitchRequest?: any | null;
@@ -1038,21 +1039,36 @@ export function ModernDashboard({
         </div>
 
         {/* Timer Display */}
-        <div className="text-center mb-6 sm:mb-8">
-          <div 
-            className={`text-6xl sm:text-7xl md:text-8xl lg:text-9xl font-mono font-bold mb-4 tracking-tight ${
-              runningTimer && projectStats?.isNearBudgetLimit 
-                ? "animate-pulse" 
+        <div className="flex items-center justify-center gap-4 mb-6 sm:mb-8">
+          <div
+            className={`text-center text-6xl sm:text-7xl md:text-8xl lg:text-9xl font-mono font-bold tracking-tight ${
+              runningTimer && projectStats?.isNearBudgetLimit
+                ? "animate-pulse"
                 : ""
             }`}
-            style={{ 
-              color: runningTimer && projectStats?.isNearBudgetLimit 
+            style={{
+              color: runningTimer && projectStats?.isNearBudgetLimit
                 ? "#f59e0b" // amber warning color
-                : currentProject.color 
+                : currentProject.color
             }}
           >
             {formatTime(totalElapsedMs)}
           </div>
+          <button
+            className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white focus-visible:ring-[#F85E00] dark:focus-visible:ring-offset-gray-900"
+            style={{
+              backgroundColor: timerState.running ? "#ef4444" : currentProject.color,
+            }}
+            onClick={toggleTimer}
+            aria-pressed={timerState.running}
+            aria-label={timerState.running ? "Stop timer" : "Start timer"}
+          >
+            {timerState.running ? (
+              <Square className="w-6 h-6 sm:w-7 sm:h-7 text-white" aria-hidden="true" />
+            ) : (
+              <Play className="w-6 h-6 sm:w-7 sm:h-7 text-white" aria-hidden="true" />
+            )}
+          </button>
         </div>
 
         {/* Time/Allocation Remaining Display */}
@@ -1200,20 +1216,6 @@ export function ModernDashboard({
             )}
           </div>
         )}
-
-        {/* Start/Stop Button */}
-        <div className="mb-8 sm:mb-12">
-          <button
-            className="px-8 sm:px-12 py-3 sm:py-4 text-base sm:text-lg font-semibold text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
-            style={{
-              backgroundColor: timerState.running ? "#ef4444" : currentProject.color,
-            }}
-            onClick={toggleTimer}
-            aria-pressed={timerState.running}
-          >
-            {timerState.running ? "Stop" : "Start"}
-          </button>
-        </div>
 
         {/* Project Summary */}
         {currentProjectId && (
