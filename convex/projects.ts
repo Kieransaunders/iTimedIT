@@ -4,6 +4,7 @@ import {
   requireMembership,
   ensureMembershipWithRole,
   requireMembershipWithRole,
+  maybeMembership,
 } from "./orgContext";
 
 export const listByClient = query({
@@ -11,7 +12,11 @@ export const listByClient = query({
     clientId: v.id("clients"),
   },
   handler: async (ctx, args) => {
-    const { organizationId } = await requireMembership(ctx);
+    const membership = await maybeMembership(ctx);
+    if (!membership) {
+      return [];
+    }
+    const { organizationId } = membership;
 
     const client = await ctx.db.get(args.clientId);
     if (!client || client.organizationId !== organizationId) {
@@ -56,7 +61,11 @@ export const listAll = query({
     workspaceType: v.optional(v.union(v.literal("personal"), v.literal("team"))),
   },
   handler: async (ctx, args) => {
-    const { organizationId } = await requireMembership(ctx);
+    const membership = await maybeMembership(ctx);
+    if (!membership) {
+      return [];
+    }
+    const { organizationId } = membership;
 
     let projectsQuery = ctx.db
       .query("projects")

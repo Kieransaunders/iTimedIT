@@ -185,6 +185,10 @@ export function ModernDashboard({
   );
   const createManualEntry = useMutation(api.timer.createManualEntry);
 
+  const projectsLoading = projects === undefined;
+  const clientsLoading = clients === undefined;
+  const isLoading = projectsLoading || clientsLoading;
+
   // Enhance projects with colors
   const projectsWithColors = useMemo(() => {
     if (!projects) return [];
@@ -207,6 +211,9 @@ export function ModernDashboard({
   const currentProject = useMemo(() => {
     return projectsWithColors.find(p => p._id === currentProjectId) || projectsWithColors[0];
   }, [projectsWithColors, currentProjectId]);
+
+  const hasProjects = projectsWithColors.length > 0;
+  const hasClients = (clients?.length ?? 0) > 0;
 
   // Set current project from running timer or default to first
   useEffect(() => {
@@ -674,6 +681,37 @@ export function ModernDashboard({
       window.removeEventListener('resize', updateScrollIndicators);
     };
   }, [projectsWithColors]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (!hasProjects) {
+    return (
+      <div className="flex items-center justify-center min-h-[calc(100vh-8rem)] bg-gray-50 dark:bg-gray-900 px-4">
+        <div className="max-w-md w-full bg-white dark:bg-gray-800/60 backdrop-blur-sm border border-gray-200/70 dark:border-gray-700/40 rounded-2xl shadow-lg p-8 text-center">
+          <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <svg className="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422A12.083 12.083 0 0118 13.5c0 3.866-3.582 7-6 7s-6-3.134-6-7c0-1.61.512-3.117 1.84-4.922L12 14z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Let&rsquo;s get your workspace ready</h2>
+          <p className="mt-3 text-sm text-gray-600 dark:text-gray-300">
+            {hasClients
+              ? "Add your first project from the Projects tab to start tracking time."
+              : "Start by creating a client, then add your first project from the navigation bar above."}
+          </p>
+          <div className="mt-4 rounded-lg bg-gray-100 dark:bg-gray-700/40 px-4 py-3 text-sm text-gray-700 dark:text-gray-200">
+            Use the Clients and Projects buttons in the header to add what you need. We&rsquo;ll show everything here as soon as it&rsquo;s ready.
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!currentProject) {
     return (

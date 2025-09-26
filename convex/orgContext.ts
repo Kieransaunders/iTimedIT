@@ -50,6 +50,23 @@ export async function requireMembership(
   };
 }
 
+export async function maybeMembership(
+  ctx: QueryCtx | MutationCtx
+): Promise<MembershipContext | null> {
+  try {
+    return await requireMembership(ctx);
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      (error.message === "Not authenticated" ||
+        error.message === "No active organization membership")
+    ) {
+      return null;
+    }
+    throw error;
+  }
+}
+
 export function assertRole(
   membership: MembershipContext,
   roles: MembershipRole[]
