@@ -1,9 +1,16 @@
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Id } from "../../convex/_generated/dataModel";
 import { notifyMutationError } from "../lib/notifyMutationError";
 import { useOrganization } from "../lib/organization-context";
+import { WorkspaceHeader, WorkspaceType } from "./WorkspaceSwitcher";
+import { Button } from "./ui/button";
+import { EnhancedClientTable } from "./EnhancedClientTable";
+import { ClientMetricsCards } from "./ClientMetricsCards";
+import { ClientFilters, defaultFilters } from "./ClientFilters";
+import { ClientAnalytics } from "./ClientAnalytics";
+import { ClientExportTools } from "./ClientExportTools";
 
 // Default color palette for clients
 const DEFAULT_COLORS = [
@@ -17,18 +24,129 @@ const DEFAULT_COLORS = [
   "#ec4899", // pink
 ];
 
+type ViewMode = 'table' | 'cards';
+
+interface SortConfig {
+  key: keyof any | null;
+  direction: 'asc' | 'desc';
+}
 
 export function ClientsPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingClient, setEditingClient] = useState<any>(null);
+  const [selectedClientId, setSelectedClientId] = useState<Id<"clients"> | null>(null);
   const [name, setName] = useState("");
   const [note, setNote] = useState("");
   const [color, setColor] = useState("#8b5cf6");
+  const [currentWorkspace, setCurrentWorkspace] = useState<WorkspaceType>("team");
+  const [viewMode, setViewMode] = useState<ViewMode>('table');
+  const [filters, setFilters] = useState(defaultFilters);
+  const [sortConfig, setSortConfig] = useState<SortConfig>({ key: null, direction: 'asc' });
+  
   const { isReady } = useOrganization();
 
-  const clients = useQuery(api.clients.list, isReady ? {} : "skip");
-  const createClient = useMutation(api.clients.create);
-  const updateClient = useMutation(api.clients.update);
+  const clients = useQuery(
+    currentWorkspace === "personal" 
+      ? api.personalClients.listPersonal
+      : api.clients.list,
+    isReady 
+      ? (currentWorkspace === "personal" ? {} : { workspaceType: "team" })
+      : "skip"
+  );
+  const createClient = useMutation(
+    currentWorkspace === "personal" 
+      ? api.personalClients.createPersonal
+      : api.clients.create
+  );
+  const updateClient = useMutation(
+    currentWorkspace === "personal" 
+      ? api.personalClients.updatePersonal
+      : api.clients.update
+  );
+
+  // Filter and sort clients
+  const filteredAndSortedClients = useMemo(() => {
+    if (!clients) return [];
+
+    let filtered = clients.filter(client => {
+      // Search filter
+      if (filters.search) {
+        const searchLower = filters.search.toLowerCase();
+        const matchesName = client.name.toLowerCase().includes(searchLower);
+        const matchesNote = client.note?.toLowerCase().includes(searchLower) || false;
+        if (!matchesName && !matchesNote) return false;
+      }
+
+      // Status filter
+      if (filters.status.length > 0 && !filters.status.includes(client.status)) {
+        return false;
+      }
+
+      // Revenue range filter
+      if (client.totalAmountSpent < filters.revenueRange.min || 
+          client.totalAmountSpent > filters.revenueRange.max) {
+        return false;
+      }
+
+      // Health score filter
+      if (client.healthScore < filters.healthScore.min || 
+          client.healthScore > filters.healthScore.max) {
+        return false;
+      }
+
+      // Activity filter
+      if (filters.activityDays !== null) {
+        if (client.daysSinceLastActivity === null || 
+            client.daysSinceLastActivity > filters.activityDays) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+
+    // Sort clients
+    if (sortConfig.key) {
+      filtered.sort((a, b) => {
+        const aVal = a[sortConfig.key!];
+        const bVal = b[sortConfig.key!];
+        
+        if (aVal === null || aVal === undefined) return 1;
+        if (bVal === null || bVal === undefined) return -1;
+        
+        if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+
+    return filtered;
+  }, [clients, filters, sortConfig]);
+
+  const handleSort = (key: keyof any) => {
+    setSortConfig(current => ({
+      key,
+      direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc'
+    }));
+  };
+
+  const handleCreateProject = (clientId: string) => {
+    // TODO: Navigate to project creation with client pre-selected
+    console.log('Create project for client:', clientId);
+  };
+
+  const handleClientSelect = (clientId: string) => {
+    setSelectedClientId(clientId as Id<"clients">);
+  };
+
+  const resetFilters = () => {
+    setFilters(defaultFilters);
+  };
+
+  const handleExportData = (format: 'csv' | 'pdf', scope: 'all' | 'filtered') => {
+    // TODO: Track export analytics if needed
+    console.log(`Exported ${scope} clients as ${format}`);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,20 +201,67 @@ export function ClientsPage() {
     return <div className="animate-pulse bg-gray-200 dark:bg-gray-700 h-64 rounded-lg"></div>;
   }
 
+  // Show individual client analytics if selected
+  if (selectedClientId) {
+    return (
+      <div className="max-w-6xl mx-auto">
+        <div className="flex items-center justify-between mb-6">
+          <Button 
+            onClick={() => setSelectedClientId(null)}
+            variant="outline"
+          >
+            ← Back to Clients
+          </Button>
+        </div>
+        <ClientAnalytics clientId={selectedClientId} />
+      </div>
+    );
+  }
+
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-7xl mx-auto">
+      <WorkspaceHeader 
+        currentWorkspace={currentWorkspace}
+        onWorkspaceChange={setCurrentWorkspace}
+      />
+      
+      {/* Header with controls */}
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">Clients</h2>
+        <div className="flex items-center gap-4">
+          <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">
+            Clients
+          </h2>
+          <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-700 rounded-md p-1">
+            <Button
+              size="sm"
+              variant={viewMode === 'table' ? "default" : "ghost"}
+              onClick={() => setViewMode('table')}
+              className="h-8"
+            >
+              📊 Table
+            </Button>
+            <Button
+              size="sm"
+              variant={viewMode === 'cards' ? "default" : "ghost"}
+              onClick={() => setViewMode('cards')}
+              className="h-8"
+            >
+              🃏 Cards
+            </Button>
+          </div>
+        </div>
+
         {!showForm && (
-          <button
+          <Button
             onClick={() => setShowForm(true)}
-            className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-hover shadow-lg transition-colors"
+            className="bg-primary hover:bg-primary-hover"
           >
             Add Client
-          </button>
+          </Button>
         )}
       </div>
 
+      {/* Client Creation/Edit Form */}
       {showForm && (
         <div className="bg-primary/10 dark:bg-primary/20 backdrop-blur-sm rounded-lg shadow dark:shadow-dark-card border dark:border-primary/30 p-6 mb-6">
           <h3 className="text-lg font-semibold mb-4 text-white">
@@ -165,14 +330,12 @@ export function ClientsPage() {
               </div>
             </div>
             <div className="flex gap-2">
-              <button
-                type="submit"
-                className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-hover shadow-lg transition-colors"
-              >
+              <Button type="submit">
                 {editingClient ? "Update" : "Create"} Client
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="outline"
                 onClick={() => {
                   setShowForm(false);
                   setEditingClient(null);
@@ -180,86 +343,52 @@ export function ClientsPage() {
                   setNote("");
                   setColor("#8b5cf6");
                 }}
-                className="px-4 py-2 bg-gray-600 dark:bg-gray-700 text-white rounded-md hover:bg-gray-700 dark:hover:bg-gray-600 transition-colors"
               >
                 Cancel
-              </button>
+              </Button>
             </div>
           </form>
         </div>
       )}
 
-      <div className="bg-white dark:bg-gray-800/50 dark:backdrop-blur-sm rounded-lg shadow dark:shadow-dark-card border-0 dark:border dark:border-gray-700/50">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 dark:bg-gray-700/50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Name
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Total Amount
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Notes
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white dark:bg-transparent divide-y divide-gray-200 dark:divide-gray-600">
-              {clients.map((client) => (
-                <tr key={client._id}>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center gap-3">
-                      <span
-                        className="h-4 w-4 rounded-full border border-gray-300 dark:border-gray-600"
-                        style={{ backgroundColor: client.color || "#8b5cf6" }}
-                      />
-                      <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                        {client.name}
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-semibold text-green-600 dark:text-green-400">
-                      ${(client.totalAmountSpent || 0).toFixed(2)}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm text-gray-900 dark:text-gray-300">
-                      {client.note || "—"}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleEdit(client)}
-                        className="text-purple-timer hover:text-purple-timer-hover dark:text-purple-400 dark:hover:text-purple-300 transition-colors"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleArchive(client._id)}
-                        className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors"
-                      >
-                        Archive
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      {/* Filters */}
+      <ClientFilters
+        filters={filters}
+        onFiltersChange={setFilters}
+        onReset={resetFilters}
+        totalClients={clients.length}
+        filteredCount={filteredAndSortedClients.length}
+      />
 
-        {clients.length === 0 && (
-          <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-            No clients yet. Add your first client to get started!
-          </div>
-        )}
-      </div>
+      {/* Client Display */}
+      {viewMode === 'table' ? (
+        <EnhancedClientTable
+          clients={filteredAndSortedClients}
+          sortConfig={sortConfig}
+          onSort={handleSort}
+          onEditClient={handleEdit}
+          onArchiveClient={handleArchive}
+          onCreateProject={handleCreateProject}
+        />
+      ) : (
+        <ClientMetricsCards
+          clients={filteredAndSortedClients}
+          onClientSelect={handleClientSelect}
+          onEditClient={handleEdit}
+          onArchiveClient={handleArchive}
+        />
+      )}
+
+      {/* Export Tools */}
+      {filteredAndSortedClients.length > 0 && (
+        <div className="mt-8">
+          <ClientExportTools
+            clients={clients || []}
+            filteredClients={filteredAndSortedClients}
+            onExportData={handleExportData}
+          />
+        </div>
+      )}
     </div>
   );
 }

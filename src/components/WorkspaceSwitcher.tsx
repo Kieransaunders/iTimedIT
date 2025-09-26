@@ -57,7 +57,7 @@ export function WorkspaceHeader({
             "w-2 h-2 rounded-full",
             currentWorkspace === "personal" ? "bg-blue-500" : "bg-purple-500"
           )} />
-          {currentWorkspace === "personal" ? "Personal Workspace" : "Team Workspace"}
+          {currentWorkspace === "personal" ? "Personal" : "Team"}
         </div>
       </div>
       

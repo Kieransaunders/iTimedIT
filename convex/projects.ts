@@ -61,20 +61,19 @@ export const listAll = query({
     let projectsQuery = ctx.db
       .query("projects")
       .withIndex("byOrganization", (q) => q.eq("organizationId", organizationId))
-      .filter((q) => q.and(
-        q.eq(q.field("archived"), false),
-        q.or(
-          q.eq(q.field("workspaceType"), undefined),
-          q.eq(q.field("workspaceType"), "team")
-        )
-      ));
+      .filter((q) => q.eq(q.field("archived"), false));
 
-    // Apply workspace filter if specified
-    if (args.workspaceType === "team") {
+    // Apply workspace filter - default to team projects for backward compatibility
+    if (args.workspaceType === "team" || !args.workspaceType) {
       projectsQuery = projectsQuery.filter((q) => q.or(
         q.eq(q.field("workspaceType"), undefined),
         q.eq(q.field("workspaceType"), "team")
       ));
+    } else if (args.workspaceType === "personal") {
+      // For personal projects, we shouldn't see them in team context
+      projectsQuery = projectsQuery.filter((q) => 
+        q.eq(q.field("workspaceType"), "personal")
+      );
     }
 
     // Apply client filter if specified
@@ -173,6 +172,7 @@ export const create = mutation({
     budgetType: v.union(v.literal("hours"), v.literal("amount")),
     budgetHours: v.optional(v.number()),
     budgetAmount: v.optional(v.number()),
+    workspaceType: v.optional(v.union(v.literal("personal"), v.literal("team"))),
   },
   handler: async (ctx, args) => {
     const { organizationId, userId } = await ensureMembershipWithRole(ctx, [
@@ -185,6 +185,12 @@ export const create = mutation({
       throw new Error("Client not found");
     }
 
+    // Ensure client and project have matching workspace types
+    const workspaceType = args.workspaceType || "team";
+    if (client.workspaceType && client.workspaceType !== workspaceType) {
+      throw new Error("Project workspace type must match client workspace type");
+    }
+
     return await ctx.db.insert("projects", {
       organizationId,
       createdBy: userId,
@@ -195,7 +201,7 @@ export const create = mutation({
       budgetHours: args.budgetHours,
       budgetAmount: args.budgetAmount,
       archived: false,
-      workspaceType: "team",
+      workspaceType,
     });
   },
 });
@@ -209,6 +215,7 @@ export const update = mutation({
     budgetHours: v.optional(v.number()),
     budgetAmount: v.optional(v.number()),
     archived: v.optional(v.boolean()),
+    workspaceType: v.optional(v.union(v.literal("personal"), v.literal("team"))),
   },
   handler: async (ctx, args) => {
     const { organizationId } = await requireMembershipWithRole(ctx, ["owner", "admin"]);
@@ -218,6 +225,14 @@ export const update = mutation({
       throw new Error("Project not found");
     }
 
+    // If changing workspace type, ensure it matches the client
+    if (args.workspaceType !== undefined && project.clientId) {
+      const client = await ctx.db.get(project.clientId);
+      if (client && client.workspaceType && client.workspaceType !== args.workspaceType) {
+        throw new Error("Project workspace type must match client workspace type");
+      }
+    }
+
     await ctx.db.patch(args.id, {
       ...(args.name !== undefined && { name: args.name }),
       ...(args.hourlyRate !== undefined && { hourlyRate: args.hourlyRate }),
@@ -225,6 +240,7 @@ export const update = mutation({
       ...(args.budgetHours !== undefined && { budgetHours: args.budgetHours }),
       ...(args.budgetAmount !== undefined && { budgetAmount: args.budgetAmount }),
       ...(args.archived !== undefined && { archived: args.archived }),
+      ...(args.workspaceType !== undefined && { workspaceType: args.workspaceType }),
     });
   },
 });

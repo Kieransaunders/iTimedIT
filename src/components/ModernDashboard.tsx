@@ -24,6 +24,7 @@ import { ProjectSwitchModal } from "./ProjectSwitchModal";
 import { ProjectKpis } from "./ProjectKpis";
 import { ProjectSummaryGrid } from "./ProjectSummaryGrid";
 import { RecentEntriesTable } from "./RecentEntriesTable";
+import { WorkspaceSwitcher, WorkspaceType } from "./WorkspaceSwitcher";
 import { ensurePushSubscription, isPushSupported, getNotificationPermission } from "../lib/push";
 import { toast } from "sonner";
 import { Input } from "../components/ui/input";
@@ -102,6 +103,7 @@ export function ModernDashboard({
   onPushSwitchHandled,
 }: ModernDashboardProps) {
   const [currentProjectId, setCurrentProjectId] = useState<Id<"projects"> | null>(null);
+  const [currentWorkspace, setCurrentWorkspace] = useState<WorkspaceType>("team");
   const [now, setNow] = useState(Date.now());
   const [showInterruptModal, setShowInterruptModal] = useState(false);
   const [showProjectSwitchModal, setShowProjectSwitchModal] = useState(false);
@@ -141,7 +143,13 @@ export function ModernDashboard({
   const categoryDropdownRef = useRef<HTMLDivElement>(null);
   const projectScrollRef = useRef<HTMLDivElement>(null);
 
-  const projects = useQuery(api.projects.listAll);
+  // Use appropriate API based on workspace type
+  const projects = useQuery(
+    currentWorkspace === "personal" 
+      ? api.personalProjects.listPersonal
+      : api.projects.listAll,
+    currentWorkspace === "personal" ? {} : { workspaceType: "team" }
+  );
   const runningTimer = useQuery(api.timer.getRunningTimer);
   const userSettings = useQuery(api.users.getUserSettings);
   const startTimer = useMutation(api.timer.start);
@@ -152,11 +160,29 @@ export function ModernDashboard({
   const initializeCategories = useMutation(api.categories.initializeDefaultCategories);
   const createCategory = useMutation(api.categories.createCategory);
   const deleteCategory = useMutation(api.categories.deleteCategory);
-  const projectStats = useQuery(api.projects.getStats, runningTimer?.projectId ? { projectId: runningTimer.projectId } : "skip");
+  const projectStats = useQuery(
+    currentWorkspace === "personal" 
+      ? api.personalProjects.getStatsPersonal
+      : api.projects.getStats,
+    runningTimer?.projectId ? { projectId: runningTimer.projectId } : "skip"
+  );
   const savePushSubscription = useMutation(api.pushNotifications.savePushSubscription);
-  const createProject = useMutation(api.projects.create);
-  const createClient = useMutation(api.clients.create);
-  const clients = useQuery(api.clients.list);
+  const createProject = useMutation(
+    currentWorkspace === "personal" 
+      ? api.personalProjects.createPersonal
+      : api.projects.create
+  );
+  const createClient = useMutation(
+    currentWorkspace === "personal" 
+      ? api.personalClients.createPersonal
+      : api.clients.create
+  );
+  const clients = useQuery(
+    currentWorkspace === "personal" 
+      ? api.personalClients.listPersonal
+      : api.clients.list,
+    currentWorkspace === "personal" ? {} : { workspaceType: "team" }
+  );
   const createManualEntry = useMutation(api.timer.createManualEntry);
 
   // Enhance projects with colors
@@ -400,7 +426,8 @@ export function ModernDashboard({
     try {
       const clientId = await createClient({
         name: newClientForm.name.trim(),
-        color: newClientForm.color || undefined
+        color: newClientForm.color || undefined,
+        ...(currentWorkspace === "team" && { workspaceType: "team" })
       });
       
       setNewProjectForm(prev => ({ ...prev, clientId }));
@@ -413,7 +440,7 @@ export function ModernDashboard({
     } finally {
       setIsCreatingClient(false);
     }
-  }, [newClientForm, createClient]);
+  }, [newClientForm, createClient, currentWorkspace]);
 
   const handleProjectCreated = useCallback(async () => {
     if (!newProjectForm.name.trim()) {
@@ -433,7 +460,8 @@ export function ModernDashboard({
         hourlyRate: newProjectForm.hourlyRate,
         budgetType: newProjectForm.budgetType,
         budgetHours: newProjectForm.budgetType === "hours" ? newProjectForm.budgetHours : undefined,
-        budgetAmount: newProjectForm.budgetType === "amount" ? newProjectForm.budgetAmount : undefined
+        budgetAmount: newProjectForm.budgetType === "amount" ? newProjectForm.budgetAmount : undefined,
+        ...(currentWorkspace === "team" && { workspaceType: "team" })
       });
       
       setCurrentProjectId(projectId);
@@ -454,7 +482,7 @@ export function ModernDashboard({
     } finally {
       setIsCreatingProject(false);
     }
-  }, [newProjectForm, createProject]);
+  }, [newProjectForm, createProject, currentWorkspace]);
 
   const handleCancelCreate = useCallback(() => {
     setShowCreateProject(false);
@@ -667,6 +695,19 @@ export function ModernDashboard({
         }
       `}</style>
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex min-h-full flex-col items-center justify-center gap-6 sm:gap-8 py-6 sm:py-10">
+        {/* Workspace Switcher */}
+        <div className="w-full flex justify-center mb-4">
+          <WorkspaceSwitcher 
+            currentWorkspace={currentWorkspace}
+            onWorkspaceChange={(workspace) => {
+              setCurrentWorkspace(workspace);
+              // Reset current project when switching workspaces
+              setCurrentProjectId(null);
+            }}
+            className="max-w-xs"
+          />
+        </div>
+
         {/* Project Switcher */}
         <div className="w-full flex flex-col items-center gap-3">
           <div className="w-full max-w-sm sm:max-w-md lg:max-w-lg relative" ref={dropdownRef}>

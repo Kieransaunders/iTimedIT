@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Id } from "../../convex/_generated/dataModel";
 import { notifyMutationError } from "../lib/notifyMutationError";
 import { useOrganization } from "../lib/organization-context";
+import { WorkspaceHeader, WorkspaceType } from "./WorkspaceSwitcher";
 
 interface ProjectsPageProps {
   onProjectSelect?: (projectId: string) => void;
@@ -18,12 +19,35 @@ export function ProjectsPage({ onProjectSelect }: ProjectsPageProps) {
   const [budgetType, setBudgetType] = useState<"hours" | "amount">("hours");
   const [budgetHours, setBudgetHours] = useState("");
   const [budgetAmount, setBudgetAmount] = useState("");
+  const [currentWorkspace, setCurrentWorkspace] = useState<WorkspaceType>("team");
   const { isReady } = useOrganization();
 
-  const clients = useQuery(api.clients.list, isReady ? {} : "skip");
-  const projects = useQuery(api.projects.listAll, isReady ? {} : "skip");
-  const createProject = useMutation(api.projects.create);
-  const updateProject = useMutation(api.projects.update);
+  const clients = useQuery(
+    currentWorkspace === "personal" 
+      ? api.personalClients.listPersonal
+      : api.clients.list,
+    isReady 
+      ? (currentWorkspace === "personal" ? {} : { workspaceType: "team" })
+      : "skip"
+  );
+  const projects = useQuery(
+    currentWorkspace === "personal" 
+      ? api.personalProjects.listPersonal
+      : api.projects.listAll,
+    isReady 
+      ? (currentWorkspace === "personal" ? {} : { workspaceType: "team" })
+      : "skip"
+  );
+  const createProject = useMutation(
+    currentWorkspace === "personal" 
+      ? api.personalProjects.createPersonal
+      : api.projects.create
+  );
+  const updateProject = useMutation(
+    currentWorkspace === "personal" 
+      ? api.personalProjects.updatePersonal
+      : api.projects.update
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,10 +72,18 @@ export function ProjectsPage({ onProjectSelect }: ProjectsPageProps) {
         console.log("Project updated successfully");
       } else {
         console.log("Creating new project");
-        await createProject({
-          clientId: clientId as Id<"clients">,
+        const createData: any = {
           ...projectData,
-        });
+        };
+        
+        // For team projects, clientId is required; for personal projects, it's optional
+        if (currentWorkspace === "team") {
+          createData.clientId = clientId as Id<"clients">;
+        } else if (clientId) {
+          createData.clientId = clientId as Id<"clients">;
+        }
+        
+        await createProject(createData);
         console.log("Project created successfully");
       }
       
@@ -105,8 +137,11 @@ export function ProjectsPage({ onProjectSelect }: ProjectsPageProps) {
 
   return (
     <div className="max-w-6xl mx-auto">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">Projects</h2>
+      <WorkspaceHeader 
+        currentWorkspace={currentWorkspace}
+        onWorkspaceChange={setCurrentWorkspace}
+      />
+      <div className="flex justify-end mb-6">
         {!showForm && (
           <button
             onClick={() => setShowForm(true)}
@@ -126,13 +161,13 @@ export function ProjectsPage({ onProjectSelect }: ProjectsPageProps) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label htmlFor="clientId" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Client
+                  Client {currentWorkspace === "team" && <span className="text-red-500">*</span>}
                 </label>
                 <select
                   id="clientId"
                   value={clientId}
                   onChange={(e) => setClientId(e.target.value as Id<"clients">)}
-                  required
+                  required={currentWorkspace === "team"}
                   disabled={!!editingProject}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-purple-timer bg-white dark:bg-gray-700/50 text-gray-900 dark:text-gray-100"
                 >
