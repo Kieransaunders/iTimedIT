@@ -11,6 +11,7 @@ import { ClientMetricsCards } from "./ClientMetricsCards";
 import { ClientFilters, defaultFilters } from "./ClientFilters";
 import { ClientAnalytics } from "./ClientAnalytics";
 import { ClientExportTools } from "./ClientExportTools";
+import { ClientReportingTable } from "./ClientReportingTable";
 
 // Default color palette for clients
 const DEFAULT_COLORS = [
@@ -379,9 +380,10 @@ export function ClientsPage() {
         />
       )}
 
-      {/* Export Tools */}
+      {/* Reporting Overview */}
       {filteredAndSortedClients.length > 0 && (
-        <div className="mt-8">
+        <div className="mt-8 space-y-8">
+          <ClientReportingTable clients={filteredAndSortedClients} />
           <ClientExportTools
             clients={clients || []}
             filteredClients={filteredAndSortedClients}
