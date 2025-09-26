@@ -50,15 +50,24 @@ export const get = query({
 });
 
 export const listAll = query({
-  args: {},
-  handler: async (ctx) => {
+  args: {
+    clientId: v.optional(v.id("clients")),
+    searchTerm: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
     const { organizationId } = await requireMembership(ctx);
 
-    const projects = await ctx.db
+    let projectsQuery = ctx.db
       .query("projects")
       .withIndex("byOrganization", (q) => q.eq("organizationId", organizationId))
-      .filter((q) => q.eq(q.field("archived"), false))
-      .collect();
+      .filter((q) => q.eq(q.field("archived"), false));
+
+    // Apply client filter if specified
+    if (args.clientId) {
+      projectsQuery = projectsQuery.filter((q) => q.eq(q.field("clientId"), args.clientId));
+    }
+
+    const projects = await projectsQuery.collect();
 
     // Get clients and calculate budget remaining for each project
     const projectsWithClientsAndStats = await Promise.all(
@@ -121,8 +130,19 @@ export const listAll = query({
       })
     );
 
+    // Apply search filter if specified
+    let filteredProjects = projectsWithClientsAndStats;
+    if (args.searchTerm && args.searchTerm.trim()) {
+      const searchLower = args.searchTerm.toLowerCase().trim();
+      filteredProjects = projectsWithClientsAndStats.filter((project) => {
+        const projectName = project.name.toLowerCase();
+        const clientName = project.client?.name?.toLowerCase() || "";
+        return projectName.includes(searchLower) || clientName.includes(searchLower);
+      });
+    }
+
     // Sort projects by most recent activity (descending)
-    const sortedProjects = projectsWithClientsAndStats.sort((a, b) => 
+    const sortedProjects = filteredProjects.sort((a, b) => 
       b.lastActivityAt - a.lastActivityAt
     );
 

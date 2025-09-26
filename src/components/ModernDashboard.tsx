@@ -28,6 +28,7 @@ import { ensurePushSubscription, isPushSupported, getNotificationPermission } fr
 import { toast } from "sonner";
 import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
 
 interface ModernDashboardProps {
   pushSwitchRequest?: any | null;
@@ -127,6 +128,15 @@ export function ModernDashboard({
   });
   const [isCreatingProject, setIsCreatingProject] = useState(false);
   const [isCreatingClient, setIsCreatingClient] = useState(false);
+  const [showManualEntryDialog, setShowManualEntryDialog] = useState(false);
+  const [manualEntryForm, setManualEntryForm] = useState({
+    date: new Date().toISOString().split('T')[0],
+    startTime: '09:00',
+    endTime: '10:00',
+    note: '',
+    category: ''
+  });
+  const [isSubmittingManualEntry, setIsSubmittingManualEntry] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const categoryDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -146,6 +156,7 @@ export function ModernDashboard({
   const createProject = useMutation(api.projects.create);
   const createClient = useMutation(api.clients.create);
   const clients = useQuery(api.clients.list);
+  const createManualEntry = useMutation(api.timer.createManualEntry);
 
   // Enhance projects with colors
   const projectsWithColors = useMemo(() => {
@@ -458,6 +469,46 @@ export function ModernDashboard({
     setNewClientForm({ name: "", color: "" });
   }, []);
 
+  const handleManualEntrySubmit = useCallback(async () => {
+    if (!currentProject) return;
+    
+    const startDateTime = new Date(`${manualEntryForm.date}T${manualEntryForm.startTime}:00`);
+    const endDateTime = new Date(`${manualEntryForm.date}T${manualEntryForm.endTime}:00`);
+    
+    if (endDateTime <= startDateTime) {
+      toast.error("End time must be after start time");
+      return;
+    }
+    
+    setIsSubmittingManualEntry(true);
+    try {
+      await createManualEntry({
+        projectId: currentProject._id,
+        startedAt: startDateTime.getTime(),
+        stoppedAt: endDateTime.getTime(),
+        note: manualEntryForm.note || undefined,
+        category: manualEntryForm.category || undefined
+      });
+      
+      setShowManualEntryDialog(false);
+      setManualEntryForm({
+        date: new Date().toISOString().split('T')[0],
+        startTime: '09:00',
+        endTime: '10:00',
+        note: '',
+        category: ''
+      });
+      
+      const duration = Math.round((endDateTime.getTime() - startDateTime.getTime()) / (1000 * 60));
+      toast.success(`Added ${duration} minute${duration !== 1 ? 's' : ''} to ${currentProject.name}`);
+    } catch (error) {
+      console.error('Failed to create manual entry:', error);
+      toast.error('Failed to create time entry');
+    } finally {
+      setIsSubmittingManualEntry(false);
+    }
+  }, [currentProject, manualEntryForm, createManualEntry]);
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -551,8 +602,8 @@ export function ModernDashboard({
                   style={{ backgroundColor: currentProject.color }}
                 />
                 <div className="flex-1">
-                  <div className="text-gray-900 dark:text-white font-medium">{currentProject.client.name}</div>
-                  <div className="text-gray-600 dark:text-gray-300 text-sm">– {currentProject.name}</div>
+                  <div className="text-gray-900 dark:text-white font-medium">{currentProject.name}</div>
+                  <div className="text-gray-600 dark:text-gray-300 text-sm">– {currentProject.client.name}</div>
                 </div>
                 <svg 
                   className={`w-4 h-4 text-gray-500 dark:text-gray-400 transition-transform ${showDropdown ? 'rotate-180' : ''}`} 
@@ -611,8 +662,8 @@ export function ModernDashboard({
                               style={{ backgroundColor: project.color }}
                             />
                             <div className="flex-1">
-                              <div className="text-gray-900 dark:text-white font-medium">{project.client?.name || 'No Client'}</div>
-                              <div className="text-gray-600 dark:text-gray-300 text-sm">– {project.name}</div>
+                              <div className="text-gray-900 dark:text-white font-medium">{project.name}</div>
+                              <div className="text-gray-600 dark:text-gray-300 text-sm">– {project.client?.name || 'No Client'}</div>
                             </div>
                             <div className="text-gray-500 dark:text-gray-400 text-xs">
                               {formatCurrency(project.hourlyRate)}/hr
@@ -1032,9 +1083,9 @@ export function ModernDashboard({
                     className="h-3 w-3 rounded-full"
                     style={{ backgroundColor: project.color }}
                   />
-                  <span className="font-medium text-gray-900 dark:text-white text-sm truncate">{project.client.name}</span>
+                  <span className="font-medium text-gray-900 dark:text-white text-sm truncate">{project.name}</span>
                 </div>
-                <div className="text-gray-700 dark:text-gray-300 text-xs truncate font-medium">{project.name}</div>
+                <div className="text-gray-700 dark:text-gray-300 text-xs truncate font-medium">{project.client.name}</div>
                 <div className="text-gray-600 dark:text-gray-400 text-xs mt-1">
                   {formatCurrency(project.hourlyRate)}/hr
                 </div>
@@ -1046,6 +1097,99 @@ export function ModernDashboard({
         {/* Recent Entries */}
         <section className="w-full max-w-6xl px-4 sm:px-0">
           <div className="bg-white/60 dark:bg-gray-800/30 backdrop-blur-sm border border-gray-300/50 dark:border-gray-700/50 rounded-xl p-4 sm:p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Recent Entries</h3>
+              {currentProject && (
+                <Dialog open={showManualEntryDialog} onOpenChange={setShowManualEntryDialog}>
+                  <DialogTrigger asChild>
+                    <Button className="bg-[#F85E00] hover:bg-[#d14e00] text-white">
+                      + Add Time Entry
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                      <DialogTitle>Add Manual Time Entry</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Date</label>
+                          <Input
+                            type="date"
+                            value={manualEntryForm.date}
+                            onChange={(e) => setManualEntryForm(prev => ({ ...prev, date: e.target.value }))}
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Start Time</label>
+                          <Input
+                            type="time"
+                            value={manualEntryForm.startTime}
+                            onChange={(e) => setManualEntryForm(prev => ({ ...prev, startTime: e.target.value }))}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">End Time</label>
+                          <Input
+                            type="time"
+                            value={manualEntryForm.endTime}
+                            onChange={(e) => setManualEntryForm(prev => ({ ...prev, endTime: e.target.value }))}
+                          />
+                        </div>
+                      </div>
+                      
+                      {categories && categories.length > 0 && (
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Category (optional)</label>
+                          <select
+                            value={manualEntryForm.category}
+                            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setManualEntryForm(prev => ({ ...prev, category: e.target.value }))}
+                            className="w-full h-10 px-3 py-2 border border-input bg-background text-foreground rounded-md shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                          >
+                            <option value="">Select category...</option>
+                            {categories.map(category => (
+                              <option key={category._id} value={category.name}>
+                                {category.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                      
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Note (optional)</label>
+                        <textarea
+                          placeholder="What did you work on?"
+                          value={manualEntryForm.note}
+                          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setManualEntryForm(prev => ({ ...prev, note: e.target.value }))}
+                          className="w-full min-h-[80px] px-3 py-2 border border-input bg-background text-foreground rounded-md shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
+                        />
+                      </div>
+                      
+                      <div className="flex gap-2 pt-4">
+                        <Button 
+                          onClick={handleManualEntrySubmit}
+                          disabled={isSubmittingManualEntry}
+                          className="flex-1"
+                        >
+                          {isSubmittingManualEntry ? "Adding..." : "Add Entry"}
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          onClick={() => setShowManualEntryDialog(false)}
+                          className="flex-1"
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              )}
+            </div>
             <RecentEntriesTable projectId={currentProjectId} />
           </div>
         </section>
@@ -1062,10 +1206,10 @@ export function ModernDashboard({
       {/* Project Switch Modal */}
       {showProjectSwitchModal && pendingProjectId && (
         <ProjectSwitchModal
-          currentProjectName={`${currentProject.client.name} – ${currentProject.name}`}
+          currentProjectName={`${currentProject.name} – ${currentProject.client.name}`}
           newProjectName={(() => {
             const pendingProject = projectsWithColors.find(p => p._id === pendingProjectId);
-            return pendingProject ? `${pendingProject.client.name} – ${pendingProject.name}` : '';
+            return pendingProject ? `${pendingProject.name} – ${pendingProject.client.name}` : '';
           })()}
           onStopAndSwitch={handleStopAndSwitch}
           onTransferTimer={handleTransferTimer}
