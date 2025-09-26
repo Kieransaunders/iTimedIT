@@ -7,9 +7,13 @@ export function buildNotificationUrl(alertType: string, data: any): string {
     params.set("timer", data.timerId);
   }
   
-  // Use absolute URL for better compatibility with macOS system notifications
-  const baseUrl = process.env.SITE_URL || 'http://localhost:5173';
-  return `${baseUrl}/modern?${params.toString()}`;
+  // Prefer absolute URL when SITE_URL configured; otherwise fall back to relative path
+  const baseUrl = process.env.SITE_URL?.replace(/\/$/, "");
+  if (baseUrl) {
+    return `${baseUrl}/modern?${params.toString()}`;
+  }
+
+  return `/modern?${params.toString()}`;
 }
 
 export function hasFallbackChannelEnabled(prefs: any): boolean {
