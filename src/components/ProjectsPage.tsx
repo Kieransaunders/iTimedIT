@@ -110,7 +110,7 @@ export function ProjectsPage({ onProjectSelect }: ProjectsPageProps) {
         {!showForm && (
           <button
             onClick={() => setShowForm(true)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-hover shadow-lg transition-colors"
           >
             Add Project
           </button>
@@ -227,7 +227,7 @@ export function ProjectsPage({ onProjectSelect }: ProjectsPageProps) {
             <div className="flex gap-2">
               <button
                 type="submit"
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-hover shadow-lg transition-colors"
               >
                 {editingProject ? "Update" : "Create"} Project
               </button>

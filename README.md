@@ -3,9 +3,9 @@
 This is a project built with [Chef](https://chef.convex.dev) using [Convex](https://convex.dev) as its backend.
  You can find docs about Chef with useful information like how to deploy to production [here](https://docs.convex.dev/chef).
   
-This project is connected to the Convex deployment named [`small-barracuda-254`](https://dashboard.convex.dev/d/small-barracuda-254).
+This project is connected to the Convex deployment named [`basic-greyhound-928`](https://dashboard.convex.dev/d/basic-greyhound-928).
  
-You can test the latest build at https://freelancertimer.netlify.app/ (backed by the production Convex deployment URL `https://small-barracuda-254.convex.cloud`).
+You can test the latest build at https://itrackit.netlify.app/ (backed by the production Convex deployment URL `https://basic-greyhound-928.convex.cloud`).
 
 ## Project structure
   

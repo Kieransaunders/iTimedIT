@@ -90,7 +90,7 @@ export function ClientsPage() {
         {!showForm && (
           <button
             onClick={() => setShowForm(true)}
-            className="px-4 py-2 bg-purple-timer text-white rounded-md hover:bg-purple-timer-hover shadow-lg transition-colors"
+            className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-hover shadow-lg transition-colors"
           >
             Add Client
           </button>
@@ -98,7 +98,7 @@ export function ClientsPage() {
       </div>
 
       {showForm && (
-        <div className="bg-purple-900/30 dark:bg-purple-900/50 backdrop-blur-sm rounded-lg shadow dark:shadow-dark-card border dark:border-purple-700/50 p-6 mb-6">
+        <div className="bg-primary/10 dark:bg-primary/20 backdrop-blur-sm rounded-lg shadow dark:shadow-dark-card border dark:border-primary/30 p-6 mb-6">
           <h3 className="text-lg font-semibold mb-4 text-white">
             {editingClient ? "Edit Client" : "Add New Client"}
           </h3>
@@ -167,7 +167,7 @@ export function ClientsPage() {
             <div className="flex gap-2">
               <button
                 type="submit"
-                className="px-4 py-2 bg-purple-timer text-white rounded-md hover:bg-purple-timer-hover shadow-lg transition-colors"
+                className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-hover shadow-lg transition-colors"
               >
                 {editingClient ? "Update" : "Create"} Client
               </button>

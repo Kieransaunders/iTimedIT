@@ -502,6 +502,48 @@ export const processPomodoroTransition = internalMutation({
   },
 });
 
+export const createManualEntry = mutation({
+  args: {
+    projectId: v.id("projects"),
+    startedAt: v.number(),
+    stoppedAt: v.number(),
+    note: v.optional(v.string()),
+    category: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const membership = await ensureMembership(ctx);
+    const { organizationId, userId } = membership;
+
+    const project = await ctx.db.get(args.projectId);
+    if (!project || project.organizationId !== organizationId) {
+      throw new Error("Project not found");
+    }
+
+    // Validate time range
+    if (args.stoppedAt <= args.startedAt) {
+      throw new Error("End time must be after start time");
+    }
+
+    const seconds = Math.floor((args.stoppedAt - args.startedAt) / 1000);
+
+    // Create time entry
+    const entryId = await ctx.db.insert("timeEntries", {
+      organizationId,
+      userId,
+      projectId: args.projectId,
+      startedAt: args.startedAt,
+      stoppedAt: args.stoppedAt,
+      seconds,
+      source: "manual",
+      note: args.note,
+      category: args.category,
+      isOverrun: false,
+    });
+
+    return { success: true, entryId, seconds };
+  },
+});
+
 const BUDGET_WARNING_RESEND_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
 const BUDGET_OVERRUN_RESEND_INTERVAL_MS = 60 * 60 * 1000; // 60 minutes
 

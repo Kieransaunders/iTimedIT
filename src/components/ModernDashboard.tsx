@@ -517,13 +517,13 @@ export function ModernDashboard({
   }
 
   return (
-    <div className="min-h-[calc(100vh-8rem)] bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 dark:from-gray-900 dark:via-purple-900 dark:to-violet-900">
-      <div className="container mx-auto flex min-h-full flex-col items-center justify-center gap-6 py-10">
+    <div className="min-h-[calc(100vh-8rem)] bg-gray-50 dark:bg-gray-900">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex min-h-full flex-col items-center justify-center gap-6 sm:gap-8 py-6 sm:py-10">
         {/* Project Switcher */}
         <div className="w-full flex flex-col items-center gap-3">
-          <div className="w-full max-w-md relative" ref={dropdownRef}>
+          <div className="w-full max-w-sm sm:max-w-md lg:max-w-lg relative" ref={dropdownRef}>
             <div 
-              className="bg-white/70 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-300/50 dark:border-gray-700/50 rounded-xl p-4 shadow-lg cursor-pointer"
+              className="bg-white/70 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-300/50 dark:border-gray-700/50 rounded-xl p-3 sm:p-4 shadow-lg cursor-pointer"
               onClick={() => setShowDropdown(!showDropdown)}
             >
               <div className="flex items-center gap-3">
@@ -548,7 +548,7 @@ export function ModernDashboard({
             
             {/* Dropdown */}
             {showDropdown && (
-              <div className="absolute top-full left-0 right-0 mt-2 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border border-gray-300/50 dark:border-gray-700/50 rounded-xl shadow-lg z-50 max-h-[80vh] overflow-y-auto">
+              <div className="absolute top-full left-0 right-0 mt-2 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border border-gray-300/50 dark:border-gray-700/50 rounded-xl shadow-lg z-50 max-h-[70vh] sm:max-h-[80vh] overflow-y-auto">
                 {!showCreateProject && !showCreateClient && (
                   <>
                     {/* Create New Project Button - Top */}
@@ -811,9 +811,9 @@ export function ModernDashboard({
         </div>
 
         {/* Timer Display */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-6 sm:mb-8">
           <div 
-            className={`text-9xl font-mono font-bold mb-4 tracking-tight ${
+            className={`text-6xl sm:text-7xl md:text-8xl lg:text-9xl font-mono font-bold mb-4 tracking-tight ${
               runningTimer && projectStats?.isNearBudgetLimit 
                 ? "animate-pulse" 
                 : ""
@@ -856,14 +856,14 @@ export function ModernDashboard({
 
         {/* Category Selection */}
         {!timerState.running && (
-          <div className="mb-8 w-full max-w-md">
+          <div className="mb-6 sm:mb-8 w-full max-w-sm sm:max-w-md lg:max-w-lg">
             <div className="flex items-center justify-between mb-2">
-              <label htmlFor="category" className="block text-sm font-medium text-gray-300">
+              <label htmlFor="category" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Category
               </label>
               <button
                 onClick={() => setShowCategoryManager(!showCategoryManager)}
-                className="text-xs text-purple-400 hover:text-purple-300 underline"
+                className="text-xs text-[#F85E00] hover:text-[#d14e00] underline"
               >
                 {showCategoryManager ? 'Hide' : 'Manage'}
               </button>
@@ -872,7 +872,7 @@ export function ModernDashboard({
               id="category"
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="w-full px-4 py-2 bg-gray-800/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="w-full px-4 py-2 bg-white/70 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-300/50 dark:border-gray-700/50 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#F85E00] focus:border-transparent shadow-lg"
             >
               <option value="">Select a category...</option>
               {categories?.map((category) => (
@@ -894,13 +894,13 @@ export function ModernDashboard({
                     value={newCategoryName}
                     onChange={(e) => setNewCategoryName(e.target.value)}
                     placeholder="New category name..."
-                    className="flex-1 px-3 py-2 bg-gray-700/50 border border-gray-600 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="flex-1 px-3 py-2 bg-white/70 dark:bg-gray-700/50 border border-gray-300/50 dark:border-gray-600 rounded text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#F85E00] backdrop-blur-sm"
                     onKeyPress={(e) => e.key === 'Enter' && handleAddCategory()}
                   />
                   <button
                     onClick={handleAddCategory}
                     disabled={!newCategoryName.trim()}
-                    className="px-3 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-3 py-2 bg-[#F85E00] text-white text-sm rounded hover:bg-[#d14e00] disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Add
                   </button>
@@ -930,9 +930,9 @@ export function ModernDashboard({
         )}
 
         {/* Start/Stop Button */}
-        <div className="mb-12">
+        <div className="mb-8 sm:mb-12">
           <button
-            className="px-12 py-4 text-lg font-semibold text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
+            className="px-8 sm:px-12 py-3 sm:py-4 text-base sm:text-lg font-semibold text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
             style={{
               backgroundColor: timerState.running ? "#ef4444" : currentProject.color,
             }}
@@ -945,15 +945,15 @@ export function ModernDashboard({
 
         {/* Project Summary */}
         {currentProjectId && (
-          <section className="w-full max-w-5xl">
+          <section className="w-full max-w-6xl px-4 sm:px-0">
             <ProjectSummaryGrid projectId={currentProjectId} />
           </section>
         )}
 
         {/* Recent Projects */}
-        <section className="w-full max-w-5xl">
+        <section className="w-full max-w-6xl px-4 sm:px-0">
           <h2 className="sr-only">Recent projects</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             {projectsWithColors.slice(0, 4).map((project) => (
               <div
                 key={project._id}
@@ -980,8 +980,8 @@ export function ModernDashboard({
         </section>
 
         {/* Recent Entries */}
-        <section className="w-full max-w-5xl">
-          <div className="bg-white/60 dark:bg-gray-800/30 backdrop-blur-sm border border-gray-300/50 dark:border-gray-700/50 rounded-xl p-6">
+        <section className="w-full max-w-6xl px-4 sm:px-0">
+          <div className="bg-white/60 dark:bg-gray-800/30 backdrop-blur-sm border border-gray-300/50 dark:border-gray-700/50 rounded-xl p-4 sm:p-6">
             <RecentEntriesTable projectId={currentProjectId} />
           </div>
         </section>

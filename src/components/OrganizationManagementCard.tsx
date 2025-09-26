@@ -291,7 +291,7 @@ export function OrganizationManagementCard() {
           <button
             type="submit"
             disabled={isSending}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-70 disabled:cursor-not-allowed"
+            className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-hover shadow-lg transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
           >
             {isSending ? "Sending..." : "Send Invitation"}
           </button>
@@ -365,7 +365,7 @@ export function OrganizationManagementCard() {
                         <button
                           type="button"
                           onClick={() => copyInviteLink(invitation.token)}
-                          className="text-blue-600 hover:underline disabled:text-gray-400"
+                          className="text-primary hover:underline disabled:text-gray-400"
                           disabled={!isPending}
                         >
                           Copy link
@@ -374,7 +374,7 @@ export function OrganizationManagementCard() {
                           type="button"
                           onClick={() => handleResend(invitation._id)}
                           disabled={isActioning}
-                          className="text-blue-600 hover:underline disabled:text-gray-400"
+                          className="text-primary hover:underline disabled:text-gray-400"
                         >
                           Resend
                         </button>

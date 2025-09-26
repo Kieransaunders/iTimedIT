@@ -171,28 +171,41 @@ function AuthenticatedApp() {
   return (
     <OrganizationProvider userId={loggedInUser._id}>
       <div className="flex flex-col min-h-screen">
-        <header className="sticky top-0 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm h-16 flex justify-between items-center border-b border-gray-200 dark:border-gray-700 shadow-sm px-4">
-          <div className="flex items-center gap-6">
-            <h2 className="text-xl font-semibold text-primary dark:text-white">iTrackIT</h2>
-            <OrganizationSwitcher />
-            <nav className="flex gap-4">
-              <NavButton label="Dashboard" isActive={currentPage === "dashboard"} onClick={() => setCurrentPage("dashboard")} />
-              <NavButton label="Clients" isActive={currentPage === "clients"} onClick={() => setCurrentPage("clients")} />
-              <NavButton label="Projects" isActive={currentPage === "projects"} onClick={() => setCurrentPage("projects")} />
-              <NavButton label="Settings" isActive={currentPage === "settings"} onClick={() => setCurrentPage("settings")} />
+        {/* Desktop Header */}
+        <header className="sticky top-0 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm h-16 flex justify-between items-center border-b border-gray-200 dark:border-gray-700 shadow-sm px-4 sm:px-6">
+          <div className="flex items-center gap-3 sm:gap-6">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <img 
+                src="./src/Assets/iconnectit.png" 
+                alt="iConnectIT" 
+                className="h-6 w-6 sm:h-8 sm:w-8"
+              />
+              <h2 className="text-lg sm:text-xl font-semibold text-[#F85E00]">iTrackIT</h2>
+            </div>
+            <div className="hidden sm:block">
+              <OrganizationSwitcher />
+            </div>
+            {/* Desktop Navigation */}
+            <nav className="hidden md:flex gap-4">
+              <NavButton icon={<DashboardIcon />} label="Dashboard" isActive={currentPage === "dashboard"} onClick={() => setCurrentPage("dashboard")} />
+              <NavButton icon={<ClientsIcon />} label="Clients" isActive={currentPage === "clients"} onClick={() => setCurrentPage("clients")} />
+              <NavButton icon={<ProjectsIcon />} label="Projects" isActive={currentPage === "projects"} onClick={() => setCurrentPage("projects")} />
+              <NavButton icon={<SettingsIcon />} label="Settings" isActive={currentPage === "settings"} onClick={() => setCurrentPage("settings")} />
             </nav>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2">
             <ThemeToggle />
-            <ProfileAvatar
-              user={loggedInUser}
-              onOpenProfile={() => setCurrentPage("profile")}
-              isActive={currentPage === "profile"}
-            />
-            <SignOutButton />
+            <div className="hidden sm:flex items-center gap-2">
+              <ProfileAvatar
+                user={loggedInUser}
+                onOpenProfile={() => setCurrentPage("profile")}
+                isActive={currentPage === "profile"}
+              />
+              <SignOutButton />
+            </div>
           </div>
         </header>
-        <main className="flex-1 p-8">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-20 md:pb-8">
           <div className="max-w-7xl mx-auto">
             {currentPage === "dashboard" && (
               <ModernDashboard
@@ -221,6 +234,42 @@ function AuthenticatedApp() {
             {currentPage === "profile" && <ProfilePage user={loggedInUser} onNavigate={setCurrentPage} />}
           </div>
         </main>
+        
+        {/* Mobile Bottom Navigation */}
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-20 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-t border-gray-200 dark:border-gray-700 shadow-lg">
+          <div className="flex items-center justify-around py-2">
+            <BottomNavButton 
+              icon={<DashboardIcon />} 
+              label="Dashboard" 
+              isActive={currentPage === "dashboard"} 
+              onClick={() => setCurrentPage("dashboard")} 
+            />
+            <BottomNavButton 
+              icon={<ClientsIcon />} 
+              label="Clients" 
+              isActive={currentPage === "clients"} 
+              onClick={() => setCurrentPage("clients")} 
+            />
+            <BottomNavButton 
+              icon={<ProjectsIcon />} 
+              label="Projects" 
+              isActive={currentPage === "projects"} 
+              onClick={() => setCurrentPage("projects")} 
+            />
+            <BottomNavButton 
+              icon={<SettingsIcon />} 
+              label="Settings" 
+              isActive={currentPage === "settings"} 
+              onClick={() => setCurrentPage("settings")} 
+            />
+            <BottomNavButton 
+              icon={<ProfileIcon />} 
+              label="Profile" 
+              isActive={currentPage === "profile"} 
+              onClick={() => setCurrentPage("profile")} 
+            />
+          </div>
+        </nav>
       </div>
     </OrganizationProvider>
   );
@@ -254,7 +303,7 @@ function UnauthenticatedView() {
                 localStorage.clear();
                 window.location.reload();
               }}
-              className="block w-full text-xs px-2 py-1 bg-purple-500 text-white rounded hover:bg-purple-600"
+              className="block w-full text-xs px-2 py-1 bg-primary text-white rounded hover:bg-primary-hover"
             >
               Clear Storage & Refresh
             </button>
@@ -280,10 +329,12 @@ function UnauthenticatedView() {
 }
 
 function NavButton({
+  icon,
   label,
   isActive,
   onClick,
 }: {
+  icon?: React.ReactNode;
   label: string;
   isActive: boolean;
   onClick: () => void;
@@ -291,13 +342,36 @@ function NavButton({
   return (
     <button
       onClick={onClick}
-      className={`px-3 py-1 rounded ${
+      className={`flex items-center gap-2 px-3 py-2 rounded ${
         isActive
-          ? "bg-blue-100 text-blue-700 dark:bg-purple-600 dark:text-white"
+          ? "bg-[#F85E00]/10 text-[#F85E00] dark:bg-[#F85E00] dark:text-white"
           : "text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
       }`}
     >
+      {icon && (
+        <div className="w-4 h-4">
+          {icon}
+        </div>
+      )}
       {label}
+    </button>
+  );
+}
+
+function BottomNavButton({ icon, label, isActive, onClick }: { icon: React.ReactNode; label: string; isActive: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex flex-col items-center justify-center p-2 min-w-0 flex-1 ${
+        isActive
+          ? "text-[#F85E00]"
+          : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+      }`}
+    >
+      <div className="w-6 h-6 mb-1">
+        {icon}
+      </div>
+      <span className="text-xs font-medium truncate">{label}</span>
     </button>
   );
 }
@@ -378,5 +452,48 @@ function OrganizationSwitcher() {
         </option>
       ))}
     </select>
+  );
+}
+
+// Icon components
+function DashboardIcon() {
+  return (
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-full h-full">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5a2 2 0 012-2h4a2 2 0 012 2v6H8V5z" />
+    </svg>
+  );
+}
+
+function ClientsIcon() {
+  return (
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-full h-full">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+    </svg>
+  );
+}
+
+function ProjectsIcon() {
+  return (
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-full h-full">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+    </svg>
+  );
+}
+
+function SettingsIcon() {
+  return (
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-full h-full">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+    </svg>
+  );
+}
+
+function ProfileIcon() {
+  return (
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-full h-full">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+    </svg>
   );
 }

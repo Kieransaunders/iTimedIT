@@ -5,6 +5,26 @@
 :root {
   --color-light: #ffffff;
   --color-dark: #171717;
+  
+  /* iConnectIT Brand Colors */
+  --iconnectit-orange: #FF6B35;
+  --iconnectit-orange-hover: #E55A2B;
+  --iconnectit-yellow: #FFD93D;
+  --iconnectit-yellow-hover: #E6C335;
+  --iconnectit-dark: #2D3748;
+  --iconnectit-dark-lighter: #4A5568;
+  --iconnectit-dark-darker: #1A202C;
+}
+
+/* Dark mode overrides with iConnectIT branding */
+.dark {
+  --color-light: var(--iconnectit-dark-darker);
+  --color-dark: #ffffff;
+}
+
+/* Dark mode specific styling */
+.dark body {
+  background: linear-gradient(135deg, #2D3748 0%, #1A202C 25%, #2A2D3A 50%, #1A202C 75%, #2D3748 100%);
 }
 
 .accent-text {

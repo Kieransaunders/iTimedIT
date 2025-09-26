@@ -42,11 +42,20 @@ tests/
 - **Check App.tsx** to see which components are actually rendered in the UI flow
 - **ModernDashboard.tsx is the ONLY active timer interface** - do not confuse with legacy code
 
+## Deployment Configuration
+### Production Setup
+- **Production URL**: https://itrackit.netlify.app
+- **Production Convex Backend**: `VITE_CONVEX_URL=https://basic-greyhound-928.convex.cloud`
+- **Development Convex Backend**: `VITE_CONVEX_URL=https://watchful-hedgehog-860.convex.cloud`
+
+The `VITE_CONVEX_URL` environment variable points to the Convex site and controls the hosted URL in the Convex dashboard. This URL must match the deployment configuration for proper backend connectivity.
+
 ## Commands
 - `npm run dev` - Start development server with Convex backend
 - `npm run build` - Build for production
 - `npm run lint` - TypeScript checks + linting
 - `npx convex dev` - Start Convex development backend (uses Node.js 20 runtime)
+- `npx convex deploy` - Deploy to production Convex backend
 
 ## Code Style
 - TypeScript: Strict mode, no `any` types
