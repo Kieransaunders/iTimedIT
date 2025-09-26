@@ -17,7 +17,7 @@ Install Convex the database for local development:
   ```
 
 To run server DB and Front end together:
-
+Start new terminal window
 npm run dev
 
 Then open a new terminal windows and start claude with
