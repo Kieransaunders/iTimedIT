@@ -1,31 +1,64 @@
-# Freelancer Time Tracker App
-  
-This is a project built with [Chef](https://chef.convex.dev) using [Convex](https://convex.dev) as its backend.
- You can find docs about Chef with useful information like how to deploy to production [here](https://docs.convex.dev/chef).
-  
-This project is connected to the Convex deployment named [`basic-greyhound-928`](https://dashboard.convex.dev/d/basic-greyhound-928).
- 
-You can test the latest build at https://itrackit.netlify.app/ (backed by the production Convex deployment URL `https://basic-greyhound-928.convex.cloud`).
+# iTrackIT
+
+iTrackIT is a multi-tenant time tracking and client management platform for agencies. The app pairs a React + Vite front end with a realtime [Convex](https://convex.dev) backend to deliver live timers, collaboration, and actionable insights.
+
+- **Live site**: https://itrackit.netlify.app/ → production Convex deployment `https://basic-greyhound-928.convex.cloud`
+- **Convex dashboard**: [`basic-greyhound-928`](https://dashboard.convex.dev/d/basic-greyhound-928)
+
+## Highlights
+- Realtime timer control with push notifications for stop/snooze/switch actions.
+- Modern dashboard with utilization KPIs, project health summaries, and recent entries.
+- Rich client and project management pages with filtering, exports, and drilldowns.
+- Workspace switching, invites, and profile settings powered by Convex Auth.
+- Built-in dark mode, toast feedback, and progressive enhancements.
+
+## Quick start see install guide.md for cursor instructions
+1. Clone the repo and install dependencies:
+   ```bash
+   git clone https://github.com/Kieransaunders/iTrackIT.git
+   cd iTrackIT
+   npm install
+   ```
+
+   ```
+3. Log in to Convex and sync schema/data:
+   ```bash
+   npx convex dev
+   ```
+   Choose the existing `iTrackIT` project when prompted.
+4. Run the app:
+   ```bash
+   npm run dev
+   ```
+   Vite (frontend) and Convex (backend) launch together at http://localhost:5173.
 
 ## Project structure
-  
-The frontend code is in the `app` directory and is built with [Vite](https://vitejs.dev/).
-  
-The backend code is in the `convex` directory.
-  
-`npm run dev` will start the frontend and backend servers.
+- `src/` – Vite + React UI
+  - `src/components/` – feature pages (Dashboard, Clients, Projects, Settings) and reusable widgets
+  - `src/lib/` – shared hooks, theme/context helpers, notifications utilities
+- `convex/` – database schema, mutations, queries, and HTTP routes
+- `tests/` – Jest unit and contract suites plus shared mocks
+- `docs/` – runbooks, migration notes, monitoring, and process guides
 
-## App authentication
+## Scripts
+- `npm run dev` – start Vite and the Convex dev server in parallel
+- `npm run build` – production build output to `dist/`
+- `npm run lint` – type-check Convex + app code, then build
+- `npm run test` / `test:watch` / `test:coverage` – run Jest suites
+- `npm run generate:vapid` – generate Web Push keys for notifications
 
-Chef apps use [Convex Auth](https://auth.convex.dev/) with Anonymous auth for easy sign in. You may wish to change this before deploying your app.
+## Testing
+Use the Jest suites under `tests/` to cover new functionality. Prefer `tests/unit` for isolated components and `tests/contract` for end-to-end flows that touch Convex. Run `npm run test:coverage` before sending a PR to ensure new branches are exercised.
 
-## Developing and deploying your app
+## Deployment
+- Production hosting: Netlify at https://itrackit.netlify.app/
+- Backend: Convex deployment [`basic-greyhound-928`](https://dashboard.convex.dev/d/basic-greyhound-928)
+- Environment configuration lives in Netlify/Convex dashboards; see `DEPLOYMENT_RUNBOOK.md` for step-by-step deployment updates.
 
-Check out the [Convex docs](https://docs.convex.dev/) for more information on how to develop with Convex.
-* If you're new to Convex, the [Overview](https://docs.convex.dev/understanding/) is a good place to start
-* Check out the [Hosting and Deployment](https://docs.convex.dev/production/) docs for how to deploy your app
-* Read the [Best Practices](https://docs.convex.dev/understanding/best-practices/) guide for tips on how to improve you app further
+## Additional resources
+- `Install_Guide.md` – detailed local setup walkthrough
+- `MIGRATION_GUIDE.md` – schema and data migration process
+- `MONITORING_SETUP.md` – observability and alerting
+- `NOTIFICATION_TESTING_GUIDE.md` – validating push notifications and VAPID keys
 
-## HTTP API
-
-User-defined http routes are defined in the `convex/router.ts` file. We split these routes into a separate file from `convex/http.ts` to allow us to prevent the LLM from modifying the authentication routes.
+For questions, check `Task.md` for the current backlog or reach out to the owning engineer before making breaking changes.
