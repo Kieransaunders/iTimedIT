@@ -16,6 +16,7 @@ import { useAuthActions } from "@convex-dev/auth/react";
 import { InvitePage } from "./components/InvitePage";
 import { ProfilePage, type AppPage } from "./components/ProfilePage";
 import { ProfileAvatar } from "./components/ProfileAvatar";
+import { TestEmailPage } from "./components/TestEmailPage";
 import {
   ensurePushSubscription,
   isPushSupported,
@@ -232,6 +233,7 @@ function AuthenticatedApp() {
             )}
             {currentPage === "settings" && <Settings onNavigate={setCurrentPage} />}
             {currentPage === "profile" && <ProfilePage user={loggedInUser} onNavigate={setCurrentPage} />}
+            {currentPage === "testEmail" && <TestEmailPage onNavigate={setCurrentPage} />}
           </div>
         </main>
         

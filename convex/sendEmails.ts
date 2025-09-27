@@ -1,7 +1,8 @@
-import { components } from "./_generated/api";
+import { components, internal } from "./_generated/api";
 import { Resend } from "@convex-dev/resend";
-import { internalMutation } from "./_generated/server";
+import { internalMutation, mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { getAuthUserId } from "@convex-dev/auth/server";
 
 const resend = new Resend(components.resend, {
   testMode: false,
@@ -95,7 +96,10 @@ export const sendInvitationEmail = internalMutation({
 });
 
 export const sendTestEmail = internalMutation({
-  handler: async (ctx) => {
+  args: {
+    to: v.string(),
+  },
+  handler: async (ctx, args) => {
     const fromEmail = process.env.RESEND_FROM_EMAIL;
     if (!fromEmail) {
       throw new Error("RESEND_FROM_EMAIL not configured");
@@ -106,10 +110,33 @@ export const sendTestEmail = internalMutation({
 
     await resend.sendEmail(ctx, {
       from,
-      to: "delivered@resend.dev",
+      to: args.to,
       subject: "Resend test email",
       html: "This is a test email from Resend.",
       text: "This is a test email from Resend.",
     });
+  },
+});
+
+export const requestTestEmail = mutation({
+  args: {
+    to: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Authentication required");
+    }
+
+    const to = args.to.trim();
+    if (!to) {
+      throw new Error("Recipient email is required");
+    }
+
+    await ctx.scheduler.runAfter(0, internal.sendEmails.sendTestEmail, {
+      to,
+    });
+
+    return { scheduled: true } as const;
   },
 });
