@@ -187,7 +187,7 @@ export function OrganizationManagementCard() {
     }
 
     const origin = window.location.origin;
-    const path = buildAppPath(`/invite/${token}`);
+    const path = buildAppPath(`/?token=${token}`);
     const link = new URL(path, origin).toString();
 
     try {
