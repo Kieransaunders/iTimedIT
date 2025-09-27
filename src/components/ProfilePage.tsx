@@ -2,7 +2,14 @@ import type { Doc } from "../../convex/_generated/dataModel";
 import { getUserDisplayName, getUserEmail, getUserInitials, isAnonymousUser } from "../lib/user-utils";
 import { useOrganization } from "../lib/organization-context";
 
-export type AppPage = "dashboard" | "modern" | "clients" | "projects" | "settings" | "profile";
+export type AppPage =
+  | "dashboard"
+  | "modern"
+  | "clients"
+  | "projects"
+  | "settings"
+  | "profile"
+  | "testEmail";
 
 export function ProfilePage({
   user,

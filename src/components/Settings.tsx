@@ -271,6 +271,26 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <OrganizationManagementCard />
+      <div className="rounded-lg border border-gray-200 p-6 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900/70">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="space-y-1">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Send a Resend test email</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-300">
+              Verify production email delivery by sending a manual test message to Resend's test inbox or a teammate.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => onNavigate?.("testEmail")}
+            className="inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium bg-primary text-white shadow transition hover:bg-primary/90"
+          >
+            Open test email page
+          </button>
+        </div>
+        <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+          Uses the configured <code className="rounded bg-gray-100 px-1 py-0.5 text-[10px] font-semibold dark:bg-gray-800">RESEND_FROM_EMAIL</code> sender.
+        </p>
+      </div>
       <div className="bg-white rounded-lg shadow p-6">
         <h2 className="text-2xl font-semibold mb-6">Settings</h2>
 
