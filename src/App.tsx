@@ -21,6 +21,7 @@ import {
   isPushSupported,
   setupPushMessageListener,
 } from "./lib/push";
+import { buildAppPath, stripBasePath } from "./lib/basePath";
 
 export default function App() {
   return (
@@ -416,7 +417,8 @@ function useInviteToken(): [string | null, () => void] {
     if (typeof window === "undefined") {
       return;
     }
-    window.history.replaceState({}, "", "/");
+    const targetPath = buildAppPath("/");
+    window.history.replaceState({}, "", targetPath);
     setToken(null);
   }, []);
 
@@ -429,9 +431,10 @@ function getInviteTokenFromLocation(): string | null {
   }
 
   const { pathname, search } = window.location;
+  const relativePath = stripBasePath(pathname);
 
-  if (pathname.startsWith("/invite/")) {
-    const parts = pathname.split("/").filter(Boolean);
+  if (relativePath.startsWith("/invite/")) {
+    const parts = relativePath.split("/").filter(Boolean);
     const inferred = parts[1] ?? null;
     if (inferred) {
       return inferred;
