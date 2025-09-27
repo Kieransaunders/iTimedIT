@@ -20,6 +20,7 @@ import {
   InvitationWithDerivedStatus,
   normalizeInvitationEmail,
 } from "./invitationsHelpers";
+import { buildPublicAppUrl } from "./lib/appUrls";
 
 const INVITATION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
@@ -348,6 +349,15 @@ export const invitationInfo = httpAction(async (ctx, request) => {
 
   if (!token) {
     return new Response("Missing token", { status: 400 });
+  }
+
+  const acceptHeader = request.headers.get("accept") ?? "";
+  if (acceptHeader.includes("text/html")) {
+    const redirectTarget = buildPublicAppUrl("/", { token });
+    return new Response(null, {
+      status: 302,
+      headers: { Location: redirectTarget },
+    });
   }
 
   const invitation = await ctx.runQuery(internal.invitations.getByToken, { token });

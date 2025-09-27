@@ -5,6 +5,7 @@ import { api } from "../../convex/_generated/api";
 import type { Doc, Id } from "../../convex/_generated/dataModel";
 import { notifyMutationError } from "../lib/notifyMutationError";
 import { useOrganization } from "../lib/organization-context";
+import { buildAppPath } from "../lib/basePath";
 
 type MembershipRole = Doc<"memberships">["role"];
 
@@ -186,7 +187,8 @@ export function OrganizationManagementCard() {
     }
 
     const origin = window.location.origin;
-    const link = `${origin}/invite/${token}`;
+    const path = buildAppPath(`/invite/${token}`);
+    const link = new URL(path, origin).toString();
 
     try {
       await navigator.clipboard.writeText(link);

@@ -2,22 +2,11 @@ import { components } from "./_generated/api";
 import { Resend } from "@convex-dev/resend";
 import { internalMutation } from "./_generated/server";
 import { v } from "convex/values";
+import { buildPublicAppUrl } from "./lib/appUrls";
 
 const resend = new Resend(components.resend, {
   testMode: false,
 });
-
-function getBaseUrl() {
-  const configuredUrl =
-    process.env.SITE_URL || process.env.APP_ORIGIN || process.env.VERCEL_URL;
-  if (configuredUrl) {
-    const trimmed = configuredUrl.startsWith("http")
-      ? configuredUrl
-      : `https://${configuredUrl}`;
-    return trimmed.replace(/\/$/, "");
-  }
-  return "http://localhost:5173";
-}
 
 function buildInvitationEmailHtml(args: {
   organizationName: string;
@@ -65,8 +54,7 @@ export const sendInvitationEmail = internalMutation({
     const fromName = process.env.RESEND_FROM_NAME?.trim();
     const from = fromName ? `${fromName} <${fromEmail}>` : fromEmail;
 
-    const baseUrl = getBaseUrl();
-    const inviteUrl = `${baseUrl}/invite/${args.token}`;
+    const inviteUrl = buildPublicAppUrl(`/invite/${args.token}`);
 
     const html = buildInvitationEmailHtml({
       organizationName: args.organizationName,
