@@ -67,7 +67,7 @@ export const sendInvitationEmail = internalMutation({
     const from = fromName ? `${fromName} <${fromEmail}>` : fromEmail;
 
     const baseUrl = getBaseUrl();
-    const inviteUrl = `${baseUrl}/invite/${args.token}`;
+    const inviteUrl = `${baseUrl}/?token=${args.token}`;
 
     const html = buildInvitationEmailHtml({
       organizationName: args.organizationName,
