@@ -20,6 +20,11 @@ import {
   InvitationWithDerivedStatus,
   normalizeInvitationEmail,
 } from "./invitationsHelpers";
+import {
+  buildInviteLandingUrl,
+  extractInvitePathDetails,
+  prefersHtmlInviteResponse,
+} from "./invitationsHttp";
 
 const INVITATION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
@@ -339,15 +344,27 @@ export const getByToken = internalQuery({
 
 export const invitationInfo = httpAction(async (ctx, request) => {
   const url = new URL(request.url);
+  const { basePath, tokenFromPath } = extractInvitePathDetails(url);
   let token = url.searchParams.get("token") ?? "";
 
-  if (!token) {
-    const segments = url.pathname.split("/").filter(Boolean);
-    token = segments.length > 1 ? segments[segments.length - 1] : "";
+  if (!token && tokenFromPath) {
+    token = tokenFromPath;
   }
 
+  const shouldRedirectToApp = prefersHtmlInviteResponse(request.headers.get("accept"));
+
   if (!token) {
+    if (shouldRedirectToApp) {
+      const redirectUrl = buildInviteLandingUrl(url, basePath, null);
+      return Response.redirect(redirectUrl.toString(), 302);
+    }
+
     return new Response("Missing token", { status: 400 });
+  }
+
+  if (shouldRedirectToApp) {
+    const redirectUrl = buildInviteLandingUrl(url, basePath, token);
+    return Response.redirect(redirectUrl.toString(), 302);
   }
 
   const invitation = await ctx.runQuery(internal.invitations.getByToken, { token });
