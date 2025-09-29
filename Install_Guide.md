@@ -4,7 +4,7 @@ iTimedIT
 ### Quick Start (
 - Clone and install:
 Open new window in cursor and clone
-    https://github.com/Kieransaunders/iTrackIT
+    https://github.com/Kieransaunders/iTimedIT
   
 open termainl window in the bottom of curser to setup project
 
@@ -14,7 +14,7 @@ Install Convex the database for local development:
   npm install convex
   npx convex dev
   then select "❯ choose an existing project 
-  ? Configure project iTrackIT (iTrackIT)? (Y/n) Y
+  ? Configure project iTimedIT (iTimedIT)? (Y/n) Y
   ```
 
 To run server DB and Front end together:

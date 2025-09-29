@@ -15,7 +15,9 @@ export const sendTimerAlert = action({
       v.literal("interrupt"),
       v.literal("overrun"),
       v.literal("budget_warning"),
-      v.literal("break_reminder")
+      v.literal("break_reminder"),
+      v.literal("break_start"),
+      v.literal("break_complete")
     ),
     projectName: v.optional(v.string()),
     clientName: v.optional(v.string()),

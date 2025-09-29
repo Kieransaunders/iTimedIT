@@ -170,7 +170,7 @@ export const create = mutation({
 
     await ctx.scheduler.runAfter(0, internal.sendEmails.sendInvitationEmail, {
       to: normalizedEmail,
-      organizationName: organization?.name ?? "Your iTrackIT workspace",
+      organizationName: organization?.name ?? "Your iTimedIT workspace",
       inviterDisplayName: inviter?.name ?? inviter?.email ?? "A teammate",
       role: args.role,
       token,
@@ -219,7 +219,7 @@ export const resend = mutation({
 
     await ctx.scheduler.runAfter(0, internal.sendEmails.sendInvitationEmail, {
       to: invitation.email,
-      organizationName: organization?.name ?? "Your iTrackIT workspace",
+      organizationName: organization?.name ?? "Your iTimedIT workspace",
       inviterDisplayName: inviter?.name ?? inviter?.email ?? "A teammate",
       role: invitation.role,
       token,

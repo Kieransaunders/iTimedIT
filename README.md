@@ -1,8 +1,8 @@
-# iTrackIT
+# iTimedIT
 
-iTrackIT is a multi-tenant time tracking and client management platform for agencies. The app pairs a React + Vite front end with a realtime [Convex](https://convex.dev) backend to deliver live timers, collaboration, and actionable insights.
+iTimedIT is a multi-tenant time tracking and client management platform for agencies. The app pairs a React + Vite front end with a realtime [Convex](https://convex.dev) backend to deliver live timers, collaboration, and actionable insights.
 
-- **Live site**: https://itrackit.netlify.app/ → production Convex deployment `https://basic-greyhound-928.convex.cloud`
+- **Live site**: https://itimedit.netlify.app/ → production Convex deployment `https://basic-greyhound-928.convex.cloud`
 - **Convex dashboard**: [`basic-greyhound-928`](https://dashboard.convex.dev/d/basic-greyhound-928)
 
 ## Highlights
@@ -15,8 +15,8 @@ iTrackIT is a multi-tenant time tracking and client management platform for agen
 ## Quick start see install guide.md for cursor instructions
 1. Clone the repo and install dependencies:
    ```bash
-   git clone https://github.com/Kieransaunders/iTrackIT.git
-   cd iTrackIT
+   git clone https://github.com/Kieransaunders/iTimedIT.git
+   cd iTimedIT
    npm install
    ```
 
@@ -25,7 +25,7 @@ iTrackIT is a multi-tenant time tracking and client management platform for agen
    ```bash
    npx convex dev
    ```
-   Choose the existing `iTrackIT` project when prompted.
+   Choose the existing `iTimedIT` project when prompted.
 4. Run the app:
    ```bash
    npm run dev
@@ -51,7 +51,7 @@ iTrackIT is a multi-tenant time tracking and client management platform for agen
 Use the Jest suites under `tests/` to cover new functionality. Prefer `tests/unit` for isolated components and `tests/contract` for end-to-end flows that touch Convex. Run `npm run test:coverage` before sending a PR to ensure new branches are exercised.
 
 ## Deployment
-- Production hosting: Netlify at https://itrackit.netlify.app/
+- Production hosting: Netlify at https://itimedit.netlify.app/
 - Backend: Convex deployment [`basic-greyhound-928`](https://dashboard.convex.dev/d/basic-greyhound-928)
 - Environment configuration lives in Netlify/Convex dashboards; see `DEPLOYMENT_RUNBOOK.md` for step-by-step deployment updates.
 

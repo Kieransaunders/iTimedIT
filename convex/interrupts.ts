@@ -9,12 +9,14 @@ export const check = action({
     userId: v.id("users"),
   },
   handler: async (ctx, args) => {
+    console.log(`🔍 Checking interrupt for user ${args.userId} at ${new Date().toISOString()}`);
     const timer = await ctx.runMutation(internal.interrupts.getTimerForInterrupt, {
       organizationId: args.organizationId,
       userId: args.userId,
     });
 
     if (!timer) {
+      console.log(`❌ No timer found for interrupt check`);
       return { action: "no_timer", graceJobScheduled: false, graceJobTime: null };
     }
 
@@ -50,6 +52,7 @@ export const check = action({
 
     // Trigger interruption prompt
     const interruptAt = now;
+    console.log(`✅ Triggering interrupt - setting awaitingInterruptAck=true for timer ${timer._id}`);
     await ctx.runMutation(internal.interrupts.setAwaitingInterrupt, {
       organizationId: args.organizationId,
       userId: args.userId,
@@ -164,6 +167,11 @@ export const sweep = action({
       checkedTimers++;
 
       if (!timer.organizationId || !timer.userId) {
+        continue;
+      }
+
+      // Skip break timers - they don't need interruption checks
+      if (timer.isBreakTimer) {
         continue;
       }
 

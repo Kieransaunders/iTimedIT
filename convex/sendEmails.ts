@@ -31,7 +31,7 @@ function buildInvitationEmailHtml(args: {
   return `
     <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827;">
       <h1 style="font-size: 20px; margin-bottom: 16px;">${args.inviterDisplayName} invited you to join ${args.organizationName}</h1>
-      <p style="margin: 0 0 16px;">You're being added as a <strong>${args.role}</strong> in ${args.organizationName} on iTrackIT.</p>
+      <p style="margin: 0 0 16px;">You're being added as a <strong>${args.role}</strong> in ${args.organizationName} on iTimedIT.</p>
       <p style="margin: 0 0 24px;">
         <a href="${args.inviteUrl}"
            style="display: inline-block; background: #2563eb; color: white; padding: 12px 20px; border-radius: 8px; text-decoration: none;">

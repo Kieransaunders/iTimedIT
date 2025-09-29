@@ -35,6 +35,7 @@ export const start = mutation({
   args: {
     projectId: v.id("projects"),
     category: v.optional(v.string()),
+    pomodoroEnabled: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const membership = await ensureMembership(ctx);
@@ -53,7 +54,7 @@ export const start = mutation({
 
     const interruptInterval = settings?.interruptInterval ?? 60; // default 60 minutes
     const interruptEnabled = settings?.interruptEnabled ?? true;
-    const pomodoroEnabled = settings?.pomodoroEnabled ?? false;
+    const pomodoroEnabled = args.pomodoroEnabled ?? settings?.pomodoroEnabled ?? false;
     const pomodoroWorkMinutes = settings?.pomodoroWorkMinutes ?? 25;
     const pomodoroBreakMinutes = settings?.pomodoroBreakMinutes ?? 5;
 
@@ -87,15 +88,21 @@ export const start = mutation({
       pomodoroTransitionAt,
       pomodoroWorkMinutes: pomodoroEnabled ? pomodoroWorkMinutes : undefined,
       pomodoroBreakMinutes: pomodoroEnabled ? pomodoroBreakMinutes : undefined,
+      pomodoroCurrentCycle: pomodoroEnabled ? 1 : undefined,
+      pomodoroCompletedCycles: pomodoroEnabled ? 0 : undefined,
+      pomodoroSessionStartedAt: pomodoroEnabled ? now : undefined,
       category: args.category,
     });
 
     // Schedule interrupt check if enabled
     if (nextInterruptAt) {
+      console.log(`⏰ Scheduling interrupt at ${new Date(nextInterruptAt).toISOString()} (in ${interruptInterval} minutes)`);
       await ctx.scheduler.runAt(nextInterruptAt, api.interrupts.check, {
         organizationId,
         userId,
       });
+    } else {
+      console.log(`❌ No interrupt scheduled - interruptEnabled: ${interruptEnabled}`);
     }
 
     if (pomodoroEnabled && pomodoroTransitionAt) {
@@ -125,7 +132,7 @@ export const start = mutation({
 
 export const stop = mutation({
   args: {
-    sourceOverride: v.optional(v.union(v.literal("manual"), v.literal("timer"), v.literal("autoStop"), v.literal("overrun"))),
+    sourceOverride: v.optional(v.union(v.literal("manual"), v.literal("timer"), v.literal("autoStop"), v.literal("overrun"), v.literal("pomodoroBreak"))),
   },
   handler: async (ctx, args) => {
     const membership = await ensureMembership(ctx);
@@ -142,7 +149,7 @@ async function stopInternal(
   ctx: MutationCtx,
   organizationId: Id<"organizations">,
   userId: Id<"users">,
-  source: "manual" | "timer" | "autoStop" | "overrun"
+  source: "manual" | "timer" | "autoStop" | "overrun" | "pomodoroBreak"
 ) {
   const timer = await ctx.db
     .query("runningTimers")
@@ -454,12 +461,18 @@ export const processPomodoroTransition = internalMutation({
     let nextTransitionAt: number | undefined = undefined;
 
     if (timer.pomodoroPhase === "break") {
-      // Break finished, prompt to resume work
+      // Break finished - increment completed cycles
+      const completedCycles = (timer.pomodoroCompletedCycles ?? 0) + 1;
+      const isFullCycleComplete = completedCycles % 4 === 0; // Full Pomodoro cycle = 4 work sessions
+      
+      // Send appropriate notification
       await ctx.scheduler.runAfter(0, api.pushActions.sendTimerAlert, {
         userId: timer.userId,
-        title: "Break complete",
-        body: `Ready to get back to ${project?.name || 'work'}?`,
-        alertType: "interrupt",
+        title: isFullCycleComplete ? "Pomodoro cycle complete! 🎉" : "Break complete",
+        body: isFullCycleComplete 
+          ? `Congratulations! You've completed ${completedCycles / 4} full Pomodoro cycle${completedCycles / 4 > 1 ? 's' : ''}. Ready for the next cycle?`
+          : `Ready to get back to ${project?.name || 'work'}? Click to resume tracking.`,
+        alertType: "break_complete",
         projectName: project?.name,
         clientName: client?.name,
         data: {
@@ -467,16 +480,64 @@ export const processPomodoroTransition = internalMutation({
           organizationId: timer.organizationId,
           pomodoroPhase: "work",
           timerId: timer._id,
+          completedCycles,
+          isFullCycleComplete,
         },
       });
-      nextTransitionAt = now + workMinutes * 60 * 1000;
+
+      // Delete the break timer - user must manually restart
+      await ctx.db.delete(timer._id);
     } else {
-      // Work session finished, notify to take a break
+      // Work session finished - stop the work timer and start break timer
+      
+      // 1. Stop the current time entry
+      const activeEntry = await ctx.db
+        .query("timeEntries")
+        .withIndex("byProject", (q) => q.eq("projectId", timer.projectId))
+        .filter((q) => q.and(
+          q.eq(q.field("organizationId"), timer.organizationId),
+          q.eq(q.field("userId"), timer.userId),
+          q.eq(q.field("stoppedAt"), undefined),
+          q.eq(q.field("isOverrun"), false)
+        ))
+        .first();
+
+      if (activeEntry) {
+        const seconds = Math.floor((now - activeEntry.startedAt) / 1000);
+        await ctx.db.patch(activeEntry._id, {
+          stoppedAt: now,
+          seconds,
+          source: "pomodoroBreak",
+        });
+      }
+
+      // 2. Convert current timer to break timer  
+      const currentCycle = timer.pomodoroCurrentCycle ?? 1;
+      const isLongBreak = currentCycle % 4 === 0; // Every 4th work session gets a longer break
+      const actualBreakMinutes = isLongBreak ? breakMinutes * 3 : breakMinutes; // 15min vs 5min
+      const breakEndsAt = now + actualBreakMinutes * 60 * 1000;
+      
+      await ctx.db.patch(timer._id, {
+        pomodoroPhase: "break",
+        isBreakTimer: true,
+        breakStartedAt: now,
+        breakEndsAt,
+        pomodoroTransitionAt: breakEndsAt,
+        pomodoroCurrentCycle: currentCycle,
+        // Store the actual break duration for this break
+        pomodoroBreakMinutes: actualBreakMinutes,
+        // Don't increment completed cycles until break is actually finished
+      });
+
+      // 3. Send break notification with contextual messaging
+      
       await ctx.scheduler.runAfter(0, api.pushActions.sendTimerAlert, {
         userId: timer.userId,
-        title: "Time for a break",
-        body: `You've worked ${(workMinutes).toString()} minutes on ${project?.name || 'your task'}. Take ${breakMinutes} minutes to recharge.`,
-        alertType: "break_reminder",
+        title: isLongBreak ? "🎉 Long break time!" : "☕ Break time!",
+        body: isLongBreak 
+          ? `Excellent work! You've completed ${currentCycle} work sessions. Take ${actualBreakMinutes} minutes for a well-deserved long break.`
+          : `Great focus! Take ${breakMinutes} minutes to recharge. Step away from your screen, stretch, or grab some water.`,
+        alertType: "break_start",
         projectName: project?.name,
         clientName: client?.name,
         data: {
@@ -484,18 +545,14 @@ export const processPomodoroTransition = internalMutation({
           organizationId: timer.organizationId,
           pomodoroPhase: "break",
           timerId: timer._id,
+          breakMinutes: actualBreakMinutes,
+          currentCycle,
+          isLongBreak,
         },
       });
-      nextTransitionAt = now + breakMinutes * 60 * 1000;
-    }
 
-    await ctx.db.patch(timer._id, {
-      pomodoroPhase: nextPhase,
-      pomodoroTransitionAt: nextTransitionAt,
-    });
-
-    if (nextTransitionAt) {
-      await ctx.scheduler.runAt(nextTransitionAt, api.timer.handlePomodoroTransition, {
+      // 4. Schedule break completion
+      await ctx.scheduler.runAt(breakEndsAt, api.timer.handlePomodoroTransition, {
         timerId: timer._id,
       });
     }

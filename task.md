@@ -282,3 +282,189 @@ Core notification system is complete with:
 - [ ] Test all new features and analytics accuracy
 - [ ] Verify existing functionality remains intact
 - [ ] Run lint and typecheck commands
+
+## Pomodoro Timer Improvements
+
+### Current Issues
+
+#### Problem 1: Timer Never Stops During Breaks
+- **Current Behavior**: Pomodoro timer switches between "work" and "break" phases but never actually stops
+- **Expected Behavior**: Timer should stop during breaks and require manual restart for next work session
+- **Impact**: Causes confusing "long-running timer" notifications during breaks
+
+#### Problem 2: Continuous Time Tracking During Breaks
+- **Current Behavior**: Time entries continue accumulating during break periods
+- **Expected Behavior**: Break time should not be tracked as billable work time
+- **Impact**: Inflated time entries that include non-work periods
+
+#### Problem 3: No Clear Break State in UI
+- **Current Behavior**: Timer appears running during breaks with no visual distinction
+- **Expected Behavior**: Clear indication when in break mode vs work mode
+- **Impact**: User confusion about current timer state
+
+### Proposed Improvements
+
+#### 1. Auto-Stop Timer During Breaks
+**Location**: `convex/timer.ts:456-490` (processPomodoroTransition)
+
+**Changes Needed**:
+- When work session ends: Stop the current timer and time entry
+- Create a "break timer" state that doesn't track billable time
+- When break ends: Prompt user to manually restart work timer
+
+#### 2. Separate Break Timer System
+**New Components Needed**:
+- Break timer state in `runningTimers` schema
+- Break-specific UI component showing countdown
+- Break completion notifications
+
+#### 3. Enhanced UI for Pomodoro States
+**Location**: `src/components/ModernDashboard.tsx`
+
+**Changes Needed**:
+- Visual indicators for work vs break phases
+- Break countdown timer display
+- "Start next session" button after breaks
+- Pomodoro cycle progress indicator
+
+#### 4. Improved Time Entry Handling
+**Changes Needed**:
+- Stop billable time tracking during breaks
+- Optional: Track break durations separately for analytics
+- Ensure clean separation between work and break periods
+
+### Implementation Plan
+
+#### Phase 1: Backend Timer Logic
+- [ ] Modify `processPomodoroTransition` to stop timers during breaks
+- [ ] Create break timer state management
+- [ ] Update time entry creation logic
+- [ ] Add break completion handling
+
+#### Phase 2: Frontend Updates
+- [ ] Update ModernDashboard to show Pomodoro states
+- [ ] Add break timer UI component
+- [ ] Implement "start next session" workflow
+- [ ] Add visual indicators for current phase
+
+#### Phase 3: Notifications & Polish
+- [ ] Improve break start/end notifications
+- [ ] Add break completion sounds/alerts
+- [ ] Update long-running timer logic to respect Pomodoro breaks
+- [ ] Add Pomodoro cycle statistics
+
+### Files to Modify
+
+#### Backend
+- `convex/timer.ts` - Core Pomodoro transition logic
+- `convex/schema.ts` - Add break timer state fields
+- `convex/crons.ts` - Update long-running timer detection
+
+#### Frontend
+- `src/components/ModernDashboard.tsx` - Main timer interface
+- New: `src/components/PomodoroBreakTimer.tsx` - Break countdown component
+- New: `src/components/PomodoroPhaseIndicator.tsx` - Phase visual indicator
+
+### Success Criteria
+
+1. ✅ Work timers automatically stop when break starts
+2. ✅ Break periods are not tracked as billable time
+3. ✅ Clear visual distinction between work/break phases
+4. ✅ No false "long-running timer" notifications during breaks
+5. ✅ User must manually start next work session after break
+6. ✅ Proper time entry separation between work sessions
+
+## Workspace Name Editing Feature
+
+### Task Overview
+- [ ] Enable organization owners to edit workspace names
+- [ ] Replace hardcoded "Personal Workspace" with user-customizable names
+- [ ] Add appropriate UI and backend functionality for workspace management
+
+### Current State
+- Personal workspaces are hardcoded as "Personal Workspace" in `convex/orgContext.ts:143`
+- No existing `updateOrganization` mutation in `convex/organizations.ts`
+- Settings UI only handles team member management, not organization details
+- Users cannot currently change workspace names through any interface
+
+### Subtasks
+
+#### Backend API Development
+- [ ] Create `updateOrganization` mutation in `convex/organizations.ts`
+  - [ ] Add validation for organization name (min/max length, allowed characters)
+  - [ ] Ensure only owners can update organization details
+  - [ ] Handle organization name uniqueness if required
+  - [ ] Add proper error handling and validation
+- [ ] Update organization context helpers if needed
+- [ ] Consider adding audit logging for organization name changes
+
+#### Frontend UI Development
+- [ ] Add organization name editing to Settings component
+  - [ ] Create organization details section in `src/components/Settings.tsx`
+  - [ ] Add input field for organization name with validation
+  - [ ] Include save/cancel functionality
+  - [ ] Show current organization name as default value
+- [ ] Alternative: Extend `OrganizationManagementCard.tsx` 
+  - [ ] Add organization name editing section above team members
+  - [ ] Include inline editing or modal-based editing
+- [ ] Add form validation and error handling on frontend
+- [ ] Update organization name display throughout app
+
+#### User Experience Enhancements
+- [ ] Show organization name in page headers/navigation
+- [ ] Update workspace switcher to show custom names
+- [ ] Add confirmation dialog for organization name changes
+- [ ] Show success/error toasts after name updates
+- [ ] Consider character limits and validation feedback
+
+#### Data Migration & Compatibility
+- [ ] Handle existing "Personal Workspace" names gracefully
+- [ ] Allow users to update from default name to custom name
+- [ ] Ensure backward compatibility with existing organization structure
+- [ ] Test with both personal and team workspaces
+
+#### Validation & Testing
+- [ ] Add input validation (length, special characters, etc.)
+- [ ] Test organization name updates across all components
+- [ ] Verify permission checking (only owners can edit)
+- [ ] Test with various organization sizes and types
+- [ ] Run `npm run lint` and `npm run typecheck`
+
+### Implementation Plan
+
+#### Phase 1: Backend Foundation
+- [ ] Create `updateOrganization` mutation with proper validation
+- [ ] Add role-based permission checking
+- [ ] Test mutation with various input scenarios
+
+#### Phase 2: Frontend Integration
+- [ ] Add organization name editing UI to Settings
+- [ ] Connect frontend to backend mutation
+- [ ] Implement form validation and error handling
+
+#### Phase 3: UX Polish
+- [ ] Add success/error notifications
+- [ ] Update organization name display throughout app
+- [ ] Add confirmation dialogs where appropriate
+
+### Files to Modify
+
+#### Backend
+- `convex/organizations.ts` - Add `updateOrganization` mutation
+- `convex/orgContext.ts` - Potentially update organization creation logic
+
+#### Frontend
+- `src/components/Settings.tsx` - Add organization name editing section
+- `src/components/OrganizationManagementCard.tsx` - Alternative location for editing UI
+- `src/lib/organization-context.tsx` - Update context if needed for name changes
+
+### Success Criteria
+
+1. ✅ Organization owners can edit workspace names
+2. ✅ Personal workspaces can be renamed from "Personal Workspace"
+3. ✅ Team workspace names can be updated by owners
+4. ✅ Proper validation prevents invalid organization names
+5. ✅ Non-owners cannot edit organization names
+6. ✅ Organization name changes are reflected throughout the app
+7. ✅ Form validation provides clear feedback to users
+8. ✅ Success/error notifications guide user experience

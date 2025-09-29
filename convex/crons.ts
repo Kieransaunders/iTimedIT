@@ -79,6 +79,10 @@ export const nudgeLongRunningTimers = internalMutation({
       if (timer.awaitingInterruptAck) {
         continue;
       }
+      // Skip break timers - they don't track billable time
+      if (timer.isBreakTimer) {
+        continue;
+      }
 
       const elapsedMs = now - timer.startedAt;
       if (elapsedMs < LONG_RUNNING_THRESHOLD_MS) {

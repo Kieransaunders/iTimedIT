@@ -1,6 +1,7 @@
 import type { Doc } from "../../convex/_generated/dataModel";
 import { getUserDisplayName, getUserEmail, getUserInitials, isAnonymousUser } from "../lib/user-utils";
 import { useOrganization } from "../lib/organization-context";
+import { OrganizationManagementCard } from "./OrganizationManagementCard";
 
 export type AppPage =
   | "dashboard"
@@ -133,6 +134,8 @@ export function ProfilePage({
           )}
         </div>
       </section>
+
+      <OrganizationManagementCard />
     </div>
   );
 }

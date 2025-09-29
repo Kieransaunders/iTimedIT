@@ -44,7 +44,7 @@ tests/
 
 ## Deployment Configuration
 ### Production Setup
-- **Production URL**: https://itrackit.netlify.app
+- **Production URL**: https://itimedit.netlify.app
 - **Production Convex Backend**: `VITE_CONVEX_URL=https://basic-greyhound-928.convex.cloud`
 - **Development Convex Backend**: `VITE_CONVEX_URL=https://watchful-hedgehog-860.convex.cloud`
 
@@ -68,6 +68,59 @@ The `VITE_CONVEX_URL` environment variable points to the Convex site and control
 - 001-timer-interruption-feature: Added server-side timer interruptions with scheduler.runAt, 60-second grace periods, and overrun tracking
 - Category system: Added time entry categories with dropdown selection and management functions
 - Code cleanup: Removed unused TimerCard.tsx component to eliminate confusion
+
+## Implemented Features
+
+### ✅ Multitenancy & Organization Management
+- **Organization System**: Complete multi-organization data model with `organizations`, `memberships`, and `invitations` tables
+- **Role-based Access**: Owner/admin/member roles with enforced permissions across all Convex functions
+- **Personal Workspaces**: Auto-creation of personal workspaces for individual users with legacy data migration
+- **Team Invitations**: Full invitation lifecycle (create, resend, revoke, accept) with secure tokens and email delivery
+- **Organization Context**: Frontend organization selector and context management throughout the app
+- **Data Migration**: Seamless migration from single-user to multi-organization structure
+
+### ✅ Notification System & User Attention
+- **Web Push Notifications**: Complete VAPID-based push notification system with service worker
+- **Timer Alerts**: Real-time notifications for interruptions, overruns, and Pomodoro transitions
+- **In-app Attention**: App badging, title blinking, sound alerts, and vibration support
+- **Multi-channel Notifications**: Email, SMS, and Slack/Discord integration for escalated alerts
+- **Notification Preferences**: Comprehensive user settings for notification channels and quiet hours
+- **Wake Lock Support**: Optional screen wake lock during active timing sessions
+
+### ✅ Email Integration (Resend)
+- **VAPID Configuration**: Secure email delivery through Resend with proper API key management
+- **Invitation Emails**: HTML email templates for organization invitations with branded styling
+- **Email Testing**: Built-in test email functionality for verifying email configuration
+- **Environment Setup**: Proper development and production email configuration
+
+### ✅ Node.js Runtime Migration
+- **Node.js 20 Support**: Migrated Convex actions to Node.js 20 runtime (required for push notifications)
+- **Compatibility Testing**: Verified `web-push` package compatibility with Node.js 20
+- **Documentation**: Updated deployment requirements for Node.js 20
+
+## Planned Features (In Development)
+
+### 🚧 Pomodoro Timer Improvements
+- **Auto-stop During Breaks**: Timer stops during break periods instead of continuous running
+- **Separate Break Tracking**: Break periods not counted as billable time
+- **Enhanced UI States**: Clear visual distinction between work and break phases
+- **Improved Notifications**: No false "long-running timer" alerts during breaks
+
+### 🚧 Personal vs Team Workspace Distinction
+- **Workspace Types**: Enhanced schema with `workspaceType` field for projects and clients
+- **Separate UI Flows**: Different interfaces for personal vs team project management
+- **Client Management**: Optional client association for personal projects
+
+### 🚧 Client Area Enhancement
+- **Analytics Dashboard**: Comprehensive client metrics and performance indicators
+- **Advanced Filtering**: Search, sort, and filter capabilities for client management
+- **Multiple View Options**: Table and card view layouts for client data
+- **Export Functionality**: CSV/PDF export for client reports and analytics
+
+### 🚧 Workspace Name Editing
+- **Custom Workspace Names**: Ability to rename personal and team workspaces
+- **Owner-only Editing**: Proper permission checking for workspace name changes
+- **UI Integration**: Settings interface for workspace management
 
 <!-- MANUAL ADDITIONS START -->
 <!-- MANUAL ADDITIONS END -->

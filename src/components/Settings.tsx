@@ -2,17 +2,7 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { OrganizationManagementCard } from "./OrganizationManagementCard";
 import type { AppPage } from "./ProfilePage";
-import { 
-  initializePushNotifications, 
-  requestNotificationPermission, 
-  subscribeToPush, 
-  unsubscribeFromPush,
-  isPushSupported,
-  getNotificationPermission,
-  getPermissionTroubleshootingInfo
-} from "../lib/push";
 import { 
   isBadgeSupported, 
   isSoundSupported, 
@@ -29,7 +19,6 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
   const notificationPrefs = useQuery(api.pushNotifications.getNotificationPrefs);
   const ensureNotificationPrefs = useMutation(api.pushNotifications.ensureNotificationPrefs);
   const updateNotificationPrefs = useMutation(api.pushNotifications.updateNotificationPrefs);
-  const savePushSubscription = useMutation(api.pushNotifications.savePushSubscription);
 
   const [interruptEnabled, setInterruptEnabled] = useState(true);
   const [interruptInterval, setInterruptInterval] = useState<
@@ -39,10 +28,10 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
   const [budgetWarningEnabled, setBudgetWarningEnabled] = useState(true);
   const [budgetWarningThresholdHours, setBudgetWarningThresholdHours] = useState(1.0);
   const [budgetWarningThresholdAmount, setBudgetWarningThresholdAmount] = useState(50.0);
-  const [pomodoroEnabled, setPomodoroEnabled] = useState(false);
   const [pomodoroWorkMinutes, setPomodoroWorkMinutes] = useState(25);
   const [pomodoroBreakMinutes, setPomodoroBreakMinutes] = useState(5);
   const [isSaving, setIsSaving] = useState(false);
+  const [lastSaveTime, setLastSaveTime] = useState<number | null>(null);
 
   // Notification preferences state
   const [webPushEnabled, setWebPushEnabled] = useState(true);
@@ -53,20 +42,12 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
   const [quietHoursEnd, setQuietHoursEnd] = useState("");
   const [escalationDelayMinutes, setEscalationDelayMinutes] = useState(2);
   const [doNotDisturbEnabled, setDoNotDisturbEnabled] = useState(false);
-  const [pushSubscribed, setPushSubscribed] = useState(false);
   const [emailFallbackEnabled, setEmailFallbackEnabled] = useState(false);
   const [smsFallbackEnabled, setSmsFallbackEnabled] = useState(false);
   const [slackFallbackEnabled, setSlackFallbackEnabled] = useState(false);
   const [fallbackEmail, setFallbackEmail] = useState("");
   const [smsNumber, setSmsNumber] = useState("");
   const [slackWebhookUrl, setSlackWebhookUrl] = useState("");
-  const [permissionTroubleshooting, setPermissionTroubleshooting] = useState<{
-    permission: NotificationPermission;
-    canRequest: boolean;
-    browserSupported: boolean;
-    isSecureContext: boolean;
-    troubleshootingSteps: string[];
-  } | null>(null);
 
   const defaultTimezone = typeof Intl !== "undefined"
     ? Intl.DateTimeFormat().resolvedOptions().timeZone
@@ -80,7 +61,6 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
       setBudgetWarningEnabled(settings.budgetWarningEnabled ?? true);
       setBudgetWarningThresholdHours(settings.budgetWarningThresholdHours ?? 1.0);
       setBudgetWarningThresholdAmount(settings.budgetWarningThresholdAmount ?? 50.0);
-      setPomodoroEnabled(settings.pomodoroEnabled ?? false);
       setPomodoroWorkMinutes(settings.pomodoroWorkMinutes ?? 25);
       setPomodoroBreakMinutes(settings.pomodoroBreakMinutes ?? 5);
     } else {
@@ -111,23 +91,84 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
     }
   }, [notificationPrefs, ensureNotificationPrefs]);
 
-  // Initialize push notifications on component mount
-  useEffect(() => {
-    const initPush = async () => {
-      // Get troubleshooting info regardless of support
-      const troubleshootingInfo = getPermissionTroubleshootingInfo();
-      setPermissionTroubleshooting(troubleshootingInfo);
+  // Autosave function
+  const autoSave = async () => {
+    if (isSaving) return; // Don't save if already saving
+    
+    try {
+      setIsSaving(true);
       
-      if (isPushSupported()) {
-        const initialized = await initializePushNotifications();
-        if (initialized) {
-          const permission = getNotificationPermission();
-          setPushSubscribed(permission === 'granted');
-        }
-      }
-    };
-    initPush();
-  }, []);
+      // Save timer settings
+      await updateSettings({
+        interruptEnabled,
+        interruptInterval,
+        gracePeriod,
+        budgetWarningEnabled,
+        budgetWarningThresholdHours,
+        budgetWarningThresholdAmount,
+        pomodoroWorkMinutes,
+        pomodoroBreakMinutes,
+      });
+
+      // Save notification preferences
+      await updateNotificationPrefs({
+        webPushEnabled,
+        soundEnabled,
+        vibrationEnabled,
+        wakeLockEnabled,
+        emailEnabled: emailFallbackEnabled,
+        smsEnabled: smsFallbackEnabled,
+        slackEnabled: slackFallbackEnabled,
+        fallbackEmail: fallbackEmail || undefined,
+        smsNumber: smsNumber || undefined,
+        slackWebhookUrl: slackWebhookUrl || undefined,
+        quietHoursStart: quietHoursStart || undefined,
+        quietHoursEnd: quietHoursEnd || undefined,
+        escalationDelayMinutes,
+        doNotDisturbEnabled,
+        timezone: notificationPrefs?.timezone ?? defaultTimezone,
+      });
+
+      setLastSaveTime(Date.now());
+      console.log('✅ Settings autosaved successfully');
+    } catch (error) {
+      console.error('❌ Autosave failed:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Autosave when settings change (debounced)
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      autoSave();
+    }, 1000); // Save 1 second after user stops changing settings
+
+    return () => clearTimeout(timeoutId);
+  }, [
+    interruptEnabled,
+    interruptInterval,
+    gracePeriod,
+    budgetWarningEnabled,
+    budgetWarningThresholdHours,
+    budgetWarningThresholdAmount,
+    pomodoroWorkMinutes,
+    pomodoroBreakMinutes,
+    webPushEnabled,
+    soundEnabled,
+    vibrationEnabled,
+    wakeLockEnabled,
+    emailFallbackEnabled,
+    smsFallbackEnabled,
+    slackFallbackEnabled,
+    fallbackEmail,
+    smsNumber,
+    slackWebhookUrl,
+    quietHoursStart,
+    quietHoursEnd,
+    escalationDelayMinutes,
+    doNotDisturbEnabled,
+  ]);
 
   const handleSave = async () => {
     try {
@@ -141,7 +182,6 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
         budgetWarningEnabled,
         budgetWarningThresholdHours,
         budgetWarningThresholdAmount,
-        pomodoroEnabled,
         pomodoroWorkMinutes,
         pomodoroBreakMinutes,
       });
@@ -182,71 +222,6 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
     }
   };
 
-  const handlePushToggle = async (enabled: boolean) => {
-    if (enabled) {
-      // Update troubleshooting info before attempting
-      const troubleshootingInfo = getPermissionTroubleshootingInfo();
-      setPermissionTroubleshooting(troubleshootingInfo);
-      
-      if (!troubleshootingInfo.browserSupported) {
-        toast.error("Push notifications not supported in this browser");
-        setWebPushEnabled(false);
-        return;
-      }
-      
-      if (!troubleshootingInfo.isSecureContext) {
-        toast.error("Push notifications require HTTPS or localhost");
-        setWebPushEnabled(false);
-        return;
-      }
-      
-      if (troubleshootingInfo.permission === 'denied') {
-        toast.error("Notification permission denied. Please enable in browser settings.", {
-          duration: 5000,
-          description: "Click the lock icon in the address bar to change notification settings"
-        });
-        setWebPushEnabled(false);
-        return;
-      }
-      
-      const permission = await requestNotificationPermission();
-      // Update troubleshooting info after permission request
-      const updatedInfo = getPermissionTroubleshootingInfo();
-      setPermissionTroubleshooting(updatedInfo);
-      
-      if (permission === 'granted') {
-        const subscription = await subscribeToPush();
-        if (subscription) {
-          await savePushSubscription({
-            endpoint: subscription.endpoint,
-            p256dhKey: subscription.keys.p256dh,
-            authKey: subscription.keys.auth,
-            userAgent: navigator.userAgent,
-          });
-          setPushSubscribed(true);
-          setWebPushEnabled(true);
-          toast.success("Push notifications enabled!");
-        } else {
-          toast.error("Failed to set up push notifications");
-          setWebPushEnabled(false);
-        }
-      } else if (permission === 'denied') {
-        toast.error("Permission denied. Reset in browser settings to try again.", {
-          duration: 5000,
-          description: "Chrome: Address bar → Lock icon → Notifications → Allow"
-        });
-        setWebPushEnabled(false);
-      } else {
-        toast.error("Permission request failed");
-        setWebPushEnabled(false);
-      }
-    } else {
-      await unsubscribeFromPush();
-      setPushSubscribed(false);
-      setWebPushEnabled(false);
-      toast.success("Push notifications disabled");
-    }
-  };
 
   const intervalOptions = [
     { value: 0.0833, label: "5 seconds" },
@@ -270,29 +245,23 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      <OrganizationManagementCard />
-      <div className="rounded-lg border border-gray-200 p-6 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900/70">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div className="space-y-1">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Send a Resend test email</h2>
-            <p className="text-sm text-gray-600 dark:text-gray-300">
-              Verify production email delivery by sending a manual test message to Resend's test inbox or a teammate.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => onNavigate?.("testEmail")}
-            className="inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium bg-primary text-white shadow transition hover:bg-primary/90"
-          >
-            Open test email page
-          </button>
-        </div>
-        <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
-          Uses the configured <code className="rounded bg-gray-100 px-1 py-0.5 text-[10px] font-semibold dark:bg-gray-800">RESEND_FROM_EMAIL</code> sender.
-        </p>
-      </div>
       <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-2xl font-semibold mb-6">Settings</h2>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-semibold">Settings</h2>
+          <div className="flex items-center gap-2 text-sm">
+            {isSaving && (
+              <div className="flex items-center gap-2 text-blue-600">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                <span>Saving...</span>
+              </div>
+            )}
+            {!isSaving && lastSaveTime && (
+              <span className="text-green-600">
+                ✓ Saved
+              </span>
+            )}
+          </div>
+        </div>
 
         {isSettingsLoading ? (
           <div className="space-y-4">
@@ -306,7 +275,7 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
               <h3 className="text-lg font-medium mb-4">Interruption Settings</h3>
               <p className="text-gray-600 mb-4">
                 Configure when and how often you want to be asked if you're still working on a project.
-                This helps prevent accidentally leaving timers running.
+                This helps prevent accidentally leaving timers running and applies to all timer modes.
               </p>
 
               <div className="space-y-4">
@@ -384,67 +353,52 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
             <div>
               <h3 className="text-lg font-medium mb-4">Focus Sessions (Pomodoro)</h3>
               <p className="text-gray-600 mb-4">
-                Enable Pomodoro-style notifications to guide your work and break cadence. We'll send
-                alerts when it's time to take a break or get back to focus.
+                Configure default settings for Pomodoro mode. You can choose between Normal and 
+                Pomodoro modes from the dashboard when starting a timer.
               </p>
 
               <div className="space-y-4">
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="pomodoroEnabled"
-                    checked={pomodoroEnabled}
-                    onChange={(event) => setPomodoroEnabled(event.target.checked)}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                  />
-                  <label htmlFor="pomodoroEnabled" className="ml-2 block text-sm text-gray-900">
-                    Enable Pomodoro cycle notifications
-                  </label>
-                </div>
-
-                {pomodoroEnabled && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label htmlFor="pomodoroWorkMinutes" className="block text-sm font-medium text-gray-700 mb-2">
-                        Focus duration (minutes)
-                      </label>
-                      <input
-                        type="number"
-                        id="pomodoroWorkMinutes"
-                        value={pomodoroWorkMinutes}
-                        onChange={(event) =>
-                          setPomodoroWorkMinutes(Math.max(5, parseInt(event.target.value, 10) || 25))
-                        }
-                        min={5}
-                        max={120}
-                        className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                      />
-                      <p className="mt-1 text-sm text-gray-500">
-                        We'll nudge you to take a break after this many minutes of focused work.
-                      </p>
-                    </div>
-
-                    <div>
-                      <label htmlFor="pomodoroBreakMinutes" className="block text-sm font-medium text-gray-700 mb-2">
-                        Break duration (minutes)
-                      </label>
-                      <input
-                        type="number"
-                        id="pomodoroBreakMinutes"
-                        value={pomodoroBreakMinutes}
-                        onChange={(event) =>
-                          setPomodoroBreakMinutes(Math.max(1, parseInt(event.target.value, 10) || 5))
-                        }
-                        min={1}
-                        max={60}
-                        className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                      />
-                      <p className="mt-1 text-sm text-gray-500">
-                        We'll remind you to resume once this break time expires.
-                      </p>
-                    </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="pomodoroWorkMinutes" className="block text-sm font-medium text-gray-700 mb-2">
+                      Focus duration (minutes)
+                    </label>
+                    <input
+                      type="number"
+                      id="pomodoroWorkMinutes"
+                      value={pomodoroWorkMinutes}
+                      onChange={(event) =>
+                        setPomodoroWorkMinutes(Math.max(5, parseInt(event.target.value, 10) || 25))
+                      }
+                      min={5}
+                      max={120}
+                      className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    />
+                    <p className="mt-1 text-sm text-gray-500">
+                      Default focus session length when using Pomodoro mode.
+                    </p>
                   </div>
-                )}
+
+                  <div>
+                    <label htmlFor="pomodoroBreakMinutes" className="block text-sm font-medium text-gray-700 mb-2">
+                      Break duration (minutes)
+                    </label>
+                    <input
+                      type="number"
+                      id="pomodoroBreakMinutes"
+                      value={pomodoroBreakMinutes}
+                      onChange={(event) =>
+                        setPomodoroBreakMinutes(Math.max(1, parseInt(event.target.value, 10) || 5))
+                      }
+                      min={1}
+                      max={60}
+                      className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    />
+                    <p className="mt-1 text-sm text-gray-500">
+                      Default break length when using Pomodoro mode.
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -530,64 +484,10 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
             <div>
               <h3 className="text-lg font-medium mb-4">Notifications & Attention</h3>
               <p className="text-gray-600 mb-4">
-                Configure how you want to be notified when interruptions occur or when you're not looking at the app.
+                Configure how you want to be notified when interruptions occur. Push notifications will be automatically requested when needed.
               </p>
 
               <div className="space-y-6">
-                {/* Push Notifications */}
-                <div>
-                  <h4 className="font-medium mb-3">Web Push Notifications</h4>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <input
-                          type="checkbox"
-                          id="webPushEnabled"
-                          checked={webPushEnabled && pushSubscribed}
-                          onChange={(event) => handlePushToggle(event.target.checked)}
-                          disabled={!isPushSupported()}
-                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded disabled:opacity-50"
-                        />
-                        <label htmlFor="webPushEnabled" className="ml-2 text-sm text-gray-900">
-                          Enable push notifications
-                        </label>
-                      </div>
-                      {!isPushSupported() && (
-                        <span className="text-xs text-gray-500">Not supported in this browser</span>
-                      )}
-                    </div>
-                    {webPushEnabled && pushSubscribed && (
-                      <p className="text-xs text-green-600 ml-6">
-                        ✅ Notifications enabled - you'll receive alerts when the app is closed
-                      </p>
-                    )}
-                    {!webPushEnabled && permissionTroubleshooting && permissionTroubleshooting.troubleshootingSteps.length > 0 && (
-                      <div className="ml-6 mt-2 p-3 bg-amber-50 border border-amber-200 rounded-md">
-                        <p className="text-sm font-medium text-amber-800 mb-2">
-                          ⚠️ Notification Setup Required
-                        </p>
-                        <ul className="text-xs text-amber-700 space-y-1">
-                          {permissionTroubleshooting.troubleshootingSteps.map((step, index) => (
-                            <li key={index}>• {step}</li>
-                          ))}
-                        </ul>
-                        {permissionTroubleshooting.permission === 'denied' && (
-                          <button
-                            onClick={() => {
-                              const info = getPermissionTroubleshootingInfo();
-                              setPermissionTroubleshooting(info);
-                              toast.info("Permission status updated. Try enabling notifications again.");
-                            }}
-                            className="mt-2 text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded hover:bg-amber-200"
-                          >
-                            Check Permission Status
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
                 {/* In-App Attention */}
                 <div>
                   <h4 className="font-medium mb-3">In-App Attention</h4>
@@ -843,6 +743,27 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
             </div>
           </div>
         )}
+      </div>
+      
+      <div className="rounded-lg border border-gray-200 p-6 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900/70">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="space-y-1">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Team Management</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-300">
+              Manage team members, send invitations, and view organization settings.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => onNavigate?.("profile")}
+            className="inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium bg-primary text-white shadow transition hover:bg-primary/90"
+          >
+            Manage team
+          </button>
+        </div>
+        <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+          Team management has been moved to the profile page for better organization.
+        </p>
       </div>
     </div>
   );

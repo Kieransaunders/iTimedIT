@@ -111,7 +111,8 @@ const applicationTables = {
       v.literal("manual"),
       v.literal("timer"),
       v.literal("autoStop"),
-      v.literal("overrun")
+      v.literal("overrun"),
+      v.literal("pomodoroBreak")
     ),
     note: v.optional(v.string()),
     category: v.optional(v.string()),
@@ -141,6 +142,12 @@ const applicationTables = {
     pomodoroTransitionAt: v.optional(v.number()),
     pomodoroWorkMinutes: v.optional(v.number()),
     pomodoroBreakMinutes: v.optional(v.number()),
+    isBreakTimer: v.optional(v.boolean()),
+    breakStartedAt: v.optional(v.number()),
+    breakEndsAt: v.optional(v.number()),
+    pomodoroCurrentCycle: v.optional(v.number()),
+    pomodoroCompletedCycles: v.optional(v.number()),
+    pomodoroSessionStartedAt: v.optional(v.number()),
     category: v.optional(v.string()),
   })
     .index("byOrganization", ["organizationId"])

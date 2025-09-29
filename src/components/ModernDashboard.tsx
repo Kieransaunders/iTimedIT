@@ -27,10 +27,13 @@ import { RecentEntriesTable } from "./RecentEntriesTable";
 import { WorkspaceSwitcher, WorkspaceType } from "./WorkspaceSwitcher";
 import { ensurePushSubscription, isPushSupported, getNotificationPermission } from "../lib/push";
 import { toast } from "sonner";
+import { playBreakStartSound, playBreakEndSound, playCycleCompleteSound, enableSounds } from "../lib/sounds";
 import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
 import { Play, Square } from "lucide-react";
+import { PomodoroBreakTimer } from "./PomodoroBreakTimer";
+import { PomodoroPhaseIndicator } from "./PomodoroPhaseIndicator";
 
 interface ModernDashboardProps {
   pushSwitchRequest?: any | null;
@@ -117,6 +120,7 @@ export function ModernDashboard({
   const [searchTerm, setSearchTerm] = useState("");
   const [showCreateProject, setShowCreateProject] = useState(false);
   const [showCreateClient, setShowCreateClient] = useState(false);
+  const [timerMode, setTimerMode] = useState<"normal" | "pomodoro">("normal");
   const [newProjectForm, setNewProjectForm] = useState({
     name: "",
     clientId: "" as Id<"clients"> | "",
@@ -249,6 +253,7 @@ export function ModernDashboard({
   // Interrupt handling
   useEffect(() => {
     if (runningTimer?.awaitingInterruptAck) {
+      console.log("🚨 Interrupt detected! Showing modal...", runningTimer);
       setShowInterruptModal(true);
     }
   }, [runningTimer?.awaitingInterruptAck]);
@@ -277,6 +282,56 @@ export function ModernDashboard({
     }
   }, [runningTimer?.category]);
 
+  // Update timer mode when timer is running
+  useEffect(() => {
+    if (runningTimer?.pomodoroEnabled !== undefined) {
+      setTimerMode(runningTimer.pomodoroEnabled ? "pomodoro" : "normal");
+    }
+  }, [runningTimer?.pomodoroEnabled]);
+
+  // Handle Pomodoro phase transitions and sound notifications
+  const [previousPhase, setPreviousPhase] = useState<string | null>(null);
+  const [previousBreakTimer, setPreviousBreakTimer] = useState<boolean>(false);
+  
+  useEffect(() => {
+    if (!runningTimer?.pomodoroEnabled) return;
+
+    const currentPhase = runningTimer.pomodoroPhase;
+    const currentIsBreakTimer = runningTimer.isBreakTimer;
+
+    // Enable sounds on first Pomodoro interaction
+    if (currentPhase && !previousPhase) {
+      enableSounds();
+    }
+
+    // Detect phase transitions
+    if (previousPhase && currentPhase !== previousPhase) {
+      if (currentPhase === "break" && currentIsBreakTimer) {
+        // Work session ended, break started
+        playBreakStartSound();
+        toast.success("Break time! Step away and recharge 🌱");
+      }
+    }
+
+    // Track break timer deletion (break ended)
+    if (previousBreakTimer && !currentIsBreakTimer && previousPhase === "break") {
+      // Break timer was deleted (break ended)
+      const completedCycles = (runningTimer?.pomodoroCompletedCycles ?? 0);
+      const isFullCycleComplete = completedCycles > 0 && completedCycles % 4 === 0;
+      
+      if (isFullCycleComplete) {
+        playCycleCompleteSound();
+        toast.success(`🎉 Pomodoro cycle complete! Great work!`);
+      } else {
+        playBreakEndSound();
+        toast.info("Break complete! Ready to focus? 🎯");
+      }
+    }
+
+    setPreviousPhase(currentPhase || null);
+    setPreviousBreakTimer(currentIsBreakTimer || false);
+  }, [runningTimer?.pomodoroPhase, runningTimer?.isBreakTimer, runningTimer?.pomodoroCompletedCycles, previousPhase, previousBreakTimer]);
+
   // Timer state calculations
   const timerState = useMemo((): TimerState => {
     if (!runningTimer) {
@@ -284,7 +339,7 @@ export function ModernDashboard({
     }
     return {
       running: true,
-      startMs: runningTimer.startedAt,
+      startMs: runningTimer.isBreakTimer ? runningTimer.breakStartedAt! : runningTimer.startedAt,
       elapsedMs: 0,
       lastActivityMs: runningTimer.lastHeartbeatAt,
     };
@@ -295,8 +350,15 @@ export function ModernDashboard({
     return Math.max(0, now - timerState.startMs);
   }, [timerState, now]);
 
+  // Break timer calculations
+  const isBreakTimer = runningTimer?.isBreakTimer;
+  const breakTimeRemaining = useMemo(() => {
+    if (!isBreakTimer || !runningTimer?.breakEndsAt) return 0;
+    return Math.max(0, runningTimer.breakEndsAt - now);
+  }, [isBreakTimer, runningTimer?.breakEndsAt, now]);
+
   const totalSeconds = Math.floor(totalElapsedMs / 1000);
-  const earnedAmount = currentProject ? (totalSeconds / 3600) * currentProject.hourlyRate : 0;
+  const earnedAmount = currentProject && !isBreakTimer ? (totalSeconds / 3600) * currentProject.hourlyRate : 0;
 
   const ensurePushRegistered = useCallback(async (requestPermission: boolean) => {
     if (isPushSupported() && getNotificationPermission() === 'default' && requestPermission) {
@@ -329,9 +391,13 @@ export function ModernDashboard({
       await stopTimer();
     } else {
       await ensurePushRegistered(true);
-      await startTimer({ projectId: currentProject._id, category: selectedCategory || undefined });
+      await startTimer({ 
+        projectId: currentProject._id, 
+        category: selectedCategory || undefined,
+        pomodoroEnabled: timerMode === "pomodoro"
+      });
     }
-  }, [currentProject, timerState.running, startTimer, stopTimer, ensurePushRegistered]);
+  }, [currentProject, timerState.running, startTimer, stopTimer, ensurePushRegistered, selectedCategory, timerMode]);
 
   const switchProject = useCallback(async (projectId: Id<"projects">) => {
     if (projectId === currentProjectId) return;
@@ -343,26 +409,38 @@ export function ModernDashboard({
       // No timer running - switch project and auto-start timer
       setCurrentProjectId(projectId);
       await ensurePushRegistered(true);
-      await startTimer({ projectId, category: selectedCategory || undefined });
+      await startTimer({ 
+        projectId, 
+        category: selectedCategory || undefined,
+        pomodoroEnabled: timerMode === "pomodoro"
+      });
     }
-  }, [currentProjectId, timerState.running, ensurePushRegistered, startTimer, selectedCategory]);
+  }, [currentProjectId, timerState.running, ensurePushRegistered, startTimer, selectedCategory, timerMode]);
 
   const handleStopAndSwitch = useCallback(async () => {
     if (!pendingProjectId) return;
     await stopTimer();
     setCurrentProjectId(pendingProjectId);
     await ensurePushRegistered(false);
-    await startTimer({ projectId: pendingProjectId, category: selectedCategory || undefined });
+    await startTimer({ 
+      projectId: pendingProjectId, 
+      category: selectedCategory || undefined,
+      pomodoroEnabled: timerMode === "pomodoro"
+    });
     setShowProjectSwitchModal(false);
     setPendingProjectId(null);
-  }, [pendingProjectId, stopTimer, ensurePushRegistered, startTimer, selectedCategory]);
+  }, [pendingProjectId, stopTimer, ensurePushRegistered, startTimer, selectedCategory, timerMode]);
 
   const transferTimerToProject = useCallback(async (projectId: Id<"projects">) => {
     await stopTimer();
     setCurrentProjectId(projectId);
     await ensurePushRegistered(false);
-    await startTimer({ projectId, category: selectedCategory || undefined });
-  }, [stopTimer, startTimer, ensurePushRegistered]);
+    await startTimer({ 
+      projectId, 
+      category: selectedCategory || undefined,
+      pomodoroEnabled: timerMode === "pomodoro"
+    });
+  }, [stopTimer, startTimer, ensurePushRegistered, selectedCategory, timerMode]);
 
   const handleTransferTimer = useCallback(async () => {
     if (!pendingProjectId) return;
@@ -1038,37 +1116,115 @@ export function ModernDashboard({
           </div>
         </div>
 
-        {/* Timer Display */}
-        <div className="flex items-center justify-center gap-4 mb-6 sm:mb-8">
-          <div
-            className={`text-center text-6xl sm:text-7xl md:text-8xl lg:text-9xl font-mono font-bold tracking-tight ${
-              runningTimer && projectStats?.isNearBudgetLimit
-                ? "animate-pulse"
-                : ""
-            }`}
-            style={{
-              color: runningTimer && projectStats?.isNearBudgetLimit
-                ? "#f59e0b" // amber warning color
-                : currentProject.color
-            }}
-          >
-            {formatTime(totalElapsedMs)}
+        {/* Timer Mode Toggle */}
+        <div className="flex justify-center mb-4">
+          <div className="bg-white/70 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-300/50 dark:border-gray-700/50 rounded-xl p-1 shadow-lg">
+            <div className="flex gap-1">
+              <button
+                onClick={() => setTimerMode("normal")}
+                disabled={timerState.running}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  timerMode === "normal"
+                    ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
+                    : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
+                } ${timerState.running ? "opacity-50 cursor-not-allowed" : ""}`}
+              >
+                Normal
+              </button>
+              <button
+                onClick={() => setTimerMode("pomodoro")}
+                disabled={timerState.running}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  timerMode === "pomodoro"
+                    ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
+                    : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
+                } ${timerState.running ? "opacity-50 cursor-not-allowed" : ""}`}
+              >
+                Pomodoro
+              </button>
+            </div>
           </div>
-          <button
-            className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white focus-visible:ring-[#F85E00] dark:focus-visible:ring-offset-gray-900"
-            style={{
-              backgroundColor: timerState.running ? "#ef4444" : currentProject.color,
-            }}
-            onClick={toggleTimer}
-            aria-pressed={timerState.running}
-            aria-label={timerState.running ? "Stop timer" : "Start timer"}
-          >
-            {timerState.running ? (
-              <Square className="w-6 h-6 sm:w-7 sm:h-7 text-white" aria-hidden="true" />
-            ) : (
-              <Play className="w-6 h-6 sm:w-7 sm:h-7 text-white" aria-hidden="true" />
+        </div>
+
+        {/* Timer Display */}
+        <div className="flex flex-col items-center justify-center gap-4 mb-6 sm:mb-8">
+          {/* Pomodoro Phase Indicator */}
+          {runningTimer?.pomodoroEnabled && (
+            <div className="mb-4">
+              <PomodoroPhaseIndicator
+                isBreakTimer={isBreakTimer}
+                currentCycle={runningTimer.pomodoroCurrentCycle ?? 1}
+                completedCycles={runningTimer.pomodoroCompletedCycles ?? 0}
+                workMinutes={runningTimer.pomodoroWorkMinutes ?? 25}
+                breakMinutes={runningTimer.pomodoroBreakMinutes ?? 5}
+                sessionStartedAt={runningTimer.pomodoroSessionStartedAt}
+              />
+              
+              {/* Break time remaining for break timer */}
+              {isBreakTimer && (
+                <div className="text-center mt-3">
+                  <div className="text-sm text-gray-600">
+                    Time remaining: {formatTime(breakTimeRemaining)}
+                  </div>
+                  <div className="w-64 bg-gray-200 rounded-full h-2 mx-auto mt-2">
+                    <div 
+                      className="bg-green-500 h-2 rounded-full transition-all duration-1000"
+                      style={{ 
+                        width: `${breakTimeRemaining > 0 ? (breakTimeRemaining / ((runningTimer?.pomodoroBreakMinutes ?? 5) * 60 * 1000)) * 100 : 0}%` 
+                      }}
+                    ></div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          
+          <div className="flex items-center justify-center gap-4">
+            <div
+              className={`text-center text-6xl sm:text-7xl md:text-8xl lg:text-9xl font-mono font-bold tracking-tight ${
+                runningTimer && projectStats?.isNearBudgetLimit
+                  ? "animate-pulse"
+                  : ""
+              }`}
+              style={{
+                color: isBreakTimer 
+                  ? "#10b981" // green for break timer
+                  : runningTimer && projectStats?.isNearBudgetLimit
+                  ? "#f59e0b" // amber warning color
+                  : currentProject.color
+              }}
+            >
+              {isBreakTimer ? formatTime(totalElapsedMs) : formatTime(totalElapsedMs)}
+            </div>
+            
+            {!isBreakTimer && (
+              <button
+                className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white focus-visible:ring-[#F85E00] dark:focus-visible:ring-offset-gray-900"
+                style={{
+                  backgroundColor: timerState.running ? "#ef4444" : currentProject.color,
+                }}
+                onClick={toggleTimer}
+                aria-pressed={timerState.running}
+                aria-label={timerState.running ? "Stop timer" : "Start timer"}
+              >
+                {timerState.running ? (
+                  <Square className="w-6 h-6 sm:w-7 sm:h-7 text-white" aria-hidden="true" />
+                ) : (
+                  <Play className="w-6 h-6 sm:w-7 sm:h-7 text-white" aria-hidden="true" />
+                )}
+              </button>
             )}
-          </button>
+          </div>
+          
+          {isBreakTimer && (
+            <div className="mt-6">
+              <PomodoroBreakTimer
+                breakTimeRemaining={breakTimeRemaining}
+                totalBreakTimeMs={(runningTimer?.pomodoroBreakMinutes ?? 5) * 60 * 1000}
+                onEndEarly={toggleTimer}
+              />
+            </div>
+          )}
         </div>
 
         {/* Time/Allocation Remaining Display */}
