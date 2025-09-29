@@ -5,6 +5,7 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 export const listPersonal = query({
   args: {
     searchTerm: v.optional(v.string()),
+    includeArchived: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -16,8 +17,12 @@ export const listPersonal = query({
       .query("projects")
       .withIndex("byOwnerPersonal", (q) => 
         q.eq("ownerId", userId).eq("workspaceType", "personal")
-      )
-      .filter((q) => q.eq(q.field("archived"), false));
+      );
+
+    // Filter by archived status unless includeArchived is true
+    if (!args.includeArchived) {
+      projectsQuery = projectsQuery.filter((q) => q.eq(q.field("archived"), false));
+    }
 
     const projects = await projectsQuery.collect();
 

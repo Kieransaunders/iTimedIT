@@ -1,5 +1,6 @@
 import { Authenticated, Unauthenticated, useQuery, useMutation } from "convex/react";
 import { api } from "../convex/_generated/api";
+import { Id } from "../convex/_generated/dataModel";
 import { SignInForm } from "./SignInForm";
 import { SignOutButton } from "./SignOutButton";
 import { Toaster, toast } from "sonner";
@@ -71,6 +72,7 @@ function AuthenticatedApp() {
   const loggedInUser = useQuery(api.auth.loggedInUser);
   const { signOut } = useAuthActions();
   const stopTimerMutation = useMutation(api.timer.stop);
+  const startTimerMutation = useMutation(api.timer.start);
   const ackInterrupt = useMutation(api.timer.ackInterrupt);
   const savePushSubscription = useMutation(api.pushNotifications.savePushSubscription);
   const pushListenerCleanup = useRef<(() => void) | null>(null);
@@ -228,6 +230,19 @@ function AuthenticatedApp() {
                 <ProjectsPage
                   onProjectSelect={(projectId: string) => {
                     setSelectedProjectId(projectId);
+                  }}
+                  onStartTimer={async (projectId: string) => {
+                    try {
+                      await startTimerMutation({ 
+                        projectId: projectId as Id<"projects">, 
+                        category: undefined,
+                        pomodoroEnabled: false
+                      });
+                      setCurrentPage("dashboard");
+                      toast.success("Timer started! Switched to dashboard.");
+                    } catch (error) {
+                      toast.error("Failed to start timer");
+                    }
                   }}
                 />
               )

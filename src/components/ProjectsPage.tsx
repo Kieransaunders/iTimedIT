@@ -8,9 +8,10 @@ import { WorkspaceHeader, WorkspaceType } from "./WorkspaceSwitcher";
 
 interface ProjectsPageProps {
   onProjectSelect?: (projectId: string) => void;
+  onStartTimer?: (projectId: string) => void;
 }
 
-export function ProjectsPage({ onProjectSelect }: ProjectsPageProps) {
+export function ProjectsPage({ onProjectSelect, onStartTimer }: ProjectsPageProps) {
   const [showForm, setShowForm] = useState(false);
   const [editingProject, setEditingProject] = useState<any>(null);
   const [clientId, setClientId] = useState<Id<"clients"> | "">("");
@@ -20,6 +21,7 @@ export function ProjectsPage({ onProjectSelect }: ProjectsPageProps) {
   const [budgetHours, setBudgetHours] = useState("");
   const [budgetAmount, setBudgetAmount] = useState("");
   const [currentWorkspace, setCurrentWorkspace] = useState<WorkspaceType>("team");
+  const [showArchived, setShowArchived] = useState(false);
   const { isReady } = useOrganization();
 
   const clients = useQuery(
@@ -35,7 +37,7 @@ export function ProjectsPage({ onProjectSelect }: ProjectsPageProps) {
       ? api.personalProjects.listPersonal
       : api.projects.listAll,
     isReady 
-      ? (currentWorkspace === "personal" ? {} : { workspaceType: "team" })
+      ? (currentWorkspace === "personal" ? { includeArchived: showArchived } : { workspaceType: "team", includeArchived: showArchived })
       : "skip"
   );
   const createProject = useMutation(
@@ -126,6 +128,17 @@ export function ProjectsPage({ onProjectSelect }: ProjectsPageProps) {
     } catch (error) {
       notifyMutationError(error, {
         fallbackMessage: "Unable to archive project. Please try again.",
+        unauthorizedMessage: "You need owner or admin access to manage projects.",
+      });
+    }
+  };
+
+  const handleUnarchive = async (projectId: Id<"projects">) => {
+    try {
+      await updateProject({ id: projectId, archived: false });
+    } catch (error) {
+      notifyMutationError(error, {
+        fallbackMessage: "Unable to unarchive project. Please try again.",
         unauthorizedMessage: "You need owner or admin access to manage projects.",
       });
     }
@@ -305,7 +318,7 @@ export function ProjectsPage({ onProjectSelect }: ProjectsPageProps) {
             </thead>
             <tbody className="bg-white dark:bg-gray-800/50 divide-y divide-gray-200 dark:divide-gray-600">
               {projects.map((project) => (
-                <tr key={project._id}>
+                <tr key={project._id} className={project.archived ? "opacity-60 bg-gray-50 dark:bg-gray-700/30" : ""}>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-3">
                       <span
@@ -313,8 +326,13 @@ export function ProjectsPage({ onProjectSelect }: ProjectsPageProps) {
                         style={{ backgroundColor: project.client?.color || "#8b5cf6" }}
                       />
                       <div>
-                        <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                        <div className="text-sm font-medium text-gray-900 dark:text-gray-100 flex items-center gap-2">
                           {project.name}
+                          {project.archived && (
+                            <span className="px-2 py-1 text-xs font-medium bg-gray-200 text-gray-700 dark:bg-gray-600 dark:text-gray-300 rounded-full">
+                              ARCHIVED
+                            </span>
+                          )}
                         </div>
                         <div className="text-sm text-gray-500 dark:text-gray-400">
                           {project.client?.name}
@@ -338,25 +356,71 @@ export function ProjectsPage({ onProjectSelect }: ProjectsPageProps) {
                     {project.budgetRemainingFormatted}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => onProjectSelect?.(project._id)}
-                        className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
-                      >
-                        View Details
-                      </button>
-                      <button
-                        onClick={() => handleEdit(project)}
-                        className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleArchive(project._id)}
-                        className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                      >
-                        Archive
-                      </button>
+                    <div className="flex gap-3 items-center">
+                      {!project.archived && (
+                        <>
+                          <button
+                            onClick={() => onStartTimer?.(project._id)}
+                            className="p-1.5 text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-md transition-all"
+                            title="Start Timer"
+                          >
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M8 5v14l11-7z"/>
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() => onProjectSelect?.(project._id)}
+                            className="p-1.5 text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-md transition-all"
+                            title="View Details"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() => handleEdit(project)}
+                            className="p-1.5 text-purple-600 hover:text-purple-900 dark:text-purple-400 dark:hover:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-md transition-all"
+                            title="Edit Project"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() => handleArchive(project._id)}
+                            className="p-1.5 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-all"
+                            title="Archive Project"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8l4 4 4-4m6-1v11a2 2 0 01-2 2H7a2 2 0 01-2-2V7a2 2 0 012-2h10a2 2 0 012 2z" />
+                            </svg>
+                          </button>
+                        </>
+                      )}
+                      {project.archived && (
+                        <>
+                          <button
+                            onClick={() => onProjectSelect?.(project._id)}
+                            className="p-1.5 text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-md transition-all"
+                            title="View Details"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() => handleUnarchive(project._id)}
+                            className="p-1.5 text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-md transition-all"
+                            title="Restore Project"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l4-4 4 4m6 1V5a2 2 0 00-2-2H7a2 2 0 00-2 2v11a2 2 0 002 2h10a2 2 0 002-2z" />
+                            </svg>
+                          </button>
+                        </>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -367,9 +431,41 @@ export function ProjectsPage({ onProjectSelect }: ProjectsPageProps) {
 
         {projects.length === 0 && (
           <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-            No projects yet. Add your first project to get started!
+            {showArchived 
+              ? "No archived projects found." 
+              : "No projects yet. Add your first project to get started!"
+            }
           </div>
         )}
+      </div>
+
+      {/* Floating Archive Toggle */}
+      <div className="fixed bottom-6 right-6 z-50">
+        <button
+          onClick={() => setShowArchived(!showArchived)}
+          className={`group relative p-4 rounded-full shadow-lg transition-all duration-200 hover:scale-105 ${
+            showArchived 
+              ? "bg-gray-600 text-white hover:bg-gray-700" 
+              : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600"
+          }`}
+          title={showArchived ? "Show Active Projects" : "Show Archived Projects"}
+        >
+          {showArchived ? (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l4-4 4 4m6 1V5a2 2 0 00-2-2H7a2 2 0 00-2 2v11a2 2 0 002 2h10a2 2 0 002-2z" />
+            </svg>
+          ) : (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8l4 4 4-4m6-1v11a2 2 0 01-2 2H7a2 2 0 01-2-2V7a2 2 0 012-2h10a2 2 0 012 2z" />
+            </svg>
+          )}
+          
+          {/* Tooltip */}
+          <div className="absolute bottom-full right-0 mb-2 px-3 py-2 text-sm font-medium text-white bg-gray-900 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
+            {showArchived ? "Show Active Projects" : "Show Archived Projects"}
+            <div className="absolute top-full right-4 w-2 h-2 bg-gray-900 transform rotate-45"></div>
+          </div>
+        </button>
       </div>
     </div>
   );

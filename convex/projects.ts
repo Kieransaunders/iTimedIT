@@ -59,6 +59,7 @@ export const listAll = query({
     clientId: v.optional(v.id("clients")),
     searchTerm: v.optional(v.string()),
     workspaceType: v.optional(v.union(v.literal("personal"), v.literal("team"))),
+    includeArchived: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const membership = await maybeMembership(ctx);
@@ -69,8 +70,12 @@ export const listAll = query({
 
     let projectsQuery = ctx.db
       .query("projects")
-      .withIndex("byOrganization", (q) => q.eq("organizationId", organizationId))
-      .filter((q) => q.eq(q.field("archived"), false));
+      .withIndex("byOrganization", (q) => q.eq("organizationId", organizationId));
+
+    // Filter by archived status unless includeArchived is true
+    if (!args.includeArchived) {
+      projectsQuery = projectsQuery.filter((q) => q.eq(q.field("archived"), false));
+    }
 
     // Apply workspace filter - default to team projects for backward compatibility
     if (args.workspaceType === "team" || !args.workspaceType) {

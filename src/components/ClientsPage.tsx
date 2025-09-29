@@ -193,6 +193,17 @@ export function ClientsPage() {
     }
   };
 
+  const handleUnarchive = async (clientId: Id<"clients">) => {
+    try {
+      await updateClient({ id: clientId, archived: false });
+    } catch (error) {
+      notifyMutationError(error, {
+        fallbackMessage: "Unable to unarchive client. Please try again.",
+        unauthorizedMessage: "You need owner or admin access to manage clients.",
+      });
+    }
+  };
+
   if (!isReady || !clients) {
     return <div className="animate-pulse bg-gray-200 dark:bg-gray-700 h-64 rounded-lg"></div>;
   }
@@ -378,6 +389,7 @@ export function ClientsPage() {
           onSort={handleSort}
           onEditClient={handleEdit}
           onArchiveClient={handleArchive}
+          onUnarchiveClient={handleUnarchive}
           onCreateProject={handleCreateProject}
         />
       ) : (

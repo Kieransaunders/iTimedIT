@@ -1,6 +1,6 @@
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Edit2, Archive, Plus, RotateCcw } from "lucide-react";
 
 interface ClientData {
   _id: string;
@@ -29,6 +29,7 @@ interface EnhancedClientTableProps {
   onSort: (key: keyof ClientData) => void;
   onEditClient: (client: ClientData) => void;
   onArchiveClient: (clientId: string) => void;
+  onUnarchiveClient?: (clientId: string) => void;
   onCreateProject: (clientId: string) => void;
 }
 
@@ -38,6 +39,7 @@ export function EnhancedClientTable({
   onSort,
   onEditClient,
   onArchiveClient,
+  onUnarchiveClient,
   onCreateProject
 }: EnhancedClientTableProps) {
   const formatCurrency = (amount: number) => `$${amount.toFixed(2)}`;
@@ -118,11 +120,26 @@ export function EnhancedClientTable({
               <SortableHeader sortKey="name">Client</SortableHeader>
               <SortableHeader sortKey="status">Status</SortableHeader>
               <SortableHeader sortKey="totalAmountSpent">Revenue</SortableHeader>
-              <SortableHeader sortKey="totalTimeSpent">Time</SortableHeader>
-              <SortableHeader sortKey="averageHourlyEarning">Avg Rate</SortableHeader>
+              <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors" onClick={() => onSort("totalTimeSpent")}>
+                <div className="flex items-center gap-1.5">
+                  Time
+                  {getSortIcon("totalTimeSpent")}
+                </div>
+              </th>
+              <th className="hidden lg:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors" onClick={() => onSort("averageHourlyEarning")}>
+                <div className="flex items-center gap-1.5">
+                  Avg Rate
+                  {getSortIcon("averageHourlyEarning")}
+                </div>
+              </th>
               <SortableHeader sortKey="activeProjectsCount">Projects</SortableHeader>
               <SortableHeader sortKey="healthScore">Health</SortableHeader>
-              <SortableHeader sortKey="daysSinceLastActivity">Last Activity</SortableHeader>
+              <th className="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors" onClick={() => onSort("daysSinceLastActivity")}>
+                <div className="flex items-center gap-1.5">
+                  Last Activity
+                  {getSortIcon("daysSinceLastActivity")}
+                </div>
+              </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                 Actions
               </th>
@@ -151,9 +168,28 @@ export function EnhancedClientTable({
                 </td>
                 
                 <td className="px-6 py-4">
-                  <Badge className={getStatusColor(client.status)}>
-                    {client.status}
-                  </Badge>
+                  <button
+                    onClick={() => {
+                      if (client.status === 'active' && onArchiveClient) {
+                        onArchiveClient(client._id);
+                      } else if (client.status === 'inactive' && onUnarchiveClient) {
+                        onUnarchiveClient(client._id);
+                      }
+                    }}
+                    className="group relative"
+                    disabled={client.status === 'at-risk'}
+                  >
+                    <Badge className={`${getStatusColor(client.status)} transition-all duration-200 ${
+                      client.status !== 'at-risk' ? 'group-hover:scale-105 cursor-pointer' : ''
+                    }`}>
+                      {client.status}
+                    </Badge>
+                    {client.status !== 'at-risk' && (
+                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs font-medium text-white bg-gray-900 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none">
+                        {client.status === 'active' ? 'Click to archive' : 'Click to reactivate'}
+                      </div>
+                    )}
+                  </button>
                 </td>
                 
                 <td className="px-6 py-4">
@@ -199,27 +235,40 @@ export function EnhancedClientTable({
                 </td>
                 
                 <td className="px-6 py-4">
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
+                  <div className="flex gap-1.5">
+                    <button
                       onClick={() => onCreateProject(client._id)}
-                      className="text-xs"
+                      className="group relative p-1.5 text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-md transition-all"
+                      title="Create Project"
                     >
-                      + Project
-                    </Button>
+                      <Plus className="w-4 h-4" />
+                    </button>
                     <button
                       onClick={() => onEditClient(client)}
-                      className="text-purple-timer hover:text-purple-timer-hover dark:text-purple-400 dark:hover:text-purple-300 transition-colors text-sm"
+                      className="group relative p-1.5 text-purple-600 hover:text-purple-900 dark:text-purple-400 dark:hover:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-md transition-all"
+                      title="Edit Client"
                     >
-                      Edit
+                      <Edit2 className="w-4 h-4" />
                     </button>
-                    <button
-                      onClick={() => onArchiveClient(client._id)}
-                      className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors text-sm"
-                    >
-                      Archive
-                    </button>
+                    {client.status === 'active' ? (
+                      <button
+                        onClick={() => onArchiveClient(client._id)}
+                        className="group relative p-1.5 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-all"
+                        title="Archive Client"
+                      >
+                        <Archive className="w-4 h-4" />
+                      </button>
+                    ) : (
+                      onUnarchiveClient && (
+                        <button
+                          onClick={() => onUnarchiveClient(client._id)}
+                          className="group relative p-1.5 text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-md transition-all"
+                          title="Restore Client"
+                        >
+                          <RotateCcw className="w-4 h-4" />
+                        </button>
+                      )
+                    )}
                   </div>
                 </td>
               </tr>
