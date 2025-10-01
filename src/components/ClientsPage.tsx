@@ -313,13 +313,13 @@ export function ClientsPage() {
 
       {/* Client Creation/Edit Form */}
       {showForm && (
-        <div className="bg-primary/10 dark:bg-primary/20 backdrop-blur-sm rounded-lg shadow dark:shadow-dark-card border dark:border-primary/30 p-6 mb-6">
-          <h3 className="text-lg font-semibold mb-4 text-white">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6">
+          <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
             {editingClient ? "Edit Client" : "Add New Client"}
           </h3>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-white mb-1">
+              <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Client Name
               </label>
               <input
@@ -332,7 +332,7 @@ export function ClientsPage() {
               />
             </div>
             <div>
-              <label htmlFor="note" className="block text-sm font-medium text-white mb-1">
+              <label htmlFor="note" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Notes (optional)
               </label>
               <textarea
@@ -344,12 +344,12 @@ export function ClientsPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-white mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Address (optional)
               </label>
               <div className="space-y-3">
                 <div>
-                  <label htmlFor="street" className="block text-xs font-medium text-white/80 mb-1">
+                  <label htmlFor="street" className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                     Street Address
                   </label>
                   <input
@@ -357,13 +357,13 @@ export function ClientsPage() {
                     id="street"
                     value={street}
                     onChange={(e) => setStreet(e.target.value)}
-                    placeholder="123 Main Street"
+                    placeholder="123 High Street"
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-timer bg-white dark:bg-gray-700/50 text-gray-900 dark:text-gray-100"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label htmlFor="city" className="block text-xs font-medium text-white/80 mb-1">
+                    <label htmlFor="city" className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                       City
                     </label>
                     <input
@@ -371,12 +371,12 @@ export function ClientsPage() {
                       id="city"
                       value={city}
                       onChange={(e) => setCity(e.target.value)}
-                      placeholder="New York"
+                      placeholder="London"
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-timer bg-white dark:bg-gray-700/50 text-gray-900 dark:text-gray-100"
                     />
                   </div>
                   <div>
-                    <label htmlFor="postCode" className="block text-xs font-medium text-white/80 mb-1">
+                    <label htmlFor="postCode" className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                       Post Code
                     </label>
                     <input
@@ -384,13 +384,13 @@ export function ClientsPage() {
                       id="postCode"
                       value={postCode}
                       onChange={(e) => setPostCode(e.target.value)}
-                      placeholder="10001"
+                      placeholder="SW1A 1AA"
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-timer bg-white dark:bg-gray-700/50 text-gray-900 dark:text-gray-100"
                     />
                   </div>
                 </div>
                 <div>
-                  <label htmlFor="country" className="block text-xs font-medium text-white/80 mb-1">
+                  <label htmlFor="country" className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                     Country
                   </label>
                   <input
@@ -398,14 +398,14 @@ export function ClientsPage() {
                     id="country"
                     value={country}
                     onChange={(e) => setCountry(e.target.value)}
-                    placeholder="United States"
+                    placeholder="United Kingdom"
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-timer bg-white dark:bg-gray-700/50 text-gray-900 dark:text-gray-100"
                   />
                 </div>
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-white mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Brand Color
               </label>
               <div className="space-y-3">

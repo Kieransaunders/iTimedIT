@@ -30,6 +30,11 @@ Check Task.MD for any tasks to work on or test the recent ones developed.
 To deploy to:http://itimedit.com/
 npx convex deploy
 
+Also npx convex dev for syncing the database
+
+Then 
+  npx convex dev
+  npm run dev
 The site should deply in a few mins.
 
 
