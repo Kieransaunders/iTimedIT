@@ -65,6 +65,12 @@ export const createPersonal = mutation({
   args: {
     name: v.string(),
     note: v.optional(v.string()),
+    address: v.optional(v.object({
+      street: v.optional(v.string()),
+      city: v.optional(v.string()),
+      country: v.optional(v.string()),
+      postCode: v.optional(v.string()),
+    })),
     color: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -79,6 +85,7 @@ export const createPersonal = mutation({
       ownerId: userId,
       name: args.name,
       note: args.note,
+      address: args.address,
       color: args.color,
       archived: false,
       workspaceType: "personal",
@@ -91,6 +98,12 @@ export const updatePersonal = mutation({
     id: v.id("clients"),
     name: v.optional(v.string()),
     note: v.optional(v.string()),
+    address: v.optional(v.object({
+      street: v.optional(v.string()),
+      city: v.optional(v.string()),
+      country: v.optional(v.string()),
+      postCode: v.optional(v.string()),
+    })),
     color: v.optional(v.string()),
     archived: v.optional(v.boolean()),
   },
@@ -108,6 +121,7 @@ export const updatePersonal = mutation({
     await ctx.db.patch(args.id, {
       ...(args.name !== undefined && { name: args.name }),
       ...(args.note !== undefined && { note: args.note }),
+      ...(args.address !== undefined && { address: args.address }),
       ...(args.color !== undefined && { color: args.color }),
       ...(args.archived !== undefined && { archived: args.archived }),
     });

@@ -38,6 +38,10 @@ export function ClientsPage() {
   const [selectedClientId, setSelectedClientId] = useState<Id<"clients"> | null>(null);
   const [name, setName] = useState("");
   const [note, setNote] = useState("");
+  const [street, setStreet] = useState("");
+  const [city, setCity] = useState("");
+  const [country, setCountry] = useState("");
+  const [postCode, setPostCode] = useState("");
   const [color, setColor] = useState("#8b5cf6");
   const [currentWorkspace, setCurrentWorkspace] = useState<WorkspaceType>("team");
   const [viewMode, setViewMode] = useState<ViewMode>('table');
@@ -148,19 +152,31 @@ export function ClientsPage() {
     e.preventDefault();
 
     try {
+      const address = street || city || country || postCode ? {
+        street: street || undefined,
+        city: city || undefined,
+        country: country || undefined,
+        postCode: postCode || undefined,
+      } : undefined;
+
       if (editingClient) {
         await updateClient({
           id: editingClient._id,
           name,
           note,
+          address,
           color,
         });
       } else {
-        await createClient({ name, note, color });
+        await createClient({ name, note, address, color });
       }
 
       setName("");
       setNote("");
+      setStreet("");
+      setCity("");
+      setCountry("");
+      setPostCode("");
       setColor("#8b5cf6");
       setShowForm(false);
       setEditingClient(null);
@@ -178,6 +194,10 @@ export function ClientsPage() {
     setEditingClient(client);
     setName(client.name);
     setNote(client.note || "");
+    setStreet(client.address?.street || "");
+    setCity(client.address?.city || "");
+    setCountry(client.address?.country || "");
+    setPostCode(client.address?.postCode || "");
     setColor(client.color || "#8b5cf6");
     setShowForm(true);
   };
@@ -325,6 +345,67 @@ export function ClientsPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-white mb-2">
+                Address (optional)
+              </label>
+              <div className="space-y-3">
+                <div>
+                  <label htmlFor="street" className="block text-xs font-medium text-white/80 mb-1">
+                    Street Address
+                  </label>
+                  <input
+                    type="text"
+                    id="street"
+                    value={street}
+                    onChange={(e) => setStreet(e.target.value)}
+                    placeholder="123 Main Street"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-timer bg-white dark:bg-gray-700/50 text-gray-900 dark:text-gray-100"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label htmlFor="city" className="block text-xs font-medium text-white/80 mb-1">
+                      City
+                    </label>
+                    <input
+                      type="text"
+                      id="city"
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                      placeholder="New York"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-timer bg-white dark:bg-gray-700/50 text-gray-900 dark:text-gray-100"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="postCode" className="block text-xs font-medium text-white/80 mb-1">
+                      Post Code
+                    </label>
+                    <input
+                      type="text"
+                      id="postCode"
+                      value={postCode}
+                      onChange={(e) => setPostCode(e.target.value)}
+                      placeholder="10001"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-timer bg-white dark:bg-gray-700/50 text-gray-900 dark:text-gray-100"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label htmlFor="country" className="block text-xs font-medium text-white/80 mb-1">
+                    Country
+                  </label>
+                  <input
+                    type="text"
+                    id="country"
+                    value={country}
+                    onChange={(e) => setCountry(e.target.value)}
+                    placeholder="United States"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-timer bg-white dark:bg-gray-700/50 text-gray-900 dark:text-gray-100"
+                  />
+                </div>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-white mb-2">
                 Brand Color
               </label>
               <div className="space-y-3">
@@ -371,6 +452,10 @@ export function ClientsPage() {
                   setEditingClient(null);
                   setName("");
                   setNote("");
+                  setStreet("");
+                  setCity("");
+                  setCountry("");
+                  setPostCode("");
                   setColor("#8b5cf6");
                 }}
               >

@@ -468,3 +468,103 @@ Core notification system is complete with:
 6. ✅ Organization name changes are reflected throughout the app
 7. ✅ Form validation provides clear feedback to users
 8. ✅ Success/error notifications guide user experience
+
+## Client Address Fields Implementation
+
+### Task Overview
+- [x] Add comprehensive address fields (street, city, country, post code) to Client management system
+- [x] Update database schema, backend APIs, and frontend UI to support address information
+- [x] Maintain backward compatibility with existing clients
+
+### Subtasks
+
+#### Database Schema Updates
+- [x] Update `convex/schema.ts` to add address object to clients table
+  - [x] Add `address` field as optional object with:
+    - [x] `street: v.optional(v.string())`
+    - [x] `city: v.optional(v.string())`
+    - [x] `country: v.optional(v.string())`
+    - [x] `postCode: v.optional(v.string())`
+  - [x] Ensure all address fields are optional for backward compatibility
+
+#### Backend API Updates
+- [x] Update `convex/clients.ts` to handle address fields
+  - [x] Modify `create` mutation to accept address fields
+  - [x] Modify `update` mutation to handle address updates
+  - [x] Ensure address fields are included in client queries and analytics
+- [x] Update `convex/personalClients.ts` for personal workspace support
+  - [x] Modify `createPersonal` mutation to accept address fields
+  - [x] Modify `updatePersonal` mutation to handle address updates
+  - [x] Ensure address fields are included in personal client queries
+
+#### Frontend UI Development
+- [x] Update `src/components/ClientsPage.tsx` client form
+  - [x] Add address state variables (street, city, country, postCode)
+  - [x] Add address input fields to creation/edit form after notes section
+  - [x] Update form submission handlers to include address data
+  - [x] Update form reset functions to clear address fields
+  - [x] Populate address fields when editing existing clients
+- [x] Ensure consistent styling with existing form fields
+- [x] Add proper form validation for address fields
+
+#### User Experience Enhancements
+- [x] Group address fields in a logical section within the form
+- [x] Use appropriate input types and validation patterns
+- [x] Provide clear labels and helpful placeholder text
+- [x] Support international address formats
+- [ ] Consider auto-complete functionality for country selection
+
+#### Data Migration & Compatibility
+- [x] Ensure existing clients without address data continue to work
+- [x] All address fields are optional to prevent breaking changes
+- [x] Test with both team and personal workspace clients
+- [x] Verify address data displays properly when present
+
+#### Testing & Validation
+- [x] Test client creation with complete address information
+- [x] Test client creation with partial address information
+- [x] Test client updates that modify address fields
+- [x] Verify address fields display in client tables/cards
+- [x] Test with both team and personal workspace contexts
+- [x] Run `npm run lint` and `npm run typecheck`
+
+### Implementation Plan
+
+#### Phase 1: Schema & Backend Foundation
+- [x] Update Convex schema with address object structure
+- [x] Modify team client mutations (`convex/clients.ts`)
+- [x] Modify personal client mutations (`convex/personalClients.ts`)
+- [x] Test backend changes with sample data
+
+#### Phase 2: Frontend Integration
+- [x] Add address state management to ClientsPage
+- [x] Create address input form section
+- [x] Connect form to backend mutations
+- [x] Implement form validation
+
+#### Phase 3: UX Polish & Testing
+- [x] Style address fields consistently with existing UI
+- [x] Add helpful labels and placeholders
+- [x] Test across different scenarios and workspace types
+- [x] Verify all functionality works as expected
+
+### Files to Modify
+
+#### Backend
+- `convex/schema.ts` - Add address object to clients table definition
+- `convex/clients.ts` - Update create/update mutations for team clients
+- `convex/personalClients.ts` - Update create/update mutations for personal clients
+
+#### Frontend
+- `src/components/ClientsPage.tsx` - Add address form fields and state management
+
+### Success Criteria
+
+1. ✅ Clients can have complete address information (street, city, country, post code)
+2. ✅ All address fields are optional and backward compatible
+3. ✅ Both team and personal workspace clients support addresses
+4. ✅ Address fields are properly validated and styled
+5. ✅ Existing clients without addresses continue to function normally
+6. ✅ Client creation and editing workflows include address management
+7. ✅ Address information displays appropriately in client interfaces
+8. ✅ Form validation provides clear feedback for address fields

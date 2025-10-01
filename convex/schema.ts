@@ -59,6 +59,12 @@ const applicationTables = {
     ownerId: v.optional(v.id("users")),
     name: v.string(),
     note: v.optional(v.string()),
+    address: v.optional(v.object({
+      street: v.optional(v.string()),
+      city: v.optional(v.string()),
+      country: v.optional(v.string()),
+      postCode: v.optional(v.string()),
+    })),
     color: v.optional(v.string()),
     archived: v.boolean(),
     workspaceType: v.optional(v.union(v.literal("personal"), v.literal("team"))),

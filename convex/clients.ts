@@ -327,6 +327,12 @@ export const create = mutation({
   args: {
     name: v.string(),
     note: v.optional(v.string()),
+    address: v.optional(v.object({
+      street: v.optional(v.string()),
+      city: v.optional(v.string()),
+      country: v.optional(v.string()),
+      postCode: v.optional(v.string()),
+    })),
     color: v.optional(v.string()),
     workspaceType: v.optional(v.union(v.literal("personal"), v.literal("team"))),
   },
@@ -341,6 +347,7 @@ export const create = mutation({
       createdBy: userId,
       name: args.name,
       note: args.note,
+      address: args.address,
       color: args.color,
       archived: false,
       workspaceType: args.workspaceType || "team",
@@ -353,6 +360,12 @@ export const update = mutation({
     id: v.id("clients"),
     name: v.optional(v.string()),
     note: v.optional(v.string()),
+    address: v.optional(v.object({
+      street: v.optional(v.string()),
+      city: v.optional(v.string()),
+      country: v.optional(v.string()),
+      postCode: v.optional(v.string()),
+    })),
     color: v.optional(v.string()),
     archived: v.optional(v.boolean()),
     workspaceType: v.optional(v.union(v.literal("personal"), v.literal("team"))),
@@ -372,7 +385,7 @@ export const update = mutation({
         .withIndex("byClient", (q) => q.eq("clientId", args.id))
         .filter((q) => q.eq(q.field("archived"), false))
         .collect();
-      
+
       if (projects.length > 0) {
         throw new Error("Cannot change client workspace type while it has active projects");
       }
@@ -381,6 +394,7 @@ export const update = mutation({
     await ctx.db.patch(args.id, {
       ...(args.name !== undefined && { name: args.name }),
       ...(args.note !== undefined && { note: args.note }),
+      ...(args.address !== undefined && { address: args.address }),
       ...(args.color !== undefined && { color: args.color }),
       ...(args.archived !== undefined && { archived: args.archived }),
       ...(args.workspaceType !== undefined && { workspaceType: args.workspaceType }),
