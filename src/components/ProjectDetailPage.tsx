@@ -7,6 +7,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
 import { toast } from "sonner";
+import { useCurrency } from "../hooks/useCurrency";
 
 interface ProjectDetailPageProps {
   projectId: string;
@@ -17,6 +18,7 @@ export function ProjectDetailPage({ projectId, onBackToProjects }: ProjectDetail
   const project = useQuery(api.projects.get, { id: projectId as Id<"projects"> });
   const categories = useQuery(api.categories.getCategories);
   const createManualEntry = useMutation(api.timer.createManualEntry);
+  const { getCurrencySymbol, formatCurrency } = useCurrency();
   
   const [showManualEntryDialog, setShowManualEntryDialog] = useState(false);
   const [manualEntryForm, setManualEntryForm] = useState({
@@ -90,7 +92,7 @@ export function ProjectDetailPage({ projectId, onBackToProjects }: ProjectDetail
               {project.name}
             </h1>
             <p className="text-lg text-gray-600 dark:text-gray-300">
-              {project.client?.name} • ${project.hourlyRate}/hr
+              {project.client?.name} • {getCurrencySymbol()}{project.hourlyRate}/hr
             </p>
             {project.budgetType === "hours" && project.budgetHours && (
               <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -99,7 +101,7 @@ export function ProjectDetailPage({ projectId, onBackToProjects }: ProjectDetail
             )}
             {project.budgetType === "amount" && project.budgetAmount && (
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                Allocated: ${project.budgetAmount}
+                Allocated: {formatCurrency(project.budgetAmount)}
               </p>
             )}
           </div>

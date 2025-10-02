@@ -37,6 +37,7 @@ export const getUserSettings = query({
       pomodoroEnabled: false,
       pomodoroWorkMinutes: 25,
       pomodoroBreakMinutes: 5,
+      currency: "USD" as const,
     };
   },
 });
@@ -66,6 +67,7 @@ export const ensureUserSettings = mutation({
         pomodoroEnabled: false,
         pomodoroWorkMinutes: 25,
         pomodoroBreakMinutes: 5,
+        currency: "USD" as const,
       };
       await ctx.db.insert("userSettings", defaultSettings);
       return defaultSettings;
@@ -90,6 +92,11 @@ export const updateSettings = mutation({
     pomodoroEnabled: v.optional(v.boolean()),
     pomodoroWorkMinutes: v.optional(v.number()),
     pomodoroBreakMinutes: v.optional(v.number()),
+    currency: v.optional(v.union(
+      v.literal("USD"),
+      v.literal("EUR"),
+      v.literal("GBP")
+    )),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -114,6 +121,7 @@ export const updateSettings = mutation({
         pomodoroEnabled: args.pomodoroEnabled ?? false,
         pomodoroWorkMinutes: args.pomodoroWorkMinutes ?? 25,
         pomodoroBreakMinutes: args.pomodoroBreakMinutes ?? 5,
+        currency: args.currency ?? "USD",
       });
     } else {
       await ctx.db.patch(settings._id, {
@@ -126,6 +134,7 @@ export const updateSettings = mutation({
         ...(args.pomodoroEnabled !== undefined && { pomodoroEnabled: args.pomodoroEnabled }),
         ...(args.pomodoroWorkMinutes !== undefined && { pomodoroWorkMinutes: args.pomodoroWorkMinutes }),
         ...(args.pomodoroBreakMinutes !== undefined && { pomodoroBreakMinutes: args.pomodoroBreakMinutes }),
+        ...(args.currency !== undefined && { currency: args.currency }),
       });
     }
   },

@@ -9,11 +9,13 @@ import {
   isVibrationSupported, 
   isWakeLockSupported 
 } from "../lib/attention";
+import { useCurrency } from "../hooks/useCurrency";
 
 export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void }) {
   const settings = useQuery(api.users.getUserSettings);
   const ensureSettings = useMutation(api.users.ensureUserSettings);
   const updateSettings = useMutation(api.users.updateSettings);
+  const { getCurrencySymbol } = useCurrency();
   
   // Notification settings
   const notificationPrefs = useQuery(api.pushNotifications.getNotificationPrefs);
@@ -30,6 +32,7 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
   const [budgetWarningThresholdAmount, setBudgetWarningThresholdAmount] = useState(50.0);
   const [pomodoroWorkMinutes, setPomodoroWorkMinutes] = useState(25);
   const [pomodoroBreakMinutes, setPomodoroBreakMinutes] = useState(5);
+  const [currency, setCurrency] = useState<"USD" | "EUR" | "GBP">("USD");
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaveTime, setLastSaveTime] = useState<number | null>(null);
 
@@ -63,6 +66,7 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
       setBudgetWarningThresholdAmount(settings.budgetWarningThresholdAmount ?? 50.0);
       setPomodoroWorkMinutes(settings.pomodoroWorkMinutes ?? 25);
       setPomodoroBreakMinutes(settings.pomodoroBreakMinutes ?? 5);
+      setCurrency(settings.currency ?? "USD");
     } else {
       // Ensure settings exist
       ensureSettings();
@@ -108,6 +112,7 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
         budgetWarningThresholdAmount,
         pomodoroWorkMinutes,
         pomodoroBreakMinutes,
+        currency,
       });
 
       // Save notification preferences
@@ -168,6 +173,7 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
     quietHoursEnd,
     escalationDelayMinutes,
     doNotDisturbEnabled,
+    currency,
   ]);
 
   const handleSave = async () => {
@@ -184,6 +190,7 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
         budgetWarningThresholdAmount,
         pomodoroWorkMinutes,
         pomodoroBreakMinutes,
+        currency,
       });
 
       // Save notification preferences
@@ -456,7 +463,7 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                         htmlFor="budgetWarningThresholdAmount"
                         className="block text-sm font-medium text-gray-700 mb-2"
                       >
-                        Amount warning threshold ($)
+                        Amount warning threshold ({getCurrencySymbol()})
                       </label>
                       <input
                         type="number"
@@ -472,7 +479,7 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                         className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                       />
                       <p className="mt-1 text-sm text-gray-500">
-                        Warn when less than ${budgetWarningThresholdAmount} remains in amount-based
+                        Warn when less than {getCurrencySymbol()}{budgetWarningThresholdAmount} remains in amount-based
                         budgets.
                       </p>
                     </div>
@@ -725,6 +732,34 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                       How long to wait before trying the backup channels above.
                     </p>
                   </div>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="text-lg font-medium mb-4">Currency Preferences</h3>
+              <p className="text-gray-600 mb-4">
+                Choose your preferred currency for displaying rates and budget amounts throughout the app.
+              </p>
+
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="currency" className="block text-sm font-medium text-gray-700 mb-2">
+                    Display Currency
+                  </label>
+                  <select
+                    id="currency"
+                    value={currency}
+                    onChange={(event) => setCurrency(event.target.value as "USD" | "EUR" | "GBP")}
+                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="USD">US Dollar ($)</option>
+                    <option value="EUR">Euro (€)</option>
+                    <option value="GBP">British Pound (£)</option>
+                  </select>
+                  <p className="mt-1 text-sm text-gray-500">
+                    This will change how currency amounts are displayed in projects, budgets, and reports.
+                  </p>
                 </div>
               </div>
             </div>

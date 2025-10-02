@@ -5,6 +5,7 @@ import { Id } from "../../convex/_generated/dataModel";
 import { notifyMutationError } from "../lib/notifyMutationError";
 import { useOrganization } from "../lib/organization-context";
 import { WorkspaceHeader, WorkspaceType } from "./WorkspaceSwitcher";
+import { useCurrency } from "../hooks/useCurrency";
 
 interface ProjectsPageProps {
   onProjectSelect?: (projectId: string) => void;
@@ -18,6 +19,7 @@ export function ProjectsPage({ onProjectSelect, onStartTimer }: ProjectsPageProp
   const [name, setName] = useState("");
   const [hourlyRate, setHourlyRate] = useState("");
   const [budgetType, setBudgetType] = useState<"hours" | "amount">("hours");
+  const { getCurrencySymbol, formatCurrency } = useCurrency();
   const [budgetHours, setBudgetHours] = useState("");
   const [budgetAmount, setBudgetAmount] = useState("");
   const [currentWorkspace, setCurrentWorkspace] = useState<WorkspaceType>("team");
@@ -341,7 +343,7 @@ export function ProjectsPage({ onProjectSelect, onStartTimer }: ProjectsPageProp
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                    ${project.hourlyRate}/hr
+                    {getCurrencySymbol()}{project.hourlyRate}/hr
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                     {project.totalHoursFormatted || "0h"}
@@ -349,7 +351,7 @@ export function ProjectsPage({ onProjectSelect, onStartTimer }: ProjectsPageProp
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                     {project.budgetType === "hours" 
                       ? `${project.budgetHours || 0} hours`
-                      : `$${project.budgetAmount || 0}`
+                      : formatCurrency(project.budgetAmount || 0)
                     }
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">

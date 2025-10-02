@@ -1,6 +1,7 @@
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
+import { useCurrency } from "../hooks/useCurrency";
 
 interface ProjectKpisProps {
   projectId: Id<"projects">;
@@ -8,6 +9,7 @@ interface ProjectKpisProps {
 
 export function ProjectKpis({ projectId }: ProjectKpisProps) {
   const stats = useQuery(api.projects.getStats, { projectId });
+  const { formatCurrency } = useCurrency();
 
   if (!stats) {
     return <div className="animate-pulse bg-gray-200 dark:bg-gray-700 h-64 rounded-lg"></div>;
@@ -17,10 +19,6 @@ export function ProjectKpis({ projectId }: ProjectKpisProps) {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     return `${hours}h ${minutes}m`;
-  };
-
-  const formatCurrency = (amount: number) => {
-    return `$${amount.toFixed(2)}`;
   };
 
   return (

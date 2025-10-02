@@ -3,6 +3,7 @@ import { api } from "../../convex/_generated/api";
 import { useState } from "react";
 import { Id } from "../../convex/_generated/dataModel";
 import { useOrganization } from "../lib/organization-context";
+import { useCurrency } from "../hooks/useCurrency";
 
 interface ProjectPickerProps {
   selectedProjectId: Id<"projects"> | null;
@@ -13,6 +14,7 @@ export function ProjectPicker({ selectedProjectId, onProjectSelect }: ProjectPic
   const [searchTerm, setSearchTerm] = useState("");
   const { isReady } = useOrganization();
   const projects = useQuery(api.projects.listAll, isReady ? {} : "skip");
+  const { getCurrencySymbol, formatCurrency } = useCurrency();
 
   if (!isReady || !projects) {
     return <div className="animate-pulse bg-gray-200 dark:bg-gray-700 h-20 rounded-lg"></div>;
@@ -45,7 +47,7 @@ export function ProjectPicker({ selectedProjectId, onProjectSelect }: ProjectPic
             {selectedProject.client?.name} → {selectedProject.name}
           </div>
           <div className="text-sm text-blue-700 dark:text-purple-300">
-            ${selectedProject.hourlyRate}/hr • {selectedProject.budgetType === "hours" ? `${selectedProject.budgetHours}h allocated` : `$${selectedProject.budgetAmount} allocated`}
+            {getCurrencySymbol()}{selectedProject.hourlyRate}/hr • {selectedProject.budgetType === "hours" ? `${selectedProject.budgetHours}h allocated` : `${formatCurrency(selectedProject.budgetAmount || 0)} allocated`}
           </div>
         </div>
       )}
@@ -77,7 +79,7 @@ export function ProjectPicker({ selectedProjectId, onProjectSelect }: ProjectPic
               {project.name}
             </div>
             <div className="text-sm text-gray-600 dark:text-gray-400">
-              ${project.hourlyRate}/hr
+              {getCurrencySymbol()}{project.hourlyRate}/hr
             </div>
           </button>
         ))}

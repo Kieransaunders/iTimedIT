@@ -34,6 +34,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Play, Square } from "lucide-react";
 import { PomodoroBreakTimer } from "./PomodoroBreakTimer";
 import { PomodoroPhaseIndicator } from "./PomodoroPhaseIndicator";
+import { useCurrency } from "../hooks/useCurrency";
 
 interface ModernDashboardProps {
   pushSwitchRequest?: any | null;
@@ -89,12 +90,6 @@ function formatTime(ms: number): string {
   return `${minutes}:${seconds.toString().padStart(2, '0')}`;
 }
 
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  }).format(amount);
-}
 
 function formatBudgetTime(seconds: number): string {
   const hours = Math.floor(seconds / 3600);
@@ -108,6 +103,7 @@ export function ModernDashboard({
 }: ModernDashboardProps) {
   const [currentProjectId, setCurrentProjectId] = useState<Id<"projects"> | null>(null);
   const [currentWorkspace, setCurrentWorkspace] = useState<WorkspaceType>("team");
+  const { formatCurrency: formatCurrencyWithSymbol } = useCurrency();
   const [now, setNow] = useState(Date.now());
   const [showInterruptModal, setShowInterruptModal] = useState(false);
   const [showProjectSwitchModal, setShowProjectSwitchModal] = useState(false);
@@ -902,7 +898,7 @@ export function ModernDashboard({
                               <div className="text-gray-600 dark:text-gray-300 text-sm">– {project.client?.name || 'No Client'}</div>
                             </div>
                             <div className="text-gray-500 dark:text-gray-400 text-xs">
-                              {formatCurrency(project.hourlyRate)}/hr
+                              {formatCurrencyWithSymbol(project.hourlyRate)}/hr
                             </div>
                           </div>
                         ))
@@ -1235,7 +1231,7 @@ export function ModernDashboard({
                 {runningTimer.project?.budgetType === "hours" && projectStats.timeRemaining > 0 ? (
                   <>Time remaining: <span className={`font-bold ${projectStats.isNearBudgetLimit ? "text-amber-400" : "text-green-400"}`}>{formatBudgetTime(projectStats.timeRemaining * 3600)}</span></>
                 ) : runningTimer.project?.budgetType === "amount" && projectStats.budgetRemaining > 0 ? (
-                  <>Amount remaining: <span className={`font-bold ${projectStats.isNearBudgetLimit ? "text-amber-400" : "text-green-400"}`}>{formatCurrency(projectStats.budgetRemaining)}</span></>
+                  <>Amount remaining: <span className={`font-bold ${projectStats.isNearBudgetLimit ? "text-amber-400" : "text-green-400"}`}>{formatCurrencyWithSymbol(projectStats.budgetRemaining)}</span></>
                 ) : (
                   <span className="font-bold text-red-400">⚠️ Budget exceeded</span>
                 )}
@@ -1422,7 +1418,7 @@ export function ModernDashboard({
                   </div>
                   <div className="text-gray-700 dark:text-gray-300 text-xs truncate font-medium">{project.client.name}</div>
                   <div className="text-gray-600 dark:text-gray-400 text-xs mt-1">
-                    {formatCurrency(project.hourlyRate)}/hr
+                    {formatCurrencyWithSymbol(project.hourlyRate)}/hr
                   </div>
                 </div>
               ))}

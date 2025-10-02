@@ -186,6 +186,11 @@ const applicationTables = {
     pomodoroEnabled: v.optional(v.boolean()),
     pomodoroWorkMinutes: v.optional(v.number()),
     pomodoroBreakMinutes: v.optional(v.number()),
+    currency: v.optional(v.union(
+      v.literal("USD"), // US Dollar
+      v.literal("EUR"), // Euro
+      v.literal("GBP")  // British Pound
+    )),
   }).index("byUser", ["userId"]),
 
   imports: defineTable({
