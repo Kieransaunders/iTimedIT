@@ -724,3 +724,267 @@ Core notification system is complete with:
 10. [ ] UI clearly indicates when custom values are in use
 11. [ ] Form validation provides clear, helpful feedback
 12. [ ] All changes are backward compatible with existing data
+
+## Timer Visibility Enhancement - Browser Tab Indicators
+
+### Task Overview
+- [ ] Add visual indicators when users navigate away from the timer app
+- [ ] Display running timer in browser tab title
+- [ ] Show timer progress/countdown in favicon
+- [ ] Enhance interrupt countdown visibility
+- [ ] Ensure users can monitor timer without having app tab active
+
+### Current Problem
+When users navigate to a different browser tab or window, they have no way to see:
+- That a timer is currently running
+- How much time has elapsed
+- Interrupt countdown warnings
+- Whether they need to respond to an interruption prompt
+
+This leads to:
+- Missed interrupt prompts
+- Uncertainty about timer status
+- Need to constantly switch back to check timer
+- Reduced productivity when multitasking
+
+### Proposed Solutions
+
+#### 1. Dynamic Browser Title Updates
+**Description**: Update the browser tab title to show the running timer in real-time
+
+**Current State**:
+- `attention.ts` already has title blinking for alerts
+- Title shows static "iTimedIT" when app is running
+- No timer information displayed in tab title
+
+**Proposed Changes**:
+- Show format: `"⏱️ 1:23:45 - Project Name | iTimedIT"` when timer running
+- Show format: `"⚠️ 0:58 Respond! - Project Name | iTimedIT"` during interrupt countdown
+- Update every second while timer is active
+- Reset to "iTimedIT" when tab is focused or timer stops
+- Respect user visibility - only show timer when tab is not active
+
+**Implementation Details**:
+- Add `useEffect` in `ModernDashboard.tsx` to monitor timer state
+- Update `document.title` based on timer/interrupt state
+- Track page visibility with `document.visibilityState`
+- Format time clearly for quick scanning in tab bar
+- Include project name for context when multiple timers exist
+
+#### 2. Dynamic Favicon with Timer Visualization
+**Description**: Generate and update favicon dynamically to show timer progress or countdown
+
+**Approaches**:
+- **Option A: Numeric Display** - Show elapsed time digits (e.g., "12" for 12 minutes)
+- **Option B: Progress Circle** - Draw circular progress indicator
+- **Option C: Color Coding** - Change favicon color based on state (green=running, orange=warning, red=interrupt)
+- **Recommended: Combination** - Use progress circle with color coding
+
+**Implementation Details**:
+- Create `src/lib/favicon.ts` utility module
+- Use HTML5 Canvas to draw favicon dynamically
+- Generate data URL and update `<link rel="icon">` element
+- Update every 5-10 seconds to balance visibility and performance
+- Show different visuals based on state:
+  - **Normal Timer**: Green circular progress showing elapsed percentage
+  - **Budget Warning**: Orange color when approaching budget limit
+  - **Interrupt Countdown**: Red with countdown seconds displayed
+  - **Paused/Stopped**: Gray or default favicon
+
+**Canvas Drawing Logic**:
+```typescript
+function generateTimerFavicon(elapsed: number, total: number, state: 'normal' | 'warning' | 'interrupt') {
+  // Create 32x32 canvas
+  // Draw circular progress arc
+  // Fill with appropriate color
+  // Optionally overlay time digits
+  // Convert to data URL
+  // Update favicon link element
+}
+```
+
+#### 3. Extended Web Notifications (Already Partially Implemented)
+**Current State**:
+- Push notifications work for interrupts
+- Notification system in `src/lib/push.ts`
+- Users already grant notification permission
+
+**Possible Enhancements**:
+- Optional periodic "timer running" reminders (every 15/30 minutes)
+- Show current elapsed time in notification
+- Configurable in Settings as opt-in feature
+
+**Note**: May be too intrusive for most users - make this optional
+
+#### 4. Browser Badge API Enhancement (Already Implemented)
+**Current State**:
+- `attention.ts` uses `setAppBadge()` for alert counts
+- Badge API only works in installed PWAs
+- Currently shows notification counts
+
+**Proposed Enhancement**:
+- Show elapsed minutes in badge when timer running: `setAppBadge(elapsedMinutes)`
+- Show countdown seconds during interrupt: `setAppBadge(remainingSeconds)`
+- Clear badge when timer stops
+- Only active when app installed as PWA
+
+**Limitation**: Badge API support is limited to PWA/installed apps on some platforms
+
+### Recommended Implementation Approach
+
+**Phase 1: Dynamic Title Updates** (Quick Win - High Value)
+- Add title update logic to `ModernDashboard.tsx`
+- Implement visibility detection to only show timer in inactive tabs
+- Format title with emoji indicators for quick recognition
+- Test across different browsers and tab states
+
+**Phase 2: Dynamic Favicon** (Medium Effort - High Impact)
+- Create favicon generation utility with Canvas
+- Implement circular progress indicator
+- Add color coding for different timer states
+- Optimize update frequency for performance
+- Test rendering across different browsers and OS themes
+
+**Phase 3: Badge Enhancement** (Low Effort - Limited Reach)
+- Extend existing badge API usage
+- Show elapsed time for PWA users
+- Document PWA installation benefits
+
+**Phase 4: Optional Periodic Notifications** (Optional)
+- Add settings toggle for periodic timer reminders
+- Implement configurable reminder intervals
+- Ensure notifications don't become annoying
+
+### Implementation Plan
+
+#### Phase 1: Browser Title Updates
+- [ ] Add visibility change detection in `ModernDashboard.tsx`
+  - [ ] Use `document.visibilityState` API
+  - [ ] Track when tab becomes hidden/visible
+- [ ] Implement title update logic
+  - [ ] Create function to format timer title
+  - [ ] Update title every second when timer running and tab hidden
+  - [ ] Include project name in title
+  - [ ] Add emoji indicators (⏱️ for timer, ⚠️ for interrupt)
+- [ ] Handle interrupt countdown state
+  - [ ] Show countdown seconds in title
+  - [ ] Use urgent formatting for interrupt warnings
+- [ ] Reset title on visibility change
+  - [ ] Restore original title when tab becomes visible
+  - [ ] Clear title updates when timer stops
+
+#### Phase 2: Dynamic Favicon
+- [ ] Create `src/lib/favicon.ts` utility module
+  - [ ] Implement Canvas-based favicon generation
+  - [ ] Create circular progress drawing function
+  - [ ] Add color palette for different states
+  - [ ] Generate data URL from canvas
+- [ ] Implement favicon update system
+  - [ ] Create function to update favicon link element
+  - [ ] Cache previous favicon for restoration
+  - [ ] Handle different favicon sizes (16x16, 32x32)
+- [ ] Integrate with timer state
+  - [ ] Update favicon based on elapsed time
+  - [ ] Change colors for warning/interrupt states
+  - [ ] Update every 5-10 seconds (balance visibility/performance)
+- [ ] Test cross-browser compatibility
+  - [ ] Chrome/Edge (Chromium)
+  - [ ] Firefox
+  - [ ] Safari
+  - [ ] Test with light/dark OS themes
+
+#### Phase 3: Badge API Enhancement
+- [ ] Extend `src/lib/attention.ts` badge functions
+  - [ ] Add `updateTimerBadge(elapsedMinutes)` function
+  - [ ] Add interrupt countdown badge logic
+- [ ] Integrate with `ModernDashboard.tsx`
+  - [ ] Update badge every minute during timer
+  - [ ] Clear badge when timer stops
+  - [ ] Handle PWA detection
+
+#### Phase 4: Settings & Configuration (Optional)
+- [ ] Add settings for timer visibility features
+  - [ ] Toggle for title updates
+  - [ ] Toggle for favicon updates
+  - [ ] Toggle for periodic notifications (if implemented)
+  - [ ] Configure notification intervals
+- [ ] Add performance optimizations
+  - [ ] Throttle updates when system is under load
+  - [ ] Pause updates when battery is low (Battery API)
+
+### Files to Modify
+
+#### Phase 1 (Title Updates)
+- `src/components/ModernDashboard.tsx` - Add title update logic and visibility detection
+- `src/lib/attention.ts` - Enhance title management functions
+
+#### Phase 2 (Favicon)
+- `src/lib/favicon.ts` - **NEW**: Canvas-based favicon generator utility
+- `src/components/ModernDashboard.tsx` - Integrate favicon updates with timer state
+- `public/favicon.ico` or `public/icon.png` - May need base favicon assets
+
+#### Phase 3 (Badge)
+- `src/lib/attention.ts` - Extend existing badge functions for timer display
+- `src/components/ModernDashboard.tsx` - Add badge update calls
+
+#### Phase 4 (Settings)
+- `src/components/Settings.tsx` - Add toggles for visibility features
+- `convex/schema.ts` - Add settings fields for new features
+- `convex/users.ts` - Add settings mutations for new preferences
+
+### Technical Considerations
+
+#### Performance
+- Title updates: Minimal overhead (~1ms per update)
+- Favicon updates: More expensive due to Canvas operations
+  - Limit updates to every 5-10 seconds
+  - Use `requestAnimationFrame` for smooth updates
+  - Consider pausing updates when system is throttled
+- Badge updates: Minimal overhead, already implemented
+
+#### Browser Compatibility
+- **Title Updates**: Universal support across all browsers
+- **Favicon Updates**:
+  - Chrome/Edge: Full support
+  - Firefox: Full support
+  - Safari: Partial support (may not update reliably)
+- **Badge API**: Limited to PWA/installed apps
+- **Visibility API**: Universal support (use `document.visibilityState`)
+
+#### Accessibility
+- Ensure title updates don't interfere with screen readers
+- Provide option to disable animations for reduced motion preferences
+- Test with assistive technologies
+
+#### Privacy & UX
+- Only show timer in title when tab is NOT visible (respect privacy)
+- Don't update favicon too frequently (avoid distraction)
+- Provide settings to disable features if users find them distracting
+
+### Success Criteria
+
+1. [ ] Browser tab title shows running timer when tab is inactive
+2. [ ] Tab title shows format: "⏱️ 1:23:45 - Project Name"
+3. [ ] Tab title shows interrupt countdown: "⚠️ 0:58 Respond!"
+4. [ ] Title resets to "iTimedIT" when tab becomes active
+5. [ ] Title resets when timer stops
+6. [ ] Favicon displays visual progress indicator
+7. [ ] Favicon changes color during warning states (orange/red)
+8. [ ] Favicon updates every 5-10 seconds without performance issues
+9. [ ] Favicon resets to default when timer stops
+10. [ ] Badge shows elapsed minutes for PWA users
+11. [ ] All features work across Chrome, Firefox, Edge
+12. [ ] Safari support documented (with known limitations)
+13. [ ] Performance impact is minimal (<1% CPU usage)
+14. [ ] Features can be toggled in Settings (optional)
+15. [ ] No interference with existing notification system
+16. [ ] Accessibility considerations addressed
+
+### Future Enhancements
+
+- [ ] Show multiple timers in title if multiple projects running
+- [ ] Add favicon animation for timer transitions
+- [ ] Integrate with OS notification center for persistent timer display
+- [ ] Add browser extension for enhanced timer visibility
+- [ ] Support for multiple monitors/displays
+- [ ] Picture-in-Picture mode for timer display (if supported)

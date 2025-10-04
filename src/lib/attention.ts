@@ -1,8 +1,10 @@
-// In-app attention utilities for badging, sound, vibration, and wake lock
+// In-app attention utilities for badging, sound, vibration, wake lock, and title updates
 
 let wakeLock: WakeLockSentinel | null = null;
 let originalTitle = document.title;
 let titleBlinkInterval: NodeJS.Timeout | null = null;
+let isPageVisible = true;
+let timerTitleInterval: NodeJS.Timeout | null = null;
 
 export interface AttentionOptions {
   badge?: number;
@@ -231,8 +233,63 @@ export function setupFocusChangeHandling() {
   window.addEventListener('focus', () => {
     clearAttention();
   });
-  
+
   window.addEventListener('blur', () => {
     // App lost focus - could trigger attention if needed
   });
+}
+
+// Timer Title Updates
+export interface TimerTitleOptions {
+  elapsedMs: number;
+  projectName: string;
+  isInterrupt?: boolean;
+  interruptSecondsLeft?: number;
+}
+
+function formatTimerForTitle(ms: number): string {
+  const totalSeconds = Math.floor(ms / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (hours > 0) {
+    return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  }
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+}
+
+export function updateTimerTitle(options: TimerTitleOptions): void {
+  // Only update title when page is not visible
+  if (isPageVisible) {
+    return;
+  }
+
+  if (options.isInterrupt && options.interruptSecondsLeft !== undefined) {
+    // Show interrupt countdown
+    const minutes = Math.floor(options.interruptSecondsLeft / 60);
+    const seconds = options.interruptSecondsLeft % 60;
+    const countdown = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    document.title = `⚠️ ${countdown} Respond! - ${options.projectName} | iTimedIT`;
+  } else {
+    // Show running timer
+    const timeStr = formatTimerForTitle(options.elapsedMs);
+    document.title = `⏱️ ${timeStr} - ${options.projectName} | iTimedIT`;
+  }
+}
+
+export function clearTimerTitle(): void {
+  document.title = originalTitle;
+}
+
+export function setPageVisibility(visible: boolean): void {
+  isPageVisible = visible;
+  if (visible) {
+    // When page becomes visible, clear timer title
+    clearTimerTitle();
+  }
+}
+
+export function isPageHidden(): boolean {
+  return !isPageVisible;
 }

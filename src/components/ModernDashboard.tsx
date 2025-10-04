@@ -35,6 +35,8 @@ import { Play, Square } from "lucide-react";
 import { PomodoroBreakTimer } from "./PomodoroBreakTimer";
 import { PomodoroPhaseIndicator } from "./PomodoroPhaseIndicator";
 import { useCurrency } from "../hooks/useCurrency";
+import { updateTimerTitle, clearTimerTitle, setPageVisibility } from "../lib/attention";
+import { updateTimerFavicon, clearTimerFavicon, type FaviconState } from "../lib/favicon";
 
 interface ModernDashboardProps {
   pushSwitchRequest?: any | null;
@@ -327,6 +329,127 @@ export function ModernDashboard({
     setPreviousPhase(currentPhase || null);
     setPreviousBreakTimer(currentIsBreakTimer || false);
   }, [runningTimer?.pomodoroPhase, runningTimer?.isBreakTimer, runningTimer?.pomodoroCompletedCycles, previousPhase, previousBreakTimer]);
+
+  // Page visibility tracking for title updates
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      setPageVisibility(document.visibilityState === 'visible');
+    };
+
+    // Set initial state
+    setPageVisibility(document.visibilityState === 'visible');
+
+    // Listen for visibility changes
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearTimerTitle();
+    };
+  }, []);
+
+  // Update title when timer is running or interrupt is active
+  useEffect(() => {
+    if (!runningTimer || !currentProject) {
+      clearTimerTitle();
+      return;
+    }
+
+    const updateTitle = () => {
+      const elapsed = now - runningTimer.startedAt;
+
+      // Check if interrupt is active
+      if (runningTimer.awaitingInterruptAck && runningTimer.interruptShownAt && userSettings?.gracePeriod) {
+        const gracePeriodMs = userSettings.gracePeriod * 1000;
+        const timeSinceInterrupt = now - runningTimer.interruptShownAt;
+        const remainingMs = gracePeriodMs - timeSinceInterrupt;
+        const remainingSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
+
+        updateTimerTitle({
+          elapsedMs: elapsed,
+          projectName: currentProject.name,
+          isInterrupt: true,
+          interruptSecondsLeft: remainingSeconds,
+        });
+      } else {
+        // Normal timer display
+        updateTimerTitle({
+          elapsedMs: elapsed,
+          projectName: currentProject.name,
+        });
+      }
+    };
+
+    // Update immediately
+    updateTitle();
+
+    // Update every second
+    const interval = setInterval(updateTitle, 1000);
+
+    return () => clearInterval(interval);
+  }, [runningTimer, currentProject, now, userSettings?.gracePeriod]);
+
+  // Update favicon when timer is running
+  useEffect(() => {
+    if (!runningTimer || !currentProject) {
+      clearTimerFavicon();
+      return;
+    }
+
+    const updateFavicon = () => {
+      const elapsed = now - runningTimer.startedAt;
+      let state: FaviconState = 'normal';
+      let showSeconds = false;
+      let secondsLeft: number | undefined;
+
+      // Check if interrupt is active
+      if (runningTimer.awaitingInterruptAck && runningTimer.interruptShownAt && userSettings?.gracePeriod) {
+        state = 'interrupt';
+        showSeconds = true;
+        const gracePeriodMs = userSettings.gracePeriod * 1000;
+        const timeSinceInterrupt = now - runningTimer.interruptShownAt;
+        const remainingMs = gracePeriodMs - timeSinceInterrupt;
+        secondsLeft = Math.max(0, Math.ceil(remainingMs / 1000));
+      } else if (projectStats) {
+        // Check if approaching budget
+        const budgetType = projectStats.budgetType;
+        const budgetRemaining = projectStats.budgetRemaining;
+        const budgetTotal = projectStats.budgetTotal;
+
+        if (budgetRemaining !== undefined && budgetTotal !== undefined && budgetTotal > 0) {
+          const percentRemaining = (budgetRemaining / budgetTotal) * 100;
+          if (percentRemaining < 10) {
+            state = 'warning';
+          }
+        }
+      }
+
+      // Calculate total time for progress (if we have budget info)
+      let totalMs: number | undefined;
+      if (projectStats?.budgetType === 'hours' && projectStats?.budgetTotal) {
+        totalMs = projectStats.budgetTotal * 3600 * 1000; // hours to ms
+      }
+
+      updateTimerFavicon({
+        elapsedMs: elapsed,
+        totalMs,
+        state,
+        showSeconds,
+        secondsLeft,
+      });
+    };
+
+    // Update immediately
+    updateFavicon();
+
+    // Update every 5 seconds for performance
+    const interval = setInterval(updateFavicon, 5000);
+
+    return () => {
+      clearInterval(interval);
+      clearTimerFavicon();
+    };
+  }, [runningTimer, currentProject, projectStats, now, userSettings?.gracePeriod]);
 
   // Timer state calculations
   const timerState = useMemo((): TimerState => {
