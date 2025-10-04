@@ -517,6 +517,30 @@ Core notification system is complete with:
 - [x] Update placeholder text to use UK address format examples
 - [ ] Consider auto-complete functionality for country selection
 
+#### Country Dropdown Enhancement
+- [x] Install shadcn/ui components for searchable select
+  - [x] Run `npx shadcn@latest add command` for Command component
+  - [x] Run `npx shadcn@latest add popover` for Popover component
+  - [x] Verify component installation and imports
+- [x] Create comprehensive country list data
+  - [x] Add ISO 3166-1 standard country names list (195 countries)
+  - [x] Store as constant in ClientsPage
+  - [x] Sort alphabetically for easy navigation
+- [x] Replace country text input with searchable Combobox
+  - [x] Update `ClientsPage.tsx` lines 435-455
+  - [x] Implement shadcn/ui Combobox with Command + Popover components
+  - [x] Add search/filter functionality for typing country names
+  - [x] Maintain existing `country` state variable
+  - [x] Match styling with other form fields (dark mode, focus states)
+  - [x] Ensure backward compatibility with existing client data
+- [x] Test country dropdown functionality
+  - [x] Verify dropdown opens and displays all countries
+  - [x] Test search/filter functionality within dropdown (type to search)
+  - [x] Test form submission with selected country
+  - [x] Test both create and edit client workflows
+  - [x] Verify dark mode styling
+  - [x] Fix positioning issue with dropdown rendering
+
 #### Data Migration & Compatibility
 - [x] Ensure existing clients without address data continue to work
 - [x] All address fields are optional to prevent breaking changes
