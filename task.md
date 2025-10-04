@@ -598,3 +598,129 @@ Core notification system is complete with:
 6. ✅ Client creation and editing workflows include address management
 7. ✅ Address information displays appropriately in client interfaces
 8. ✅ Form validation provides clear feedback for address fields
+
+## Settings Page Enhancements - Custom Intervals
+
+### Task Overview
+- [ ] Add custom interval/grace period options to interruption settings
+- [ ] Change default interruption interval from 5 seconds to 45 minutes
+- [ ] Enable users to define custom check intervals and auto-stop countdowns
+- [ ] Maintain backward compatibility with existing preset options
+
+### Current Issues
+- Default interruption interval is set to 5 seconds (debugging value)
+- Users cannot specify custom intervals outside preset options
+- Grace period (auto-stop countdown) limited to preset values only
+- Production deployment showing debug option "5 seconds" in dropdown
+
+### Proposed Improvements
+
+#### 1. Fix Default Interruption Interval
+**Current**: Default is `0.0833` minutes (5 seconds) - debug value
+**Target**: Change to `45` minutes (45 minutes) - production-appropriate default
+
+**Changes Needed**:
+- Update `convex/users.ts:32` and `:62` in `getUserSettings` query
+- Update `convex/users.ts:116` in `ensureUserSettings` mutation
+- Update `src/components/Settings.tsx:28` local state default
+
+#### 2. Add Custom Interval Option
+**Location**: `src/components/Settings.tsx:233-241` (intervalOptions)
+
+**Changes Needed**:
+- Remove "5 seconds" debug option from production
+- Add "Custom" option to dropdown
+- Options: 5min, 15min, 30min, 45min, 1hr, 2hr, Custom
+- Show number input field when "Custom" selected
+- Accept custom values: 1-480 minutes (1 min - 8 hours)
+
+#### 3. Add Custom Grace Period Option
+**Location**: `src/components/Settings.tsx:243-249` (gracePeriodOptions)
+
+**Changes Needed**:
+- Add "Custom" option to grace period dropdown
+- Options: 5s, 10s, 30s, 60s, 120s, Custom
+- Show number input field when "Custom" selected
+- Accept custom values: 5-300 seconds (5 sec - 5 min)
+
+#### 4. Update Database Schema
+**Location**: `convex/schema.ts:166-182`
+
+**Changes Needed**:
+- Change `interruptInterval` from union of literals to `v.number()`
+- Change `gracePeriod` from union of literals to `v.number()`
+- Maintain backward compatibility with existing numeric values
+- Add validation in mutations for min/max ranges
+
+### Implementation Plan
+
+#### Phase 1: Schema & Backend Updates
+- [ ] Update `convex/schema.ts` to use `v.number()` for intervals
+  - [ ] Change `interruptInterval` type to `v.number()`
+  - [ ] Change `gracePeriod` type to `v.number()`
+- [ ] Update `convex/users.ts` mutations and queries
+  - [ ] Change default `interruptInterval` from `0.0833` to `45`
+  - [ ] Update `updateSettings` mutation validation
+  - [ ] Add min/max validation for custom values
+  - [ ] Ensure backward compatibility
+
+#### Phase 2: Frontend UI Development
+- [ ] Update `src/components/Settings.tsx` dropdown options
+  - [ ] Remove "5 seconds" debug option from interval dropdown
+  - [ ] Add "Custom" option to both dropdowns
+- [ ] Add custom input fields
+  - [ ] Add state for custom interval value (minutes)
+  - [ ] Add state for custom grace period value (seconds)
+  - [ ] Add state to track dropdown selection vs custom
+- [ ] Implement conditional rendering
+  - [ ] Show custom interval input when "Custom" selected
+  - [ ] Show custom grace period input when "Custom" selected
+  - [ ] Hide custom inputs when preset values selected
+
+#### Phase 3: Validation & UX Polish
+- [ ] Add input validation
+  - [ ] Check interval: 1-480 minutes range
+  - [ ] Grace period: 5-300 seconds range
+  - [ ] Show validation errors inline
+  - [ ] Prevent invalid values from saving
+- [ ] Update auto-save logic
+  - [ ] Include custom value states in dependency array
+  - [ ] Debounce custom input changes (1 second)
+  - [ ] Show save status indicator
+- [ ] Add helpful UI elements
+  - [ ] Placeholder text with valid ranges
+  - [ ] Helper text explaining custom options
+  - [ ] Visual consistency with existing inputs
+
+#### Phase 4: Testing & Validation
+- [ ] Test with preset values to ensure backward compatibility
+- [ ] Test custom interval values (edge cases, min/max)
+- [ ] Test custom grace period values (edge cases, min/max)
+- [ ] Test auto-save functionality with custom values
+- [ ] Test dropdown switching between preset and custom
+- [ ] Run `npm run lint` and type checking
+- [ ] Test in development environment before deployment
+
+### Files to Modify
+
+#### Backend
+- `convex/schema.ts` - Update interruptInterval and gracePeriod types
+- `convex/users.ts` - Update defaults, validation, and mutation logic
+
+#### Frontend
+- `src/components/Settings.tsx` - Add custom input fields, dropdowns, validation
+
+### Success Criteria
+
+1. [ ] Default interruption interval is 45 minutes (not 5 seconds)
+2. [ ] "5 seconds" debug option removed from production dropdown
+3. [ ] Users can select "Custom" from both dropdowns
+4. [ ] Custom interval input accepts 1-480 minutes
+5. [ ] Custom grace period input accepts 5-300 seconds
+6. [ ] Custom values are properly saved and persisted
+7. [ ] Validation prevents out-of-range values
+8. [ ] Auto-save works correctly with custom values
+9. [ ] Existing users with preset values see no disruption
+10. [ ] UI clearly indicates when custom values are in use
+11. [ ] Form validation provides clear, helpful feedback
+12. [ ] All changes are backward compatible with existing data

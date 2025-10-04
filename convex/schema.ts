@@ -163,23 +163,9 @@ const applicationTables = {
   userSettings: defineTable({
     userId: v.id("users"),
     organizationId: v.optional(v.id("organizations")),
-    interruptInterval: v.union(
-      v.literal(0.0833), // 5 seconds (5/60 minutes)
-      v.literal(5),
-      v.literal(15),
-      v.literal(30),
-      v.literal(45),
-      v.literal(60),
-      v.literal(120)
-    ),
+    interruptInterval: v.number(), // Minutes: 1-480 (1 min - 8 hours)
     interruptEnabled: v.boolean(),
-    gracePeriod: v.optional(v.union(
-      v.literal(5),   // 5 seconds
-      v.literal(10),  // 10 seconds
-      v.literal(30),  // 30 seconds
-      v.literal(60),  // 60 seconds
-      v.literal(120)  // 2 minutes
-    )),
+    gracePeriod: v.optional(v.number()), // Seconds: 5-300 (5 sec - 5 min)
     budgetWarningEnabled: v.optional(v.boolean()),
     budgetWarningThresholdHours: v.optional(v.number()),
     budgetWarningThresholdAmount: v.optional(v.number()),

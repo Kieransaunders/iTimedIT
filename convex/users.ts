@@ -29,8 +29,8 @@ export const getUserSettings = query({
     return settings || {
       userId,
       interruptEnabled: true,
-      interruptInterval: 0.0833 as const,
-      gracePeriod: 5 as const,
+      interruptInterval: 45, // 45 minutes default
+      gracePeriod: 60, // 60 seconds default
       budgetWarningEnabled: true,
       budgetWarningThresholdHours: 1.0,
       budgetWarningThresholdAmount: 50.0,
@@ -59,8 +59,8 @@ export const ensureUserSettings = mutation({
       const defaultSettings = {
         userId,
         interruptEnabled: true,
-        interruptInterval: 0.0833 as const,
-        gracePeriod: 5 as const,
+        interruptInterval: 45, // 45 minutes default
+        gracePeriod: 60, // 60 seconds default
         budgetWarningEnabled: true,
         budgetWarningThresholdHours: 1.0,
         budgetWarningThresholdAmount: 50.0,
@@ -80,12 +80,8 @@ export const ensureUserSettings = mutation({
 export const updateSettings = mutation({
   args: {
     interruptEnabled: v.optional(v.boolean()),
-    interruptInterval: v.optional(
-      v.union(v.literal(0.0833), v.literal(5), v.literal(15), v.literal(30), v.literal(45), v.literal(60), v.literal(120))
-    ),
-    gracePeriod: v.optional(
-      v.union(v.literal(5), v.literal(10), v.literal(30), v.literal(60), v.literal(120))
-    ),
+    interruptInterval: v.optional(v.number()), // Minutes: 1-480
+    gracePeriod: v.optional(v.number()), // Seconds: 5-300
     budgetWarningEnabled: v.optional(v.boolean()),
     budgetWarningThresholdHours: v.optional(v.number()),
     budgetWarningThresholdAmount: v.optional(v.number()),
@@ -104,6 +100,16 @@ export const updateSettings = mutation({
       throw new Error("Not authenticated");
     }
 
+    // Validate interrupt interval (0.0833-480 minutes, allowing 5 seconds debug mode)
+    if (args.interruptInterval !== undefined && (args.interruptInterval < 0.0833 || args.interruptInterval > 480)) {
+      throw new Error("Interrupt interval must be between 0.0833 and 480 minutes");
+    }
+
+    // Validate grace period (5-300 seconds)
+    if (args.gracePeriod !== undefined && (args.gracePeriod < 5 || args.gracePeriod > 300)) {
+      throw new Error("Grace period must be between 5 and 300 seconds");
+    }
+
     const settings = await ctx.db
       .query("userSettings")
       .withIndex("byUser", (q) => q.eq("userId", userId))
@@ -113,8 +119,8 @@ export const updateSettings = mutation({
       await ctx.db.insert("userSettings", {
         userId,
         interruptEnabled: args.interruptEnabled ?? true,
-        interruptInterval: args.interruptInterval ?? 0.0833,
-        gracePeriod: args.gracePeriod ?? 5,
+        interruptInterval: args.interruptInterval ?? 45,
+        gracePeriod: args.gracePeriod ?? 60,
         budgetWarningEnabled: args.budgetWarningEnabled ?? true,
         budgetWarningThresholdHours: args.budgetWarningThresholdHours ?? 1.0,
         budgetWarningThresholdAmount: args.budgetWarningThresholdAmount ?? 50.0,

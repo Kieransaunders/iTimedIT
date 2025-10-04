@@ -23,10 +23,12 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
   const updateNotificationPrefs = useMutation(api.pushNotifications.updateNotificationPrefs);
 
   const [interruptEnabled, setInterruptEnabled] = useState(true);
-  const [interruptInterval, setInterruptInterval] = useState<
-    0.0833 | 5 | 15 | 30 | 45 | 60 | 120
-  >(45);
-  const [gracePeriod, setGracePeriod] = useState<5 | 10 | 30 | 60 | 120>(5);
+  const [interruptInterval, setInterruptInterval] = useState<number>(45);
+  const [isCustomInterval, setIsCustomInterval] = useState(false);
+  const [customIntervalValue, setCustomIntervalValue] = useState<number>(45);
+  const [gracePeriod, setGracePeriod] = useState<number>(60);
+  const [isCustomGracePeriod, setIsCustomGracePeriod] = useState(false);
+  const [customGracePeriodValue, setCustomGracePeriodValue] = useState<number>(60);
   const [budgetWarningEnabled, setBudgetWarningEnabled] = useState(true);
   const [budgetWarningThresholdHours, setBudgetWarningThresholdHours] = useState(1.0);
   const [budgetWarningThresholdAmount, setBudgetWarningThresholdAmount] = useState(50.0);
@@ -59,8 +61,33 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
   useEffect(() => {
     if (settings) {
       setInterruptEnabled(settings.interruptEnabled);
-      setInterruptInterval(settings.interruptInterval);
-      setGracePeriod(settings.gracePeriod ?? 5);
+
+      // Check if interval is a preset value or custom
+      const presetIntervals = [0.0833, 5, 15, 30, 45, 60, 120];
+      const interval = settings.interruptInterval;
+      if (presetIntervals.includes(interval)) {
+        setInterruptInterval(interval);
+        setIsCustomInterval(false);
+        setCustomIntervalValue(interval);
+      } else {
+        setInterruptInterval(-1); // Indicates custom
+        setIsCustomInterval(true);
+        setCustomIntervalValue(interval);
+      }
+
+      // Check if grace period is a preset value or custom
+      const presetGracePeriods = [5, 10, 30, 60, 120];
+      const grace = settings.gracePeriod ?? 60;
+      if (presetGracePeriods.includes(grace)) {
+        setGracePeriod(grace);
+        setIsCustomGracePeriod(false);
+        setCustomGracePeriodValue(grace);
+      } else {
+        setGracePeriod(-1); // Indicates custom
+        setIsCustomGracePeriod(true);
+        setCustomGracePeriodValue(grace);
+      }
+
       setBudgetWarningEnabled(settings.budgetWarningEnabled ?? true);
       setBudgetWarningThresholdHours(settings.budgetWarningThresholdHours ?? 1.0);
       setBudgetWarningThresholdAmount(settings.budgetWarningThresholdAmount ?? 50.0);
@@ -98,15 +125,21 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
   // Autosave function
   const autoSave = async () => {
     if (isSaving) return; // Don't save if already saving
-    
+
     try {
       setIsSaving(true);
-      
+
+      // Determine the actual interval value to save
+      const actualInterval = isCustomInterval ? customIntervalValue : interruptInterval;
+
+      // Determine the actual grace period value to save
+      const actualGracePeriod = isCustomGracePeriod ? customGracePeriodValue : gracePeriod;
+
       // Save timer settings
       await updateSettings({
         interruptEnabled,
-        interruptInterval,
-        gracePeriod,
+        interruptInterval: actualInterval,
+        gracePeriod: actualGracePeriod,
         budgetWarningEnabled,
         budgetWarningThresholdHours,
         budgetWarningThresholdAmount,
@@ -153,7 +186,11 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
   }, [
     interruptEnabled,
     interruptInterval,
+    isCustomInterval,
+    customIntervalValue,
     gracePeriod,
+    isCustomGracePeriod,
+    customGracePeriodValue,
     budgetWarningEnabled,
     budgetWarningThresholdHours,
     budgetWarningThresholdAmount,
@@ -179,12 +216,18 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
   const handleSave = async () => {
     try {
       setIsSaving(true);
-      
+
+      // Determine the actual interval value to save
+      const actualInterval = isCustomInterval ? customIntervalValue : interruptInterval;
+
+      // Determine the actual grace period value to save
+      const actualGracePeriod = isCustomGracePeriod ? customGracePeriodValue : gracePeriod;
+
       // Save timer settings
       await updateSettings({
         interruptEnabled,
-        interruptInterval,
-        gracePeriod,
+        interruptInterval: actualInterval,
+        gracePeriod: actualGracePeriod,
         budgetWarningEnabled,
         budgetWarningThresholdHours,
         budgetWarningThresholdAmount,
@@ -231,13 +274,14 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
 
 
   const intervalOptions = [
-    { value: 0.0833, label: "5 seconds" },
+    { value: 0.0833, label: "5 seconds (debug)" },
     { value: 5, label: "5 minutes" },
     { value: 15, label: "15 minutes" },
     { value: 30, label: "30 minutes" },
     { value: 45, label: "45 minutes" },
     { value: 60, label: "1 hour" },
     { value: 120, label: "2 hours" },
+    { value: -1, label: "Custom" },
   ];
 
   const gracePeriodOptions = [
@@ -246,6 +290,7 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
     { value: 30, label: "30 seconds" },
     { value: 60, label: "1 minute" },
     { value: 120, label: "2 minutes" },
+    { value: -1, label: "Custom" },
   ];
 
   const isSettingsLoading = settings === undefined;
@@ -307,11 +352,11 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                     <select
                       id="interruptInterval"
                       value={interruptInterval}
-                      onChange={(event) =>
-                        setInterruptInterval(
-                          Number(event.target.value) as 0.0833 | 5 | 15 | 30 | 45 | 60 | 120,
-                        )
-                      }
+                      onChange={(event) => {
+                        const value = Number(event.target.value);
+                        setInterruptInterval(value);
+                        setIsCustomInterval(value === -1);
+                      }}
                       className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     >
                       {intervalOptions.map((option) => (
@@ -320,11 +365,33 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                         </option>
                       ))}
                     </select>
-                    <p className="mt-1 text-sm text-gray-500">
-                      You'll be asked if you're still working every {intervalOptions
-                        .find((option) => option.value === interruptInterval)
-                        ?.label.toLowerCase()}.
-                    </p>
+                    {isCustomInterval && (
+                      <div className="mt-3">
+                        <label htmlFor="customIntervalValue" className="block text-sm font-medium text-gray-700 mb-2">
+                          Custom interval (minutes)
+                        </label>
+                        <input
+                          type="number"
+                          id="customIntervalValue"
+                          value={customIntervalValue}
+                          onChange={(event) => setCustomIntervalValue(Math.max(1, Math.min(480, parseInt(event.target.value, 10) || 1)))}
+                          min={1}
+                          max={480}
+                          className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="Enter minutes (1-480)"
+                        />
+                        <p className="mt-1 text-sm text-gray-500">
+                          Enter a custom interval between 1 and 480 minutes (8 hours).
+                        </p>
+                      </div>
+                    )}
+                    {!isCustomInterval && (
+                      <p className="mt-1 text-sm text-gray-500">
+                        You'll be asked if you're still working every {intervalOptions
+                          .find((option) => option.value === interruptInterval)
+                          ?.label.toLowerCase()}.
+                      </p>
+                    )}
                   </div>
                 )}
 
@@ -336,9 +403,11 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                     <select
                       id="gracePeriod"
                       value={gracePeriod}
-                      onChange={(event) =>
-                        setGracePeriod(Number(event.target.value) as 5 | 10 | 30 | 60 | 120)
-                      }
+                      onChange={(event) => {
+                        const value = Number(event.target.value);
+                        setGracePeriod(value);
+                        setIsCustomGracePeriod(value === -1);
+                      }}
                       className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     >
                       {gracePeriodOptions.map((option) => (
@@ -347,11 +416,33 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                         </option>
                       ))}
                     </select>
-                    <p className="mt-1 text-sm text-gray-500">
-                      Time to respond before the timer auto-stops: {gracePeriodOptions
-                        .find((option) => option.value === gracePeriod)
-                        ?.label.toLowerCase()}.
-                    </p>
+                    {isCustomGracePeriod && (
+                      <div className="mt-3">
+                        <label htmlFor="customGracePeriodValue" className="block text-sm font-medium text-gray-700 mb-2">
+                          Custom countdown (seconds)
+                        </label>
+                        <input
+                          type="number"
+                          id="customGracePeriodValue"
+                          value={customGracePeriodValue}
+                          onChange={(event) => setCustomGracePeriodValue(Math.max(5, Math.min(300, parseInt(event.target.value, 10) || 5)))}
+                          min={5}
+                          max={300}
+                          className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="Enter seconds (5-300)"
+                        />
+                        <p className="mt-1 text-sm text-gray-500">
+                          Enter a custom countdown between 5 and 300 seconds (5 minutes).
+                        </p>
+                      </div>
+                    )}
+                    {!isCustomGracePeriod && (
+                      <p className="mt-1 text-sm text-gray-500">
+                        Time to respond before the timer auto-stops: {gracePeriodOptions
+                          .find((option) => option.value === gracePeriod)
+                          ?.label.toLowerCase()}.
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
