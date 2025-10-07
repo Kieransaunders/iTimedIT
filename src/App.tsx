@@ -345,10 +345,10 @@ function UnauthenticatedView() {
             <div className="w-full max-w-md">
               <div className="auth-card">
                 <div className="text-center mb-6">
-                  <h3 className="text-2xl font-semibold hero-text mb-2">Welcome Back</h3>
-                  <p className="hero-subtitle">Sign in to your account</p>
+                  <h3 className="text-2xl font-semibold hero-text mb-2">Get Started</h3>
+                  <p className="hero-subtitle">Create an account to get started</p>
                 </div>
-                <SignInForm />
+                <SignInForm defaultFlow="signUp" />
               </div>
             </div>
           </div>

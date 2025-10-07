@@ -40,6 +40,7 @@ export const loggedInUser = query({
       email: v.optional(v.string()),
       image: v.optional(v.string()),
       isAnonymous: v.optional(v.boolean()),
+      emailVerificationTime: v.optional(v.number()),
     }),
   ),
   handler: async (ctx) => {
