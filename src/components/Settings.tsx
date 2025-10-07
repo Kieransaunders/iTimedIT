@@ -2,12 +2,13 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import * as Sentry from "@sentry/react";
 import type { AppPage } from "./ProfilePage";
-import { 
-  isBadgeSupported, 
-  isSoundSupported, 
-  isVibrationSupported, 
-  isWakeLockSupported 
+import {
+  isBadgeSupported,
+  isSoundSupported,
+  isVibrationSupported,
+  isWakeLockSupported
 } from "../lib/attention";
 import { useCurrency } from "../hooks/useCurrency";
 
@@ -856,16 +857,27 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
             </div>
 
             <div className="pt-4 border-t">
-              <button
-                onClick={handleSave}
-                disabled={isSaving}
-                className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-lg transition-colors"
-              >
-                {isSaving && (
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                )}
-                {isSaving ? "Saving..." : "Save Settings"}
-              </button>
+              <div className="flex gap-4">
+                <button
+                  onClick={handleSave}
+                  disabled={isSaving}
+                  className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-lg transition-colors"
+                >
+                  {isSaving && (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  )}
+                  {isSaving ? "Saving..." : "Save Settings"}
+                </button>
+
+                <button
+                  onClick={() => {
+                    throw new Error("This is your first error!");
+                  }}
+                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2 shadow-lg transition-colors"
+                >
+                  Break the world
+                </button>
+              </div>
             </div>
           </div>
         )}

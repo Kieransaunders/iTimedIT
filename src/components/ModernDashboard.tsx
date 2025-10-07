@@ -1298,9 +1298,10 @@ export function ModernDashboard({
             </div>
           )}
           
-          <div className="flex items-center justify-center gap-4">
+          {/* Timer Display */}
+          <div className="text-center">
             <div
-              className={`text-center text-6xl sm:text-7xl md:text-8xl lg:text-9xl font-mono font-bold tracking-tight ${
+              className={`text-6xl sm:text-7xl md:text-8xl lg:text-9xl font-mono font-bold tracking-tight ${
                 runningTimer && projectStats?.isNearBudgetLimit
                   ? "animate-pulse"
                   : ""
@@ -1316,22 +1317,44 @@ export function ModernDashboard({
               {isBreakTimer ? formatTime(totalElapsedMs) : formatTime(totalElapsedMs)}
             </div>
             
+            {/* Timer Controls */}
             {!isBreakTimer && (
-              <button
-                className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white focus-visible:ring-[#F85E00] dark:focus-visible:ring-offset-gray-900"
-                style={{
-                  backgroundColor: timerState.running ? "#ef4444" : currentProject.color,
-                }}
-                onClick={toggleTimer}
-                aria-pressed={timerState.running}
-                aria-label={timerState.running ? "Stop timer" : "Start timer"}
-              >
-                {timerState.running ? (
-                  <Square className="w-6 h-6 sm:w-7 sm:h-7 text-white" aria-hidden="true" />
-                ) : (
-                  <Play className="w-6 h-6 sm:w-7 sm:h-7 text-white" aria-hidden="true" />
-                )}
-              </button>
+              <div className="flex items-center justify-center gap-4 mt-6">
+                <button
+                  className="inline-flex items-center justify-center px-8 py-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white focus-visible:ring-[#F85E00] dark:focus-visible:ring-offset-gray-900 text-white font-medium"
+                  style={{
+                    backgroundColor: timerState.running ? "#ef4444" : currentProject.color,
+                  }}
+                  onClick={toggleTimer}
+                  aria-pressed={timerState.running}
+                  aria-label={timerState.running ? "Stop timer" : "Start timer"}
+                >
+                  {timerState.running ? (
+                    <>
+                      <Square className="w-5 h-5 mr-2" aria-hidden="true" />
+                      Stop
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-5 h-5 mr-2" aria-hidden="true" />
+                      Start
+                    </>
+                  )}
+                </button>
+                
+                <button
+                  className="inline-flex items-center justify-center px-8 py-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white focus-visible:ring-slate-400 dark:focus-visible:ring-offset-gray-900 bg-white/80 dark:bg-gray-700/80 hover:bg-white dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white font-medium border border-gray-200/50 dark:border-gray-600/50 backdrop-blur-sm"
+                  onClick={() => {
+                    if (timerState.running) {
+                      stopTimer();
+                    }
+                    // Reset functionality would go here - for now just stops the timer
+                  }}
+                  aria-label="Reset timer"
+                >
+                  Reset
+                </button>
+              </div>
             )}
           </div>
           
