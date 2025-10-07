@@ -5,8 +5,8 @@ import Google from "@auth/core/providers/google";
 import { query } from "./_generated/server";
 import { v } from "convex/values";
 
-const googleClientId = process.env.GOOGLE_CLIENT_ID;
-const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
+const googleClientId = process.env.AUTH_GOOGLE_ID;
+const googleClientSecret = process.env.AUTH_GOOGLE_SECRET;
 
 const providers = [
   Password,

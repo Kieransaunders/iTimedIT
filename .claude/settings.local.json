@@ -1,7 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm run lint)"
+      "Bash(npm run lint)",
+      "Bash(git checkout:*)",
+      "Bash(npx create-expo-app:*)",
+      "Bash(npx ignite-cli@latest new mobile:*)",
+      "Bash(npm install:*)"
     ],
     "deny": [],
     "ask": []
