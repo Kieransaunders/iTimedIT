@@ -263,8 +263,14 @@ export function ModernDashboard({
     if (runningTimer?.awaitingInterruptAck) {
       console.log("🚨 Interrupt detected! Showing modal...", runningTimer);
       setShowInterruptModal(true);
+      
+      // Play interrupt sound if enabled
+      if (soundPreferenceEnabled) {
+        enableSounds();
+        playBreakStartSound(userSettings?.notificationSound);
+      }
     }
-  }, [runningTimer?.awaitingInterruptAck]);
+  }, [runningTimer?.awaitingInterruptAck, soundPreferenceEnabled, userSettings?.notificationSound]);
 
   // Initialize categories on first load
   useEffect(() => {
@@ -1294,12 +1300,19 @@ export function ModernDashboard({
                 Pomodoro
               </button>
             </div>
-            <SoundSelectionModal
-              onSelect={(sound) => {
-                updateUserSettings({ notificationSound: sound });
-              }}
-              currentSound={userSettings?.notificationSound || ""}
-            />
+            <div className="flex items-center gap-2">
+              <SoundSelectionModal
+                onSelect={(sound) => {
+                  updateUserSettings({ notificationSound: sound });
+                }}
+                currentSound={userSettings?.notificationSound || ""}
+              />
+              {!soundPreferenceEnabled && (
+                <span className="text-xs text-amber-600 dark:text-amber-400">
+                  (Sounds disabled - enable in Settings)
+                </span>
+              )}
+            </div>
           </div>
         </div>
 

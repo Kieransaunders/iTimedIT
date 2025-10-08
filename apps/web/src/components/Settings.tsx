@@ -15,7 +15,7 @@ import { useCurrency } from "../hooks/useCurrency";
 export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void }) {
   const settings = useQuery(api.users.getUserSettings);
   const ensureSettings = useMutation(api.users.ensureUserSettings);
-  const updateSettings = useMutation(api.users.updateSettings);
+  const updateSettings = useMutation(api.users.updateUserSettings);
   const { getCurrencySymbol } = useCurrency();
   
   // Notification settings
@@ -41,7 +41,7 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
 
   // Notification preferences state
   const [webPushEnabled, setWebPushEnabled] = useState(true);
-  const [soundEnabled, setSoundEnabled] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(true);
   const [vibrationEnabled, setVibrationEnabled] = useState(false);
   const [wakeLockEnabled, setWakeLockEnabled] = useState(false);
   const [quietHoursStart, setQuietHoursStart] = useState("");
@@ -358,7 +358,7 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                         setInterruptInterval(value);
                         setIsCustomInterval(value === -1);
                       }}
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                     >
                       {intervalOptions.map((option) => (
                         <option key={option.value} value={option.value}>
@@ -378,7 +378,7 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                           onChange={(event) => setCustomIntervalValue(Math.max(1, Math.min(480, parseInt(event.target.value, 10) || 1)))}
                           min={1}
                           max={480}
-                          className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                          className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                           placeholder="Enter minutes (1-480)"
                         />
                         <p className="mt-1 text-sm text-gray-500">
@@ -409,7 +409,7 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                         setGracePeriod(value);
                         setIsCustomGracePeriod(value === -1);
                       }}
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                     >
                       {gracePeriodOptions.map((option) => (
                         <option key={option.value} value={option.value}>
@@ -429,7 +429,7 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                           onChange={(event) => setCustomGracePeriodValue(Math.max(5, Math.min(300, parseInt(event.target.value, 10) || 5)))}
                           min={5}
                           max={300}
-                          className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                          className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                           placeholder="Enter seconds (5-300)"
                         />
                         <p className="mt-1 text-sm text-gray-500">
@@ -471,7 +471,7 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                       }
                       min={5}
                       max={120}
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                     />
                     <p className="mt-1 text-sm text-gray-500">
                       Default focus session length when using Pomodoro mode.
@@ -491,7 +491,7 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                       }
                       min={1}
                       max={60}
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                     />
                     <p className="mt-1 text-sm text-gray-500">
                       Default break length when using Pomodoro mode.
@@ -542,7 +542,7 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                         }
                         min="0.1"
                         step="0.1"
-                        className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                        className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                       />
                       <p className="mt-1 text-sm text-gray-500">
                         Warn when less than {budgetWarningThresholdHours} hours remain in time-based
@@ -568,7 +568,7 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                         }
                         min="1"
                         step="1"
-                        className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                        className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                       />
                       <p className="mt-1 text-sm text-gray-500">
                         Warn when less than {getCurrencySymbol()}{budgetWarningThresholdAmount} remains in amount-based
@@ -653,6 +653,42 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                       App badge counts are automatically enabled
                     </p>
                   )}
+                  
+                  {/* Test Notification Button */}
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <button
+                      onClick={async () => {
+                        const permission = Notification.permission;
+                        if (permission === 'granted') {
+                          new Notification('Test Notification', {
+                            body: 'If you see this, notifications are working! 🎉',
+                            icon: '/icons/timer.svg',
+                            badge: '/icons/badge.svg'
+                          });
+                          toast.success('Test notification sent!');
+                        } else if (permission === 'default') {
+                          const result = await Notification.requestPermission();
+                          if (result === 'granted') {
+                            new Notification('Test Notification', {
+                              body: 'Notifications enabled! 🎉',
+                              icon: '/icons/timer.svg'
+                            });
+                            toast.success('Notifications enabled!');
+                          } else {
+                            toast.error('Notification permission denied');
+                          }
+                        } else {
+                          toast.error('Notifications are blocked. Please enable them in your browser settings.');
+                        }
+                      }}
+                      className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                    >
+                      Test Notification
+                    </button>
+                    <p className="text-xs text-gray-500 mt-2">
+                      Current permission: <span className="font-mono">{typeof Notification !== 'undefined' ? Notification.permission : 'not supported'}</span>
+                    </p>
+                  </div>
                 </div>
 
                 {/* Escalation Channels */}
@@ -682,7 +718,7 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                             value={fallbackEmail}
                             onChange={(event) => setFallbackEmail(event.target.value)}
                             placeholder="you@example.com"
-                            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                            className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                           />
                           <p className="text-xs text-gray-500">
                             We'll email you with a deep link back to the running timer.
@@ -711,7 +747,7 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                             value={smsNumber}
                             onChange={(event) => setSmsNumber(event.target.value)}
                             placeholder="+1 (555) 123-4567"
-                            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                            className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                           />
                           <p className="text-xs text-gray-500">
                             Standard carrier rates apply. Reply STOP to opt out.
@@ -740,7 +776,7 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                             value={slackWebhookUrl}
                             onChange={(event) => setSlackWebhookUrl(event.target.value)}
                             placeholder="https://hooks.slack.com/services/..."
-                            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                            className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                           />
                           <p className="text-xs text-gray-500">
                             We'll send a concise alert with action links to this webhook URL.
@@ -779,7 +815,7 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                             id="quietHoursStart"
                             value={quietHoursStart}
                             onChange={(event) => setQuietHoursStart(event.target.value)}
-                            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                            className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                           />
                         </div>
                         <div>
@@ -791,7 +827,7 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                             id="quietHoursEnd"
                             value={quietHoursEnd}
                             onChange={(event) => setQuietHoursEnd(event.target.value)}
-                            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                            className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                           />
                         </div>
                       </div>
@@ -813,7 +849,7 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                       id="escalationDelayMinutes"
                       value={escalationDelayMinutes}
                       onChange={(event) => setEscalationDelayMinutes(Number(event.target.value))}
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                     >
                       <option value={1}>1 minute</option>
                       <option value={2}>2 minutes</option>
@@ -843,7 +879,7 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                     id="currency"
                     value={currency}
                     onChange={(event) => setCurrency(event.target.value as "USD" | "EUR" | "GBP")}
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                   >
                     <option value="USD">US Dollar ($)</option>
                     <option value="EUR">Euro (€)</option>

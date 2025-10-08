@@ -119,7 +119,7 @@ export const ensureNotificationPrefs = mutation({
       const prefsId = await ctx.db.insert("notificationPrefs", {
         userId: membership.userId,
         webPushEnabled: true,
-        soundEnabled: false,
+        soundEnabled: true, // Enable sounds by default for better UX
         vibrationEnabled: false,
         wakeLockEnabled: false,
         emailEnabled: false,
@@ -169,7 +169,7 @@ export const updateNotificationPrefs = mutation({
     const payload = {
       userId: membership.userId,
       webPushEnabled: args.webPushEnabled ?? prefs?.webPushEnabled ?? true,
-      soundEnabled: args.soundEnabled ?? prefs?.soundEnabled ?? false,
+      soundEnabled: args.soundEnabled ?? prefs?.soundEnabled ?? true, // Enable sounds by default
       vibrationEnabled: args.vibrationEnabled ?? prefs?.vibrationEnabled ?? false,
       wakeLockEnabled: args.wakeLockEnabled ?? prefs?.wakeLockEnabled ?? false,
       emailEnabled: args.emailEnabled ?? prefs?.emailEnabled ?? false,

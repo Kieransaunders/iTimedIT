@@ -18,11 +18,17 @@ class SoundManager {
   }
 
   public enable() {
+    console.log('🔊 Enabling sound manager');
     this.enabled = true;
     // Resume audio context if it was suspended
     if (this.audioContext?.state === 'suspended') {
+      console.log('Resuming suspended audio context');
       this.audioContext.resume();
     }
+    console.log('Sound manager state:', {
+      enabled: this.enabled,
+      audioContextState: this.audioContext?.state
+    });
   }
 
   public disable() {
@@ -57,15 +63,25 @@ class SoundManager {
 
   // Play a sound file from a URL
   public playSoundFile(soundFile: string) {
-    if (!this.isEnabled()) return;
+    if (!this.isEnabled()) {
+      console.warn('Sound manager not enabled. Call enableSounds() first.');
+      return;
+    }
 
-    const audio = new Audio(`/sounds/${soundFile}`);
-    audio.play();
+    console.log('Playing sound file:', soundFile);
+    const audio = new Audio(`/Sounds/${soundFile}`);
+    audio.play().catch((error) => {
+      console.error('Failed to play sound file:', error);
+    });
   }
 
   // Play break start sound - gentle chime
   public playBreakStart(soundFile?: string) {
-    if (!this.isEnabled()) return;
+    if (!this.isEnabled()) {
+      console.warn('Sound manager not enabled for break start');
+      return;
+    }
+    console.log('Playing break start sound:', soundFile || 'default');
     if (soundFile) {
       this.playSoundFile(soundFile);
     } else {

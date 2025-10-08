@@ -32,9 +32,11 @@ export function SoundSelectionModal({ onSelect, currentSound }: SoundSelectionMo
     if (audio) {
       audio.pause();
     }
-    const newAudio = new Audio(`/sounds/${sound}`);
+    const newAudio = new Audio(`/Sounds/${sound}`);
     setAudio(newAudio);
-    newAudio.play();
+    newAudio.play().catch((error) => {
+      console.error('Failed to play sound:', error);
+    });
   };
 
   return (
