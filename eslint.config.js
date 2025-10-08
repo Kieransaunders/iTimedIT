@@ -14,6 +14,7 @@ export default tseslint.config(
       "tailwind.config.js",
       "vite.config.ts",
       "MobileiTimedIT/**",
+      "apps/mobile/**",
     ],
   },
   {

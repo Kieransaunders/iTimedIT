@@ -38,7 +38,8 @@
   },
   "ts-node": {
     "compilerOptions": {
-      "module": "commonjs"
+      "module": "commonjs",
+      "types": ["node"]
     }
   },
   "include": [
@@ -47,6 +48,8 @@
   ],
   "exclude": [
     "node_modules",
-    "test/**/*"
+    "../../node_modules",
+    "test/**/*",
+    "app.config.ts"
   ]
 }

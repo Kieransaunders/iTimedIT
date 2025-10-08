@@ -5,20 +5,13 @@
  * See the [Backend API Integration](https://docs.infinite.red/ignite-cli/boilerplate/app/services/#backend-api-integration)
  * documentation for more details.
  */
-import {
-  ApiResponse, 
-  ApisauceInstance,
-  create,
-} from "apisauce"
+import { ApiResponse, ApisauceInstance, create } from "apisauce"
 
 import Config from "@/config"
-import type { EpisodeItem } from "@/services/api/types" 
+import type { EpisodeItem } from "@/services/api/types"
 
-import { GeneralApiProblem, getGeneralApiProblem } from "./apiProblem" 
-import type {
-  ApiConfig,
-  ApiFeedResponse, 
-} from "./types"
+import { GeneralApiProblem, getGeneralApiProblem } from "./apiProblem"
+import type { ApiConfig, ApiFeedResponse } from "./types"
 
 /**
  * Configuring the apisauce instance.
@@ -50,7 +43,6 @@ export class Api {
     })
   }
 
-  
   /**
    * Gets a list of recent React Native Radio episodes.
    */
@@ -84,7 +76,6 @@ export class Api {
       return { kind: "bad-data" }
     }
   }
-  
 }
 
 // Singleton instance of the API for convenience

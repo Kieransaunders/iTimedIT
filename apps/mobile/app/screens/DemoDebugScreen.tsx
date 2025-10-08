@@ -1,4 +1,4 @@
-import { FC, useCallback, useMemo } from "react"
+import { useCallback, useMemo } from "react"
 import {
   LayoutAnimation,
   Linking,
@@ -17,9 +17,9 @@ import { Text } from "@/components/Text"
 import { useAuth } from "@/context/AuthContext"
 import { isRTL } from "@/i18n"
 import { DemoTabScreenProps } from "@/navigators/DemoNavigator"
-import type { ThemedStyle } from "@/theme/types"
 import { useAppTheme } from "@/theme/context"
 import { $styles } from "@/theme/styles"
+import type { ThemedStyle } from "@/theme/types"
 
 /**
  * @param {string} url - The URL to open in the browser.
@@ -31,9 +31,7 @@ function openLinkInBrowser(url: string) {
 
 const usingHermes = typeof HermesInternal === "object" && HermesInternal !== null
 
-export const DemoDebugScreen: FC<DemoTabScreenProps<"DemoDebug">> = function DemoDebugScreen(
-  _props,
-) {
+export function DemoDebugScreen(_props: DemoTabScreenProps<"DemoDebug">) {
   const { setThemeContextOverride, themeContext, themed } = useAppTheme()
   const { logout } = useAuth()
 
@@ -188,5 +186,3 @@ const $hint: ThemedStyle<TextStyle> = ({ colors, spacing }) => ({
   lineHeight: 15,
   paddingBottom: spacing.lg,
 })
-
-

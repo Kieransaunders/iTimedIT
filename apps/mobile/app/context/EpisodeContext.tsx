@@ -132,5 +132,3 @@ export const useEpisode = (episode: EpisodeItem) => {
     parsedTitleAndSubtitle,
   }
 }
-
-

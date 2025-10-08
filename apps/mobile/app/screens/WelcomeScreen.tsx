@@ -1,29 +1,25 @@
-import { FC } from "react"
 import { Image, ImageStyle, TextStyle, View, ViewStyle } from "react-native"
 
-import { Button } from "@/components/Button" 
+import { Button } from "@/components/Button"
 import { Screen } from "@/components/Screen"
 import { Text } from "@/components/Text"
-import { useAuth } from "@/context/AuthContext" 
+import { useAuth } from "@/context/AuthContext"
 import { isRTL } from "@/i18n"
-import type { AppStackScreenProps } from "@/navigators/AppNavigator" 
-import type { ThemedStyle } from "@/theme/types"
+import type { AppStackScreenProps } from "@/navigators/AppNavigator"
 import { useAppTheme } from "@/theme/context"
 import { $styles } from "@/theme/styles"
-import { useHeader } from "@/utils/useHeader" 
+import type { ThemedStyle } from "@/theme/types"
+import { useHeader } from "@/utils/useHeader"
 import { useSafeAreaInsetsStyle } from "@/utils/useSafeAreaInsetsStyle"
 
 const welcomeLogo = require("@assets/images/logo.png")
 const welcomeFace = require("@assets/images/welcome-face.png")
 
-interface WelcomeScreenProps extends AppStackScreenProps<"Welcome"> {} 
+interface WelcomeScreenProps extends AppStackScreenProps<"Welcome"> {}
 
-
-export const WelcomeScreen: FC<WelcomeScreenProps> = function WelcomeScreen(
-  _props, 
-) {
+export function WelcomeScreen(_props: WelcomeScreenProps) {
   const { themed, theme } = useAppTheme()
-  
+
   const { navigation } = _props
   const { logout } = useAuth()
 
@@ -38,7 +34,6 @@ export const WelcomeScreen: FC<WelcomeScreenProps> = function WelcomeScreen(
     },
     [logout],
   )
-  
 
   const $bottomContainerInsets = useSafeAreaInsetsStyle(["bottom"])
 
@@ -63,14 +58,13 @@ export const WelcomeScreen: FC<WelcomeScreenProps> = function WelcomeScreen(
 
       <View style={themed([$bottomContainer, $bottomContainerInsets])}>
         <Text tx="welcomeScreen:postscript" size="md" />
-        
+
         <Button
           testID="next-screen-button"
           preset="reversed"
           tx="welcomeScreen:letsGo"
           onPress={goNext}
         />
-        
       </View>
     </Screen>
   )

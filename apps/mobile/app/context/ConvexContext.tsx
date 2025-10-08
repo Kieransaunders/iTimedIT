@@ -7,7 +7,6 @@
  */
 import { PropsWithChildren } from "react"
 import { ConvexProvider, ConvexReactClient } from "convex/react"
-import { ConvexProviderWithAuth } from "convex/react"
 import "react-native-get-random-values" // Required for Convex crypto polyfill
 import "react-native-url-polyfill/auto" // Required for URL polyfill
 
@@ -17,8 +16,8 @@ const CONVEX_URL = process.env.EXPO_PUBLIC_CONVEX_URL!
 if (!CONVEX_URL) {
   throw new Error(
     "Missing EXPO_PUBLIC_CONVEX_URL environment variable.\n" +
-    "Add it to your .env.local file:\n" +
-    "EXPO_PUBLIC_CONVEX_URL=https://your-deployment.convex.cloud"
+      "Add it to your .env.local file:\n" +
+      "EXPO_PUBLIC_CONVEX_URL=https://your-deployment.convex.cloud",
   )
 }
 
@@ -37,11 +36,7 @@ export interface ConvexAppProviderProps extends PropsWithChildren {}
  * high in the component tree, typically in app.tsx.
  */
 export function ConvexAppProvider({ children }: ConvexAppProviderProps) {
-  return (
-    <ConvexProvider client={convex}>
-      {children}
-    </ConvexProvider>
-  )
+  return <ConvexProvider client={convex}>{children as any}</ConvexProvider>
 }
 
 /**

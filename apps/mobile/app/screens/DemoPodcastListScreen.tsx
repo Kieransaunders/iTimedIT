@@ -1,4 +1,4 @@
-import { ComponentType, FC, useCallback, useEffect, useMemo, useState } from "react"
+import { ComponentType, useCallback, useEffect, useMemo, useState } from "react"
 import {
   AccessibilityProps,
   ActivityIndicator,
@@ -32,9 +32,9 @@ import { isRTL } from "@/i18n"
 import { translate } from "@/i18n/translate"
 import { DemoTabScreenProps } from "@/navigators/DemoNavigator"
 import type { EpisodeItem } from "@/services/api/types"
-import type { ThemedStyle } from "@/theme/types"
 import { useAppTheme } from "@/theme/context"
 import { $styles } from "@/theme/styles"
+import type { ThemedStyle } from "@/theme/types"
 import { delay } from "@/utils/delay"
 import { openLinkInBrowser } from "@/utils/openLinkInBrowser"
 
@@ -46,7 +46,7 @@ const rnrImage3 = require("@assets/images/demo/rnr-image-3.png")
 
 const rnrImages = [rnrImage1, rnrImage2, rnrImage3]
 
-export const DemoPodcastListScreen: FC<DemoTabScreenProps<"DemoPodcastList">> = (_props) => {
+export function DemoPodcastListScreen(_props: DemoTabScreenProps<"DemoPodcastList">) {
   const { themed } = useAppTheme()
   const {
     totalEpisodes,
@@ -382,5 +382,3 @@ const $emptyStateImage: ImageStyle = {
   transform: [{ scaleX: isRTL ? -1 : 1 }],
 }
 // #endregion
-
-

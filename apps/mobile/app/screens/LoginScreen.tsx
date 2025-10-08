@@ -1,4 +1,4 @@
-import { ComponentType, FC, useEffect, useMemo, useRef, useState } from "react"
+import { ComponentType, useEffect, useMemo, useRef, useState } from "react"
 // eslint-disable-next-line no-restricted-imports
 import { TextInput, TextStyle, ViewStyle } from "react-native"
 
@@ -9,12 +9,12 @@ import { Text } from "@/components/Text"
 import { TextField, type TextFieldAccessoryProps } from "@/components/TextField"
 import { useAuth } from "@/context/AuthContext"
 import type { AppStackScreenProps } from "@/navigators/AppNavigator"
-import type { ThemedStyle } from "@/theme/types"
 import { useAppTheme } from "@/theme/context"
+import type { ThemedStyle } from "@/theme/types"
 
 interface LoginScreenProps extends AppStackScreenProps<"Login"> {}
 
-export const LoginScreen: FC<LoginScreenProps> = () => {
+export function LoginScreen(_props: LoginScreenProps) {
   const authPasswordInput = useRef<TextInput>(null)
 
   const [authPassword, setAuthPassword] = useState("")
@@ -147,5 +147,3 @@ const $textField: ThemedStyle<ViewStyle> = ({ spacing }) => ({
 const $tapButton: ThemedStyle<ViewStyle> = ({ spacing }) => ({
   marginTop: spacing.xs,
 })
-
-
