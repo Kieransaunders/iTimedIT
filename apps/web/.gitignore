@@ -7,23 +7,15 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-# Dependencies
 node_modules
-apps/*/node_modules
-packages/*/node_modules
-
-# Build outputs
 dist
 dist-ssr
-apps/*/dist
-packages/*/dist
 *.local
 
 # Environment files
 .env
 .env.local
 .env.production
-.env.development
 
 # Editor directories and files
 .vscode/*
@@ -35,12 +27,6 @@ packages/*/dist
 *.njsproj
 *.sln
 *.sw?
-
-# Mobile specific
-apps/mobile/.expo/
-apps/mobile/android/
-apps/mobile/ios/
-apps/mobile/web-build/
 
 # Convex
 .convex/
