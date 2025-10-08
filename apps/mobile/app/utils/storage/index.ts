@@ -1,6 +1,17 @@
-import { MMKV } from "react-native-mmkv"
+// Try to use MMKV, fall back to mock for Expo Go
+let storage: any;
 
-export const storage = new MMKV()
+try {
+  const { MMKV } = require("react-native-mmkv");
+  storage = new MMKV();
+  console.log('✅ Using native MMKV storage');
+} catch (error) {
+  console.warn('⚠️ MMKV not available, using AsyncStorage fallback');
+  const { storage: mockStorage } = require("./mmkv-mock");
+  storage = mockStorage;
+}
+
+export { storage };
 
 /**
  * Loads a string from storage.

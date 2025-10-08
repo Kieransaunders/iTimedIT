@@ -1,5 +1,14 @@
 import { createContext, FC, PropsWithChildren, useCallback, useContext, useMemo } from "react"
-import { useMMKVString } from "react-native-mmkv"
+
+// Try to use MMKV hook, fall back to mock for Expo Go
+let useMMKVString: any;
+try {
+  const mmkv = require("react-native-mmkv");
+  useMMKVString = mmkv.useMMKVString;
+} catch {
+  const mock = require("../utils/storage/mmkv-mock");
+  useMMKVString = mock.useMMKVString;
+}
 
 export type AuthContextType = {
   isAuthenticated: boolean

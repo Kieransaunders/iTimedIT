@@ -13,7 +13,15 @@ import {
   DefaultTheme as NavDefaultTheme,
   Theme as NavTheme,
 } from "@react-navigation/native"
-import { useMMKVString } from "react-native-mmkv"
+// Try to use MMKV hook, fall back to mock for Expo Go
+let useMMKVString: any;
+try {
+  const mmkv = require("react-native-mmkv");
+  useMMKVString = mmkv.useMMKVString;
+} catch {
+  const mock = require("@/utils/storage/mmkv-mock");
+  useMMKVString = mock.useMMKVString;
+}
 
 import { storage } from "@/utils/storage"
 
