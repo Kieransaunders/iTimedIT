@@ -988,3 +988,72 @@ function generateTimerFavicon(elapsed: number, total: number, state: 'normal' | 
 - [ ] Add browser extension for enhanced timer visibility
 - [ ] Support for multiple monitors/displays
 - [ ] Picture-in-Picture mode for timer display (if supported)
+
+## UI/UX Improvements
+
+### Dialog Transparency Fix ✅
+**Issue**: Sound selection modal and other dialogs had transparent backgrounds, making text difficult to read against the dashboard background.
+
+**Solution**: Updated `src/components/ui/dialog.tsx` to use solid background colors:
+- Light mode: `bg-white` (solid white background)
+- Dark mode: `dark:bg-gray-900` (solid dark gray background)
+
+**Files Modified**:
+- [x] `apps/web/src/components/ui/dialog.tsx` - Changed `bg-background` to explicit solid colors
+
+**Status**: ✅ Completed
+**Date**: 2025-10-10
+
+### Sound Selection Modal Scrollability Fix ✅
+**Issue**: Sound selection modal had a static height without scrolling, making some sound options inaccessible when the list exceeded the viewport height.
+
+**Solution**: Made the sound list scrollable with the following improvements:
+- Added `max-h-[80vh]` to limit modal height to 80% of viewport
+- Added `overflow-y-auto` to enable vertical scrolling
+- Added `flex flex-col` layout structure for proper scrolling behavior
+- Improved text sizing and layout for better readability
+
+**Files Modified**:
+- [x] `apps/web/src/components/SoundSelectionModal.tsx` - Added scrolling support to sound list
+
+**Status**: ✅ Completed
+**Date**: 2025-10-10
+
+### Sound Display Names Improvement ✅
+**Issue**: Sound filenames were extremely long and technical (e.g., "a-soft-mechanical-click-followed-by-a-gentle-ding-reminiscent-of-an-old-typewriter-bell..."), making the sound selection modal difficult to read and navigate.
+
+**Solution**: Created a mapping system with user-friendly display names:
+- Restructured sounds array to include both `filename` and `displayName` properties
+- Added short, descriptive names for each sound (e.g., "Soft Click", "You Nailed It!", "Great Scott!")
+- Updated component to display friendly names while still using correct filenames for playback
+
+**Examples**:
+- "a-soft-mechanical-click-followed-by-a-gentle-ding..." → "Soft Click"
+- "a-woman-shouting-you-nailed-it_v4.mp3" → "You Nailed It!"
+- "a-loud-and-surprised-exclamation-of-great-scott_v4.mp3" → "Great Scott!"
+
+**Files Modified**:
+- [x] `apps/web/src/components/SoundSelectionModal.tsx` - Added display name mapping system
+
+**Status**: ✅ Completed
+**Date**: 2025-10-10
+
+### Sound Display Names - Version Number Simplification ✅
+**Issue**: Sounds with multiple versions showed technical version numbers (e.g., "Gentle Whoosh (v4)", "Wooden Tok (v2)") which were confusing and unnecessary for users.
+
+**Solution**: Simplified version numbering to use simple sequential numbers:
+- Changed versioned display names to use "1" and "2" for variants
+- Makes it clearer which sounds are variations of each other
+- More intuitive for users to understand sound options
+
+**Examples**:
+- "Gentle Whoosh (v4)" → "Gentle Whoosh 2"
+- "Gentle Whoosh (v3)" → "Gentle Whoosh 1"
+- "Wooden Tok (v4)" → "Wooden Tok 2"
+- "Wooden Tok (v2)" → "Wooden Tok 1"
+
+**Files Modified**:
+- [x] `apps/web/src/components/SoundSelectionModal.tsx` - Simplified version numbering in display names
+
+**Status**: ✅ Completed
+**Date**: 2025-10-10
