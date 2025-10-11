@@ -6,8 +6,10 @@ import {
     Text,
     TextStyle,
     TouchableOpacity,
+    View,
     ViewStyle,
 } from "react-native";
+import { LucideIcon } from "lucide-react-native";
 
 export type ButtonVariant = "primary" | "secondary" | "outline" | "ghost";
 export type ButtonSize = "sm" | "md" | "lg";
@@ -22,6 +24,7 @@ interface ButtonProps {
   fullWidth?: boolean;
   style?: ViewStyle;
   textStyle?: TextStyle;
+  icon?: LucideIcon;
   accessibilityLabel?: string;
   accessibilityHint?: string;
 }
@@ -36,6 +39,7 @@ export function Button({
   fullWidth = false,
   style,
   textStyle,
+  icon: Icon,
   accessibilityLabel,
   accessibilityHint,
 }: ButtonProps) {
@@ -58,6 +62,8 @@ export function Button({
     textStyle,
   ];
 
+  const iconColor = variant === "primary" ? colors.textPrimary : colors.primary;
+
   return (
     <TouchableOpacity
       style={buttonStyles}
@@ -72,11 +78,14 @@ export function Button({
     >
       {loading ? (
         <ActivityIndicator
-          color={variant === "primary" ? colors.textPrimary : colors.primary}
+          color={iconColor}
           size="small"
         />
       ) : (
-        <Text style={textStyles}>{children}</Text>
+        <>
+          {Icon && <Icon size={18} color={iconColor} />}
+          <Text style={textStyles}>{children}</Text>
+        </>
       )}
     </TouchableOpacity>
   );
@@ -88,6 +97,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderRadius: borderRadius.md,
     flexDirection: "row",
+    gap: spacing.sm,
   },
   primary: {
     backgroundColor: colors.primary,

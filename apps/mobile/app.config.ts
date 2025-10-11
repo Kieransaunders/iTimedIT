@@ -20,6 +20,11 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     bundleIdentifier: "com.itimedit.app",
     infoPlist: {
       UIBackgroundModes: ["fetch", "remote-notification"],
+      CFBundleURLTypes: [
+        {
+          CFBundleURLSchemes: ["itimeditapp"],
+        },
+      ],
     },
   },
   android: {
@@ -33,6 +38,20 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     permissions: ["RECEIVE_BOOT_COMPLETED", "VIBRATE", "SCHEDULE_EXACT_ALARM"],
     edgeToEdgeEnabled: true,
     predictiveBackGestureEnabled: false,
+    intentFilters: [
+      {
+        action: "VIEW",
+        autoVerify: true,
+        data: [
+          {
+            scheme: "itimeditapp",
+            host: "auth",
+            pathPrefix: "/callback",
+          },
+        ],
+        category: ["BROWSABLE", "DEFAULT"],
+      },
+    ],
   },
   web: {
     output: "static",

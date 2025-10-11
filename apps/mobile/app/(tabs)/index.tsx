@@ -26,6 +26,7 @@ export default function Index() {
     error,
     startTimer,
     stopTimer,
+    resetTimer,
     acknowledgeInterrupt,
     setSelectedProject,
     setSelectedCategory,
@@ -126,6 +127,14 @@ export default function Index() {
     }
   };
 
+  const handleResetTimer = async () => {
+    try {
+      await resetTimer();
+    } catch (err: any) {
+      showErrorToast(err.message || "Failed to reset timer");
+    }
+  };
+
   const showErrorToast = (message: string) => {
     setToastMessage(message);
     setShowToast(true);
@@ -160,6 +169,7 @@ export default function Index() {
           isRunning={isTimerRunning}
           onStart={handleStartTimer}
           onStop={handleStopTimer}
+          onReset={handleResetTimer}
           disabled={!canStartTimer && !isTimerRunning}
           loading={isStarting || isStopping}
         />

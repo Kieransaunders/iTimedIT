@@ -24,6 +24,7 @@ export interface UseTimerReturn {
     pomodoroEnabled?: boolean
   ) => Promise<void>;
   stopTimer: () => Promise<void>;
+  resetTimer: () => Promise<void>;
   sendHeartbeat: () => Promise<void>;
   acknowledgeInterrupt: (shouldContinue: boolean) => Promise<void>;
   setSelectedProject: (project: Project | null) => void;
@@ -51,6 +52,7 @@ export function useTimer(): UseTimerReturn {
   const runningTimer = useQuery(api.timer.getRunningTimer) as RunningTimer | null | undefined;
   const startMutation = useMutation(api.timer.start);
   const stopMutation = useMutation(api.timer.stop);
+  const resetMutation = useMutation(api.timer.reset);
   const heartbeatMutation = useMutation(api.timer.heartbeat);
   const ackInterruptMutation = useMutation(api.timer.ackInterrupt);
 
@@ -209,6 +211,22 @@ export function useTimer(): UseTimerReturn {
   }, [stopMutation]);
 
   /**
+   * Reset the running timer
+   */
+  const resetTimer = useCallback(async () => {
+    try {
+      setError(null);
+
+      await resetMutation({});
+    } catch (err: any) {
+      console.error("Failed to reset timer:", err);
+      const errorMessage = err?.message || "Failed to reset timer";
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    }
+  }, [resetMutation]);
+
+  /**
    * Send heartbeat to keep timer alive
    */
   const sendHeartbeat = useCallback(async () => {
@@ -252,6 +270,7 @@ export function useTimer(): UseTimerReturn {
     error,
     startTimer,
     stopTimer,
+    resetTimer,
     sendHeartbeat,
     acknowledgeInterrupt,
     setSelectedProject,
