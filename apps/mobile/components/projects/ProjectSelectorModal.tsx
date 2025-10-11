@@ -10,6 +10,7 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useProjects } from "../../hooks/useProjects";
 import { Project } from "../../types/models";
 import {
@@ -19,7 +20,10 @@ import {
     spacing,
     typography,
 } from "../../utils/theme";
+import { useTheme } from "../../utils/ThemeContext";
 import { ProjectCard } from "./ProjectCard";
+import { CreateProjectModal } from "./CreateProjectModal";
+import { Id } from "../../convex/_generated/dataModel";
 
 export interface ProjectSelectorModalProps {
   visible: boolean;
@@ -42,6 +46,8 @@ export function ProjectSelectorModal({
 }: ProjectSelectorModalProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const { projects, isLoading } = useProjects({ searchTerm, workspaceType });
+  const { colors: themeColors } = useTheme();
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   const handleSelectProject = (project: Project) => {
     onSelect(project);
@@ -52,6 +58,15 @@ export function ProjectSelectorModal({
   const handleClose = () => {
     setSearchTerm(""); // Reset search on close
     onClose();
+  };
+
+  const handleProjectCreated = async (projectId: Id<"projects">) => {
+    // Find the newly created project and select it
+    const newProject = projects.find((p) => p._id === projectId);
+    if (newProject) {
+      onSelect(newProject);
+      handleClose();
+    }
   };
 
   return (
@@ -72,6 +87,22 @@ export function ProjectSelectorModal({
             accessibilityRole="button"
           >
             <Text style={styles.closeButtonText}>✕</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Create New Project Button */}
+        <View style={styles.createButtonContainer}>
+          <TouchableOpacity
+            style={[styles.createButton, { borderColor: themeColors.primary }]}
+            onPress={() => setShowCreateModal(true)}
+            accessible={true}
+            accessibilityLabel="Create new project"
+            accessibilityRole="button"
+          >
+            <MaterialCommunityIcons name="plus" size={20} color={themeColors.primary} />
+            <Text style={[styles.createButtonText, { color: themeColors.primary }]}>
+              Create New Project
+            </Text>
           </TouchableOpacity>
         </View>
 
@@ -117,6 +148,14 @@ export function ProjectSelectorModal({
             showsVerticalScrollIndicator={true}
           />
         )}
+
+        {/* Create Project Modal */}
+        <CreateProjectModal
+          visible={showCreateModal}
+          onClose={() => setShowCreateModal(false)}
+          onSuccess={handleProjectCreated}
+          workspaceType={workspaceType}
+        />
       </SafeAreaView>
     </Modal>
   );
@@ -150,6 +189,24 @@ const styles = StyleSheet.create({
     ...typography.title,
     color: colors.textSecondary,
     fontSize: 24,
+  },
+  createButtonContainer: {
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
+  },
+  createButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderRadius: borderRadius.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+  },
+  createButtonText: {
+    ...typography.body,
+    fontWeight: "600",
   },
   searchContainer: {
     paddingHorizontal: spacing.md,

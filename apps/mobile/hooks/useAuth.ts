@@ -1,9 +1,12 @@
 import { api } from "@/convex/_generated/api";
 import { secureStorage } from "@/services/storage";
+import { GoogleAuthService } from "@/services/googleAuth";
+import { AuthError, ErrorCategory, handleAuthError, shouldShowError, createAuthError } from "@/services/errors";
 import { User } from "@/types/models";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useConvexAuth } from "convex/react";
 import { useQuery } from "convex/react";
+import * as AuthSession from 'expo-auth-session';
 import { useCallback, useEffect, useState } from "react";
 
 export interface UseAuthReturn {
@@ -86,24 +89,127 @@ export function useAuth(): UseAuthReturn {
 
   /**
    * Sign in with Google OAuth
+   * 
+   * This method:
+   * 1. Initializes GoogleAuthService with proper configuration
+   * 2. Initiates the OAuth flow (opens in-app browser)
+   * 3. Handles the OAuth result (success, cancel, error)
+   * 4. Exchanges authorization code for session token via Convex
+   * 5. Stores authentication token securely
+   * 
+   * Error handling:
+   * - Configuration errors: Missing environment variables
+   * - User cancellation: User closes browser
+   * - OAuth errors: Invalid credentials, redirect issues
+   * - Network errors: Connection problems
+   * - Convex errors: Server-side issues
    */
   const signInWithGoogle = useCallback(async () => {
     try {
       setError(null);
 
-      // Use the Convex Auth signIn action with "google" provider
-      await convexSignIn("google");
+      // Validate that Google OAuth is configured
+      const googleClientId = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID;
+      if (!googleClientId) {
+        const authError = createAuthError(
+          ErrorCategory.CONFIGURATION,
+          'Google OAuth client ID not configured',
+          'Sign in with Google is temporarily unavailable. Please try again later.',
+          null,
+          false,
+          false
+        );
+        setError(authError.userMessage);
+        throw authError;
+      }
 
-      // Store a flag to indicate successful authentication
-      // The actual token is managed by Convex client
+      // Initialize Google Auth Service with proper configuration
+      const googleAuth = new GoogleAuthService({
+        clientId: googleClientId,
+        redirectUri: AuthSession.makeRedirectUri({
+          scheme: 'itimeditapp',
+          path: 'auth/callback'
+        }),
+        scopes: ['openid', 'profile', 'email'],
+        convexSignIn: convexSignIn,
+      });
+
+      // Start OAuth flow - this opens the in-app browser
+      const result = await googleAuth.signIn();
+
+      // Handle user cancellation - don't show error, just return
+      if (result.type === 'cancel') {
+        console.log('User cancelled Google sign in');
+        // Don't set error for user cancellation
+        return;
+      }
+
+      // Handle OAuth errors
+      if (result.type === 'error') {
+        const authError = result.authError || handleAuthError(
+          new Error(result.error || 'Failed to authenticate with Google'),
+          'useAuth.signInWithGoogle'
+        );
+        
+        // Only show error if it's not a user cancellation
+        if (shouldShowError(authError.category)) {
+          setError(authError.userMessage);
+        }
+        
+        throw authError;
+      }
+
+      // Verify we have the authorization code and code verifier
+      if (!result.code || !result.codeVerifier) {
+        const authError = createAuthError(
+          ErrorCategory.OAUTH,
+          'Missing authorization code or code verifier',
+          'Authentication failed. Please try again.',
+          { result },
+          true,
+          true
+        );
+        setError(authError.userMessage);
+        throw authError;
+      }
+
+      // Exchange authorization code for session token through Convex
+      try {
+        await googleAuth.exchangeCodeForToken(result.code, result.codeVerifier);
+      } catch (exchangeError: any) {
+        // exchangeError is already an AuthError from GoogleAuthService
+        const authError = exchangeError as AuthError;
+        
+        // Set user-friendly error message
+        setError(authError.userMessage);
+        
+        // Re-throw for caller to handle
+        throw authError;
+      }
+
+      // Store authentication flag securely
+      // The actual session token is managed by Convex client
       await secureStorage.storeAuthToken("authenticated");
+
+      console.log('Google sign in successful');
     } catch (err: any) {
-      console.error("Google sign in error:", err);
-      const errorMessage = err?.message || "Failed to sign in with Google.";
-      setError(errorMessage);
-      throw new Error(errorMessage);
+      // If it's already an AuthError, just re-throw
+      if (err.category && err.userMessage) {
+        throw err;
+      }
+      
+      // Otherwise, handle as unexpected error
+      const authError = handleAuthError(err, 'useAuth.signInWithGoogle');
+      
+      // Set error message if not already set
+      if (!error && shouldShowError(authError.category)) {
+        setError(authError.userMessage);
+      }
+      
+      // Re-throw to allow caller to handle
+      throw authError;
     }
-  }, [convexSignIn]);
+  }, [convexSignIn, error]);
 
   /**
    * Sign in anonymously as a guest user

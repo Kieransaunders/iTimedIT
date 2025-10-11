@@ -2,12 +2,23 @@ import { useAuth } from "@/hooks/useAuth";
 import { convexClient } from "@/services/convex";
 import { setupNotificationChannels, setupNotificationCategories } from "@/services/notifications";
 import { tokenStorage } from "@/services/storage";
+import { lightTheme, darkTheme } from "@/utils/theme";
 import { ThemeProvider, useTheme } from "@/utils/ThemeContext";
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import { Slot, useRouter, useSegments } from "expo-router";
 import { useEffect } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import Toast from "react-native-toast-message";
+import { UnistylesRegistry } from "react-native-unistyles";
+
+// Configure Unistyles with our themes
+UnistylesRegistry.addThemes({
+  light: lightTheme,
+  dark: darkTheme,
+}).addConfig({
+  adaptiveThemes: true,
+  initialTheme: "light",
+});
 
 /**
  * Protected layout component that handles authentication routing

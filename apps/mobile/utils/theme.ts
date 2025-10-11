@@ -1,25 +1,24 @@
 import { Platform } from "react-native";
 
 /**
- * iConnectIT Brand Colors - matching web app design
- * Supports both light and dark themes
+ * Color palettes for light and dark themes
  */
 export const lightColors = {
-  background: "#ffffff",
-  surface: "#f8fafc",
+  background: "#f3f4f6", // Light gray background matching web app
+  surface: "#ffffff", // White cards on gray background
   surfaceElevated: "#ffffff",
   primary: "#FF6B35", // iConnectIT orange
   primaryHover: "#E55A2B",
   accent: "#FFD93D", // iConnectIT yellow
   accentHover: "#E6C335",
-  textPrimary: "#1a202c",
-  textSecondary: "#4a5568",
-  textTertiary: "#718096",
-  success: "#06d6a0",
-  warning: "#ff9f1c",
-  error: "#ef476f",
-  border: "#e2e8f0",
-  borderLight: "#f1f5f9",
+  textPrimary: "#1f2937", // Darker for better contrast on light bg
+  textSecondary: "#6b7280", // Gray-500
+  textTertiary: "#9ca3af", // Gray-400
+  success: "#10b981", // Green-500
+  warning: "#f59e0b", // Amber-500
+  error: "#ef4444", // Red-500
+  border: "#e5e7eb", // Gray-200
+  borderLight: "#f3f4f6", // Gray-100
 };
 
 export const darkColors = {
@@ -39,9 +38,6 @@ export const darkColors = {
   border: "#4a5568",
   borderLight: "#2d3748",
 };
-
-// Default to light colors (will be replaced by ThemeProvider)
-export const colors = lightColors;
 
 /**
  * Typography styles
@@ -169,10 +165,10 @@ export const opacity = {
 };
 
 /**
- * Complete theme object
+ * Complete theme objects for Unistyles
  */
-export const theme = {
-  colors,
+export const lightTheme = {
+  colors: lightColors,
   typography,
   spacing,
   borderRadius,
@@ -180,4 +176,19 @@ export const theme = {
   sizing,
   animations,
   opacity,
-};
+} as const;
+
+export const darkTheme = {
+  colors: darkColors,
+  typography,
+  spacing,
+  borderRadius,
+  shadows,
+  sizing,
+  animations,
+  opacity,
+} as const;
+
+// Legacy exports for backward compatibility during migration
+export const colors = lightColors;
+export const theme = lightTheme;

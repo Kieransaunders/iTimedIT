@@ -87,21 +87,20 @@ export function SegmentedModeToggle({
 const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
+    borderRadius: borderRadius.lg,
     padding: 4,
-    marginHorizontal: spacing.lg,
   },
   segment: {
     flex: 1,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.sm + 2,
     paddingHorizontal: spacing.md,
-    borderRadius: borderRadius.sm,
+    borderRadius: borderRadius.md,
     alignItems: "center",
     justifyContent: "center",
   },
   segmentText: {
-    fontSize: 16,
+    fontSize: 15,
+    fontWeight: "500",
   },
   divider: {
     width: 1,

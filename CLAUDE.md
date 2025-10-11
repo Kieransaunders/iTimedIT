@@ -1,126 +1,280 @@
-# Freelancer Time Tracker App Development Guidelines
+# CLAUDE.md
 
-Auto-generated from all feature plans. Last updated: 2025-09-19
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Active Technologies
-- TypeScript 5.7.2 + React 19 + Convex (001-timer-interruption-feature)
-- Vite build system + Tailwind CSS + shadcn/ui components
-- Convex scheduler.runAt for server-side timing
-- Node.js 20 runtime for Convex actions (required for push notifications)
+## Project Overview
 
-## Project Structure
+iTimedIT is a multi-tenant time tracking platform with both **web** and **mobile** applications in a monorepo structure. The web app is a React + Vite frontend with Convex backend, while the mobile app is built with Expo/React Native sharing the same Convex backend architecture.
+
+## Monorepo Structure
+
 ```
-convex/
-├── timer.ts            # Timer mutations and queries
-├── categories.ts       # Category management functions
-├── interrupts.ts       # Scheduled actions for interruptions
-├── schema.ts           # Updated with interrupt and category fields
-└── _generated/
-
-src/
-├── components/
-│   ├── ui/             # shadcn/ui components (Button, Card, Dialog, etc.)
-│   ├── ModernDashboard.tsx  # ACTIVE: Main timer interface (App.tsx line 198)
-│   ├── InterruptModal.tsx   # Interruption acknowledgment modal
-│   └── OverrunBanner.tsx    # Overrun merge notification
-└── lib/
-
-tests/
-├── contract/           # Contract tests for Convex functions
-├── integration/        # User flow tests
-└── unit/              # Component tests
+apps/
+├── web/                    # React + Vite web application
+│   ├── convex/            # Convex backend (Node.js 20 runtime)
+│   │   ├── schema.ts      # Database schema
+│   │   ├── timer.ts       # Timer mutations/queries
+│   │   ├── entries.ts     # Time entry management
+│   │   ├── projects.ts    # Project management
+│   │   ├── clients.ts     # Client management
+│   │   ├── interrupts.ts  # Timer interruption system
+│   │   ├── organizations.ts
+│   │   └── auth.ts        # Convex Auth configuration
+│   └── src/
+│       ├── components/
+│       │   ├── ModernDashboard.tsx  # ACTIVE: Main timer UI
+│       │   ├── ClientsPage.tsx
+│       │   ├── ProjectsPage.tsx
+│       │   └── ui/         # shadcn/ui components
+│       └── lib/            # Shared utilities
+│
+├── mobile/                 # Expo/React Native mobile app
+│   ├── convex/            # Mobile-specific Convex functions
+│   │   ├── orgContext.ts  # Auto-creates "Personal Workspace"
+│   │   ├── timer.ts       # Simplified timer for mobile
+│   │   ├── entries.ts
+│   │   └── categories.ts
+│   ├── app/               # Expo Router file-based routing
+│   │   ├── (tabs)/        # Tab navigation
+│   │   └── auth/          # Auth screens
+│   ├── components/
+│   ├── hooks/             # useAuth, useProjects, useClients
+│   └── services/          # googleAuth, notifications
+│
+packages/
+└── shared/                # Shared code (if any)
 ```
 
-## Component Architecture
-### Active Components (Currently Used)
-- **ModernDashboard.tsx** - Main timer interface with project selection, category dropdown, and timer controls
-- **App.tsx** - Main application routing and authenticated wrapper
-- **Settings/**, **ClientsPage.tsx**, **ProjectsPage.tsx** - Management interfaces
+## Technology Stack
 
-### Component Development Guidelines
-- **ALWAYS verify component usage** before implementing features by searching for imports
-- **Check App.tsx** to see which components are actually rendered in the UI flow
-- **ModernDashboard.tsx is the ONLY active timer interface** - do not confuse with legacy code
+### Web App
+- **Frontend**: React 18 + TypeScript 5.7.2 + Vite 6
+- **Backend**: Convex (Node.js 20 runtime)
+- **UI**: Tailwind CSS + shadcn/ui components
+- **Auth**: @convex-dev/auth (password, Google OAuth)
+- **State**: Convex real-time queries/mutations
+- **Testing**: Jest + ts-jest
 
-## Deployment Configuration
-### Production Setup
+### Mobile App
+- **Framework**: Expo ~54 + React Native 0.81
+- **Backend**: Convex (same schema as web, simplified functions)
+- **Routing**: Expo Router (file-based)
+- **UI**: react-native-unistyles + custom components
+- **Auth**: Convex Auth + Google OAuth (expo-auth-session)
+- **Navigation**: @react-navigation/native
+- **Testing**: Jest + jest-expo
+
+## Common Commands
+
+### Root-level commands (manages both apps)
+```bash
+npm run dev              # Start web app (alias for dev:web)
+npm run dev:web          # Start web app with Convex backend
+npm run dev:mobile       # Start mobile app with Expo
+npm run build:web        # Build web app for production
+npm run build:mobile     # Build mobile app for production
+npm run lint             # Lint all workspaces
+npm run test             # Run tests in all workspaces
+npm run clean            # Clean all node_modules
+```
+
+### Web app commands (from root or apps/web/)
+```bash
+npm run dev --workspace=@itimedit/web    # Development with hot reload
+npm run dev:frontend                      # Vite only (requires separate Convex)
+npm run dev:backend                       # Convex dev server only
+npm run build                             # Production build
+npm run lint                              # TypeScript + Convex checks
+npm run test                              # Run Jest tests
+npm run test:watch                        # Jest in watch mode
+npm run test:coverage                     # Jest with coverage report
+npm run generate:vapid                    # Generate Web Push VAPID keys
+```
+
+### Mobile app commands (from root or apps/mobile/)
+```bash
+npm run start --workspace=@itimedit/mobile   # Start Expo dev server
+npm run ios                                  # Run on iOS simulator
+npm run android                              # Run on Android emulator
+npm run build                                # Export for production
+npm run lint                                 # ESLint checks
+npm run test                                 # Run Jest tests (--runInBand)
+```
+
+### Convex commands (run from apps/web/)
+```bash
+npx convex dev           # Start Convex development backend
+npx convex deploy        # Deploy to production Convex backend
+npx convex dashboard     # Open Convex dashboard
+npx convex logs          # View function logs
+```
+
+## Key Architecture Decisions
+
+### Component Usage Verification (CRITICAL)
+- **ALWAYS verify component imports** before implementing features
+- **ModernDashboard.tsx is the ONLY active timer interface** - check `apps/web/src/App.tsx` to confirm which components are actually rendered
+- Search for component imports before assuming usage to avoid modifying legacy/unused code
+
+### Convex Backend Architecture
+
+#### Web App Backend
+- Full-featured Convex backend with:
+  - Server-side timer interruptions using `scheduler.runAt`
+  - 60-second grace periods for interruptions
+  - Pomodoro timer with work/break phases
+  - Budget alerts and overrun tracking
+  - Organization-based multitenancy
+  - Push notification system (web-push + VAPID)
+
+#### Mobile App Backend
+- Simplified Convex functions in `apps/mobile/convex/`:
+  - **Auto-creates "Personal Workspace"** for new users (including anonymous)
+  - Uses `ensureMembership()` helper for mutations (creates org if needed)
+  - Uses `requireMembership().catch(() => null)` for queries (returns null if no org)
+  - Does NOT re-export from web app (previously caused path resolution issues)
+  - Basic timer start/stop, entry management, categories
+  - **Timer interrupts**: Same as web app - uses `awaitingInterruptAck` field and 60-second grace period for auto-stop
+
+### Organization Context Pattern
+
+**Web App** (`apps/web/convex/orgContext.ts`):
+```typescript
+// Multiple helpers for different contexts
+requireMembership(ctx)      // Throws if no membership
+ensureMembership(ctx)       // Creates Personal Workspace if needed
+maybeMembership(ctx)        // Returns null if no membership
+```
+
+**Mobile App** (`apps/mobile/convex/orgContext.ts`):
+```typescript
+// Simpler pattern - auto-creates for all users
+ensureMembership(ctx)       // For mutations
+requireMembership(ctx)      // For queries (wrapped with .catch(() => null))
+```
+
+### Authentication Flow
+
+Both apps use `@convex-dev/auth`:
+- Password authentication
+- Google OAuth (PKCE flow in mobile)
+- Anonymous/guest authentication (mobile only)
+- Automatic "Personal Workspace" creation on first action
+
+### Data Model
+
+Key tables (defined in `apps/web/convex/schema.ts`):
+- **organizations**: Multi-tenant workspaces (auto-created "Personal Workspace")
+- **memberships**: User-org relationships with roles (owner/admin/member)
+- **clients**: Optional client association for projects
+- **projects**: Billable projects with hourly rates and budgets
+- **timeEntries**: Completed time entries with category support
+- **runningTimers**: Active timer state with Pomodoro/interrupt fields
+- **categories**: User-defined time entry categories
+- **userSettings**: Per-user timer/notification preferences
+- **pushSubscriptions**: Web push notification endpoints (web only)
+
+## Environment Configuration
+
+### Web App
+- **Development**: `VITE_CONVEX_URL=https://watchful-hedgehog-860.convex.cloud`
+- **Production**: `VITE_CONVEX_URL=https://basic-greyhound-928.convex.cloud`
 - **Production URL**: https://itimedit.netlify.app
-- **Production Convex Backend**: `VITE_CONVEX_URL=https://basic-greyhound-928.convex.cloud`
-- **Development Convex Backend**: `VITE_CONVEX_URL=https://watchful-hedgehog-860.convex.cloud`
+- **Convex Dashboard**: https://dashboard.convex.dev/d/basic-greyhound-928
 
-The `VITE_CONVEX_URL` environment variable points to the Convex site and controls the hosted URL in the Convex dashboard. This URL must match the deployment configuration for proper backend connectivity.
+### Mobile App
+- `EXPO_PUBLIC_CONVEX_URL`: Points to Convex backend (same as web)
+- `EXPO_PUBLIC_GOOGLE_CLIENT_ID`: Google OAuth client ID for mobile
+- `EXPO_PUBLIC_EAS_PROJECT_ID`: Expo Application Services project ID (for push notifications)
 
-## Commands
-- `npm run dev` - Start development server with Convex backend
-- `npm run build` - Build for production
-- `npm run lint` - TypeScript checks + linting
-- `npx convex dev` - Start Convex development backend (uses Node.js 20 runtime)
-- `npx convex deploy` - Deploy to production Convex backend
+## Code Style Guidelines
 
-## Code Style
-- TypeScript: Strict mode, no `any` types
-- React: Functional components with hooks
-- Tailwind: Utility classes only, no inline styles
-- shadcn/ui: Use pre-built components with @/ imports (e.g., @/components/ui/button)
-- Convex: Strongly typed functions with v.object() validators
+### TypeScript
+- Strict mode enabled, no `any` types
+- Use `Id<"tableName">` type from Convex for document IDs
+- Prefer functional components with hooks
+- Use `as const` for string literals in discriminated unions
 
-## Recent Changes
-- 001-timer-interruption-feature: Added server-side timer interruptions with scheduler.runAt, 60-second grace periods, and overrun tracking
-- Category system: Added time entry categories with dropdown selection and management functions
-- Code cleanup: Removed unused TimerCard.tsx component to eliminate confusion
+### React
+- Functional components only
+- React hooks for state management
+- Convex hooks (`useQuery`, `useMutation`, `useAction`) for data
 
-## Implemented Features
+### Convex Functions
+- **Always use new function syntax** with `args` and `returns` validators
+- Use `internalQuery`, `internalMutation`, `internalAction` for private functions
+- Import from `"./_generated/server"` for function registration
+- Use `v.null()` validator for functions that return nothing
+- **File-based routing**: `convex/example.ts` → `api.example.functionName`
+- Add `"use node";` to files using Node.js built-ins (e.g., web-push)
 
-### ✅ Multitenancy & Organization Management
-- **Organization System**: Complete multi-organization data model with `organizations`, `memberships`, and `invitations` tables
-- **Role-based Access**: Owner/admin/member roles with enforced permissions across all Convex functions
-- **Personal Workspaces**: Auto-creation of personal workspaces for individual users with legacy data migration
-- **Team Invitations**: Full invitation lifecycle (create, resend, revoke, accept) with secure tokens and email delivery
-- **Organization Context**: Frontend organization selector and context management throughout the app
-- **Data Migration**: Seamless migration from single-user to multi-organization structure
+### UI (Web)
+- Tailwind utility classes only (no inline styles)
+- shadcn/ui components with `@/components/ui/*` imports
+- Button, Card, Dialog, Select, etc. from Radix UI
 
-### ✅ Notification System & User Attention
-- **Web Push Notifications**: Complete VAPID-based push notification system with service worker
-- **Timer Alerts**: Real-time notifications for interruptions, overruns, and Pomodoro transitions
-- **In-app Attention**: App badging, title blinking, sound alerts, and vibration support
-- **Multi-channel Notifications**: Email, SMS, and Slack/Discord integration for escalated alerts
-- **Notification Preferences**: Comprehensive user settings for notification channels and quiet hours
-- **Wake Lock Support**: Optional screen wake lock during active timing sessions
+### UI (Mobile)
+- react-native-unistyles for styling
+- Custom components in `apps/mobile/components/`
+- Lucide icons via `lucide-react-native`
 
-### ✅ Email Integration (Resend)
-- **VAPID Configuration**: Secure email delivery through Resend with proper API key management
-- **Invitation Emails**: HTML email templates for organization invitations with branded styling
-- **Email Testing**: Built-in test email functionality for verifying email configuration
-- **Environment Setup**: Proper development and production email configuration
+## Testing
 
-### ✅ Node.js Runtime Migration
-- **Node.js 20 Support**: Migrated Convex actions to Node.js 20 runtime (required for push notifications)
-- **Compatibility Testing**: Verified `web-push` package compatibility with Node.js 20
-- **Documentation**: Updated deployment requirements for Node.js 20
+### Web App
+- Jest + ts-jest configuration
+- Test files in `apps/web/tests/`:
+  - `unit/` - Component tests
+  - `contract/` - Convex function tests
+  - `integration/` - User flow tests
+- Run with `npm run test:coverage` before PRs
 
-## Planned Features (In Development)
+### Mobile App
+- Jest + jest-expo configuration
+- Test files in `apps/mobile/__tests__/`:
+  - `hooks/` - Hook tests
+  - `services/` - Service tests
+  - `components/` - Component tests
+- Run with `npm run test --runInBand` (prevents race conditions)
 
-### 🚧 Pomodoro Timer Improvements
-- **Auto-stop During Breaks**: Timer stops during break periods instead of continuous running
-- **Separate Break Tracking**: Break periods not counted as billable time
-- **Enhanced UI States**: Clear visual distinction between work and break phases
-- **Improved Notifications**: No false "long-running timer" alerts during breaks
+## Critical Notes
 
-### 🚧 Personal vs Team Workspace Distinction
-- **Workspace Types**: Enhanced schema with `workspaceType` field for projects and clients
-- **Separate UI Flows**: Different interfaces for personal vs team project management
-- **Client Management**: Optional client association for personal projects
+### For Web App Development
+1. **ModernDashboard.tsx** is the active timer interface (verify in App.tsx)
+2. Server-side interruptions use `scheduler.runAt` (not client-side timers)
+3. Pomodoro timer has separate work/break phases with distinct tracking
+4. Always use organization context helpers for data access
+5. Push notifications require Node.js 20 runtime in Convex actions
 
-### 🚧 Client Area Enhancement
-- **Analytics Dashboard**: Comprehensive client metrics and performance indicators
-- **Advanced Filtering**: Search, sort, and filter capabilities for client management
-- **Multiple View Options**: Table and card view layouts for client data
-- **Export Functionality**: CSV/PDF export for client reports and analytics
+### For Mobile App Development
+1. **Mobile Convex functions are simplified** - don't assume web features exist
+2. **Auto-creates Personal Workspace** on first user action (no explicit setup needed)
+3. Use `ensureMembership()` in mutations, `requireMembership().catch(() => null)` in queries
+4. Don't re-export from web app - causes path resolution issues
+5. Google OAuth uses PKCE flow via `services/googleAuth.ts`
+6. Push notifications use Expo's system (`expo-notifications`)
+7. **Timer interrupts with auto-stop**: InterruptModal shows 60-second countdown and auto-stops timer if no action taken (matching web app behavior)
 
-### 🚧 Workspace Name Editing
-- **Custom Workspace Names**: Ability to rename personal and team workspaces
-- **Owner-only Editing**: Proper permission checking for workspace name changes
-- **UI Integration**: Settings interface for workspace management
+### Deployment
+- Web: Netlify + Convex production backend
+- Mobile: Expo Application Services (EAS Build)
+- Always test locally with `npx convex dev` before deploying
+- Run `npm run lint` to catch TypeScript/Convex errors
 
-<!-- MANUAL ADDITIONS START -->
-<!-- MANUAL ADDITIONS END -->
+### Important: Server Management
+- **NEVER start dev servers automatically** - always let the user handle server setup
+- The user manages: Expo dev server, Convex backend, and any other services
+- Only kill servers when explicitly requested by the user
+
+## File References
+
+When referencing code locations, use the format `file_path:line_number` for easy navigation.
+
+Example: "Timer start logic is in `apps/web/convex/timer.ts:142`"
+
+## Additional Documentation
+
+- `README.md` - Project overview and quick start
+- `Install_Guide.md` - Detailed local setup
+- `apps/mobile/CLAUDE.md` - Mobile-specific context and fixes
+- `.cursor/rules/convex_rules.mdc` - Convex development guidelines
+- `.kiro/specs/` - Feature specifications and task tracking

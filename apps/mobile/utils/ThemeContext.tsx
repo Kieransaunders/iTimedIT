@@ -73,10 +73,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   // Get colors for current theme
   const colors = actualTheme === "dark" ? darkColors : lightColors;
 
-  if (!isReady) {
-    return null; // Or a splash screen
-  }
-
+  // Always render children but context may not be fully ready until isReady is true
+  // This prevents the "Cannot read property 'background' of undefined" error
   return (
     <ThemeContext.Provider
       value={{ theme: actualTheme, themeMode, colors, setThemeMode, toggleTheme }}

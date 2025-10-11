@@ -1,11 +1,9 @@
 import { CategorySelector } from "@/components/timer/CategorySelector";
-import { InlineProjectStats, ProjectStats } from "@/components/timer/InlineProjectStats";
 import { LargeTimerDisplay } from "@/components/timer/LargeTimerDisplay";
 import { ProjectSelector } from "@/components/timer/ProjectSelector";
-import { RecentEntries } from "@/components/timer/RecentEntries";
-import { RecentProjects } from "@/components/timer/RecentProjects";
 import { SegmentedModeToggle } from "@/components/timer/SegmentedModeToggle";
 import { TimerControls } from "@/components/timer/TimerControls";
+import { InterruptModal } from "@/components/timer/InterruptModal";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { Toast } from "@/components/ui/Toast";
 import { useNotifications } from "@/hooks/useNotifications";
@@ -13,7 +11,7 @@ import { useTimer } from "@/hooks/useTimer";
 import { useTheme } from "@/utils/ThemeContext";
 import { spacing } from "@/utils/theme";
 import React, { useEffect, useState } from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 export default function Index() {
   const {
@@ -43,6 +41,7 @@ export default function Index() {
   const [isStopping, setIsStopping] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
+  const [showInterruptModal, setShowInterruptModal] = useState(false);
 
   // Register for push notifications on mount
   useEffect(() => {
@@ -80,21 +79,24 @@ export default function Index() {
 
   const handleAcknowledgeInterrupt = async (shouldContinue: boolean) => {
     try {
+      setShowInterruptModal(false);
       await acknowledgeInterrupt(shouldContinue);
     } catch (err: any) {
       showErrorToast(err.message || "Failed to acknowledge interrupt");
     }
   };
 
+  // Show interrupt modal when timer interrupt is triggered
+  useEffect(() => {
+    if (runningTimer?.awaitingInterruptAck) {
+      setShowInterruptModal(true);
+    } else {
+      setShowInterruptModal(false);
+    }
+  }, [runningTimer?.awaitingInterruptAck]);
+
   const isTimerRunning = runningTimer !== null;
   const canStartTimer = !isTimerRunning && selectedProject !== null;
-
-  // Calculate project stats if we have a running timer with project data
-  const projectStats: ProjectStats | null = runningTimer?.project
-    ? calculateProjectStats(runningTimer.project, elapsedTime)
-    : selectedProject
-    ? calculateProjectStats(selectedProject, 0)
-    : null;
 
   const handleStartTimer = async () => {
     if (!selectedProject) {
@@ -155,43 +157,9 @@ export default function Index() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* HERO: Large Timer Display - matching web dashboard */}
-        <LargeTimerDisplay
-          elapsedTime={elapsedTime}
-          project={runningTimer?.project || selectedProject}
-          isRunning={isTimerRunning}
-          isNearBudget={false} // TODO: Calculate from budget
-          isOverBudget={false} // TODO: Calculate from budget
-        />
+        {/* TODO: Add Personal/Team workspace tabs at the top */}
 
-        {/* Timer Controls */}
-        <TimerControls
-          isRunning={isTimerRunning}
-          onStart={handleStartTimer}
-          onStop={handleStopTimer}
-          onReset={handleResetTimer}
-          disabled={!canStartTimer && !isTimerRunning}
-          loading={isStarting || isStopping}
-        />
-
-        {/* Inline Project Stats - compact horizontal layout */}
-        {(runningTimer?.project || selectedProject) && projectStats && (
-          <InlineProjectStats
-            project={runningTimer?.project || selectedProject!}
-            stats={projectStats}
-          />
-        )}
-
-        {/* Segmented Mode Toggle - matching web design */}
-        <View style={styles.selectorContainer}>
-          <SegmentedModeToggle
-            mode={timerMode}
-            onModeChange={setTimerMode}
-            disabled={isTimerRunning}
-          />
-        </View>
-
-        {/* Project Selector - disabled when timer is running */}
+        {/* Project Selector - at the top, below workspace tabs */}
         <View style={styles.selectorContainer}>
           <ProjectSelector
             selectedProject={selectedProject}
@@ -200,20 +168,51 @@ export default function Index() {
           />
         </View>
 
-        {/* Category Selector - disabled when timer is running */}
+        {/* Mode Toggle and Change Sound Button */}
+        <View style={styles.modeContainer}>
+          <SegmentedModeToggle
+            mode={timerMode}
+            onModeChange={setTimerMode}
+            disabled={isTimerRunning}
+          />
+          {/* TODO: Add Change Sound button */}
+        </View>
+
+        {/* Large Timer Display - matching web dashboard */}
+        <LargeTimerDisplay
+          elapsedTime={elapsedTime}
+          project={runningTimer?.project || selectedProject}
+          isRunning={isTimerRunning}
+          isNearBudget={false}
+          isOverBudget={false}
+        />
+
+        {/* Timer Controls - Start and Reset buttons */}
+        <TimerControls
+          isRunning={isTimerRunning}
+          onStart={handleStartTimer}
+          onStop={handleStopTimer}
+          onReset={handleResetTimer}
+          disabled={!canStartTimer && !isTimerRunning}
+          loading={isStarting || isStopping}
+          projectColor={(runningTimer?.project || selectedProject)?.color}
+        />
+
+        {/* Category Selector - below timer controls */}
         <View style={styles.selectorContainer}>
+          <View style={styles.categoryHeader}>
+            <Text style={[styles.categoryLabel, { color: colors.textPrimary }]}>Category</Text>
+            <TouchableOpacity onPress={() => {/* TODO: Navigate to category management */}}>
+              <Text style={[styles.manageLink, { color: colors.error }]}>Manage</Text>
+            </TouchableOpacity>
+          </View>
           <CategorySelector
             selectedCategory={selectedCategory}
             onSelect={setSelectedCategory}
             disabled={isTimerRunning}
+            containerStyle={styles.categoryDropdown}
           />
         </View>
-
-        {/* Recent Projects */}
-        <RecentProjects onProjectSelect={setSelectedProject} />
-
-        {/* Recent Entries */}
-        <RecentEntries />
       </ScrollView>
 
       {/* Error Toast */}
@@ -225,45 +224,17 @@ export default function Index() {
           onHide={() => setShowToast(false)}
         />
       )}
+
+      {/* Interrupt Modal */}
+      <InterruptModal
+        visible={showInterruptModal}
+        projectName={runningTimer?.project?.name || "this project"}
+        onContinue={() => handleAcknowledgeInterrupt(true)}
+        onStop={() => handleAcknowledgeInterrupt(false)}
+        gracePeriodSeconds={60}
+      />
     </View>
   );
-}
-
-/**
- * Calculate project statistics for display
- */
-function calculateProjectStats(
-  project: any,
-  additionalSeconds: number = 0
-): ProjectStats {
-  const totalSeconds = (project.totalSeconds || 0) + additionalSeconds;
-  const totalHours = totalSeconds / 3600;
-  const totalAmount = totalHours * project.hourlyRate;
-
-  let budgetRemaining = 0;
-  let budgetPercentUsed = 0;
-
-  if (project.budgetType === "hours" && project.budgetHours) {
-    const budgetSeconds = project.budgetHours * 3600;
-    budgetRemaining = (budgetSeconds - totalSeconds) / 3600;
-    budgetPercentUsed = (totalSeconds / budgetSeconds) * 100;
-  } else if (project.budgetType === "amount" && project.budgetAmount) {
-    budgetRemaining = project.budgetAmount - totalAmount;
-    budgetPercentUsed = (totalAmount / project.budgetAmount) * 100;
-  }
-
-  return {
-    totalSeconds,
-    totalHours,
-    totalAmount,
-    budgetRemaining,
-    budgetRemainingFormatted:
-      project.budgetType === "hours"
-        ? `${budgetRemaining.toFixed(1)}h`
-        : `$${budgetRemaining.toFixed(2)}`,
-    totalHoursFormatted: `${totalHours.toFixed(2)}h`,
-    budgetPercentUsed,
-  };
 }
 
 const styles = StyleSheet.create({
@@ -283,6 +254,27 @@ const styles = StyleSheet.create({
   },
   selectorContainer: {
     paddingHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+  },
+  modeContainer: {
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.lg,
+  },
+  categoryHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: spacing.sm,
+  },
+  categoryLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  manageLink: {
+    fontSize: 14,
+    textDecorationLine: "underline",
+  },
+  categoryDropdown: {
+    marginBottom: 0,
   },
 });

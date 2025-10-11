@@ -1,7 +1,7 @@
 import { Tabs } from "expo-router";
 import { ThemeToggle } from "@/components/common/ThemeToggle";
 import { useTheme } from "@/utils/ThemeContext";
-import { Timer, Briefcase, List, Settings } from "lucide-react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 export default function TabLayout() {
   const { colors } = useTheme();
@@ -25,9 +25,9 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Timer",
-          tabBarLabel: "Timer",
-          tabBarIcon: ({ color, size }) => <Timer color={color} size={size} />,
+          title: "Dashboard",
+          tabBarLabel: "Dashboard",
+          tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="timer" color={color} size={size} />,
         }}
       />
       <Tabs.Screen
@@ -35,7 +35,7 @@ export default function TabLayout() {
         options={{
           title: "Projects",
           tabBarLabel: "Projects",
-          tabBarIcon: ({ color, size }) => <Briefcase color={color} size={size} />,
+          tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="folder" color={color} size={size} />,
         }}
       />
       <Tabs.Screen
@@ -43,7 +43,7 @@ export default function TabLayout() {
         options={{
           title: "Entries",
           tabBarLabel: "Entries",
-          tabBarIcon: ({ color, size }) => <List color={color} size={size} />,
+          tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="clipboard-list" color={color} size={size} />,
         }}
       />
       <Tabs.Screen
@@ -51,7 +51,7 @@ export default function TabLayout() {
         options={{
           title: "Settings",
           tabBarLabel: "Settings",
-          tabBarIcon: ({ color, size }) => <Settings color={color} size={size} />,
+          tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="cog" color={color} size={size} />,
         }}
       />
     </Tabs>

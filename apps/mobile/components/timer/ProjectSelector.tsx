@@ -1,7 +1,9 @@
 import { Project } from "@/types/models";
 import { borderRadius, colors, opacity, sizing, spacing, typography } from "@/utils/theme";
+import { useTheme } from "@/utils/ThemeContext";
 import React, { useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { ProjectSelectorModal } from "../projects/ProjectSelectorModal";
 
 export interface ProjectSelectorProps {
@@ -21,6 +23,7 @@ export function ProjectSelector({
   workspaceType,
 }: ProjectSelectorProps) {
   const [modalVisible, setModalVisible] = useState(false);
+  const { colors } = useTheme();
 
   const handleOpenModal = () => {
     if (!disabled) {
@@ -35,31 +38,33 @@ export function ProjectSelector({
 
   return (
     <>
-      <View style={styles.container}>
-        <Text style={styles.label}>Project</Text>
-        <TouchableOpacity
-          style={[
-            styles.trigger,
-            disabled && styles.triggerDisabled,
-          ]}
-          onPress={handleOpenModal}
-          disabled={disabled}
-          accessible={true}
-          accessibilityLabel="Select project"
-          accessibilityRole="button"
-          accessibilityHint="Opens project selection modal"
-        >
-          <Text
-            style={[
-              styles.triggerText,
-              !selectedProject && styles.triggerTextPlaceholder,
-            ]}
-          >
-            {selectedProject ? selectedProject.name : "Select a project"}
-          </Text>
-          <Text style={styles.chevron}>▼</Text>
-        </TouchableOpacity>
-      </View>
+      <TouchableOpacity
+        style={[
+          styles.trigger,
+          disabled && styles.triggerDisabled,
+        ]}
+        onPress={handleOpenModal}
+        disabled={disabled}
+        accessible={true}
+        accessibilityLabel="Select project"
+        accessibilityRole="button"
+        accessibilityHint="Opens project selection modal"
+      >
+        <View style={styles.projectInfo}>
+          <View style={styles.projectHeader}>
+            {selectedProject?.color && (
+              <View style={[styles.colorDot, { backgroundColor: selectedProject.color }]} />
+            )}
+            <Text style={[styles.projectName, !selectedProject && styles.triggerTextPlaceholder]}>
+              {selectedProject ? selectedProject.name : "Select a project"}
+            </Text>
+          </View>
+          {selectedProject?.client && (
+            <Text style={styles.clientName}>– {selectedProject.client.name}</Text>
+          )}
+        </View>
+        <MaterialCommunityIcons name="chevron-down" size={20} color={colors.textSecondary} />
+      </TouchableOpacity>
 
       <ProjectSelectorModal
         visible={modalVisible}
@@ -73,40 +78,47 @@ export function ProjectSelector({
 }
 
 const styles = StyleSheet.create({
-  container: {
-    marginBottom: spacing.md,
-  },
-  label: {
-    ...typography.body,
-    color: colors.textPrimary,
-    marginBottom: spacing.sm,
-    fontWeight: "500",
-  },
   trigger: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     backgroundColor: colors.surface,
-    borderRadius: borderRadius.md,
-    borderWidth: 2,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
     borderColor: colors.border,
-    height: sizing.inputHeight,
     paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
   },
   triggerDisabled: {
     opacity: opacity.disabled,
   },
-  triggerText: {
+  projectInfo: {
+    flex: 1,
+    gap: spacing.xs,
+  },
+  projectHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  colorDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  projectName: {
     ...typography.body,
     color: colors.textPrimary,
-    flex: 1,
+    fontWeight: "600",
+    fontSize: 16,
+  },
+  clientName: {
+    ...typography.body,
+    color: colors.textSecondary,
+    fontSize: 14,
   },
   triggerTextPlaceholder: {
     color: colors.textSecondary,
-  },
-  chevron: {
-    color: colors.textSecondary,
-    fontSize: 12,
-    marginLeft: spacing.sm,
+    fontWeight: "400",
   },
 });

@@ -12,21 +12,21 @@
   - Ensure scheme "itimeditapp" is properly configured
   - _Requirements: 2.1, 2.2, 2.3_
 
-- [ ] 3. Create GoogleAuthService module
-  - [ ] 3.1 Implement PKCE generation utilities
+- [x] 3. Create GoogleAuthService module
+  - [x] 3.1 Implement PKCE generation utilities
     - Create function to generate cryptographically secure code verifier
     - Implement SHA256 hashing for code challenge generation
     - Write unit tests for PKCE parameter generation
     - _Requirements: 3.1, 4.1_
 
-  - [ ] 3.2 Implement OAuth URL builder
+  - [x] 3.2 Implement OAuth URL builder
     - Create function to build Google OAuth authorization URL
     - Include all required parameters (client_id, redirect_uri, scope, code_challenge, etc.)
     - Properly encode URL parameters
     - Write unit tests for URL construction
     - _Requirements: 2.1, 2.2_
 
-  - [ ] 3.3 Implement OAuth flow initiation
+  - [x] 3.3 Implement OAuth flow initiation
     - Create signIn method that opens in-app browser with expo-web-browser
     - Use expo-auth-session to handle redirect
     - Extract authorization code from redirect URL
@@ -34,14 +34,14 @@
     - Write unit tests for flow initiation
     - _Requirements: 1.1, 1.2, 1.3, 1.4_
 
-  - [ ] 3.4 Implement token exchange with Convex
+  - [x] 3.4 Implement token exchange with Convex
     - Create method to exchange authorization code for session token
     - Call Convex signIn action with Google provider and authorization code
     - Handle token exchange errors
     - Write unit tests for token exchange
     - _Requirements: 6.1, 6.2, 6.4_
 
-- [ ] 4. Update useAuth hook for Google OAuth
+- [x] 4. Update useAuth hook for Google OAuth
   - Modify signInWithGoogle method to use GoogleAuthService
   - Initialize GoogleAuthService with proper configuration
   - Handle OAuth result (success, cancel, error)
@@ -50,7 +50,7 @@
   - Write unit tests for updated hook behavior
   - _Requirements: 1.5, 3.2, 3.3, 3.4, 6.1, 6.2_
 
-- [ ] 5. Update sign-in screen UI
+- [x] 5. Update sign-in screen UI
   - Uncomment Google sign-in button in sign-in.tsx
   - Ensure button shows loading state during OAuth flow
   - Display appropriate error messages for OAuth failures
@@ -58,7 +58,7 @@
   - Test UI responsiveness during OAuth flow
   - _Requirements: 1.1, 5.1, 5.2, 5.3_
 
-- [ ] 6. Implement comprehensive error handling
+- [-] 6. Implement comprehensive error handling
   - Add error categorization (user cancellation, network, OAuth, Convex, configuration)
   - Implement user-friendly error messages for each category
   - Add error logging for debugging

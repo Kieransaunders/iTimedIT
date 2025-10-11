@@ -253,20 +253,19 @@ export default function SignInScreen() {
               <View style={styles.divider} />
             </View>
 
-            {/* Google Sign-In Button - Disabled for mobile (requires OAuth flow setup) */}
-            {/* TODO: Implement Google OAuth with Expo AuthSession */}
-            {/* <Button
+            {/* Google Sign-In Button */}
+            <Button
               onPress={handleGoogleSignIn}
               loading={isGoogleLoading}
               disabled={isSubmitting || isGoogleLoading || isAnonymousLoading}
               fullWidth
               variant="outline"
               style={styles.googleButton}
-              accessibilityLabel="Sign in with Google button"
+              accessibilityLabel="Sign in with Google"
               accessibilityHint="Tap to sign in with your Google account"
             >
               {!isGoogleLoading && "Sign in with Google"}
-            </Button> */}
+            </Button>
 
             {/* Anonymous Sign-In Button */}
             <Button
@@ -276,7 +275,7 @@ export default function SignInScreen() {
               fullWidth
               variant="ghost"
               style={styles.tryAppButton}
-              accessibilityLabel="Try app button"
+              accessibilityLabel="Try app as guest"
               accessibilityHint="Tap to explore the app as a guest without signing in"
             >
               {!isAnonymousLoading && "Try App"}

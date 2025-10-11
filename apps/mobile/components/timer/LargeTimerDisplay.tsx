@@ -37,12 +37,13 @@ export function LargeTimerDisplay({
     return `${minutes}:${secs.toString().padStart(2, "0")}`;
   };
 
-  // Determine timer color
+  // Determine timer color based on client/project color (matching web app)
   const getTimerColor = () => {
     if (isOverBudget) return "#ef4444"; // red
     if (isNearBudget) return "#f59e0b"; // amber
-    if (isRunning && project?.color) return project.color;
-    return colors.textSecondary; // gray when stopped
+    // Use project color if available, fallback to purple
+    if (project?.color) return project.color;
+    return "#a855f7"; // fallback purple
   };
 
   return (
