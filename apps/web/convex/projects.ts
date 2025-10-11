@@ -39,7 +39,11 @@ export const get = query({
     id: v.id("projects"),
   },
   handler: async (ctx, args) => {
-    const { organizationId } = await requireMembership(ctx);
+    const membership = await maybeMembership(ctx);
+    if (!membership) {
+      return null;
+    }
+    const { organizationId } = membership;
 
     const project = await ctx.db.get(args.id);
     if (!project || project.organizationId !== organizationId) {

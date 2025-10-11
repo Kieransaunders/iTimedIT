@@ -2,12 +2,16 @@ import { query, mutation, internalMutation, action, MutationCtx } from "./_gener
 import { v } from "convex/values";
 import { internal, api } from "./_generated/api";
 import { Doc, Id } from "./_generated/dataModel";
-import { ensureMembership, requireMembership } from "./orgContext";
+import { ensureMembership, requireMembership, maybeMembership } from "./orgContext";
 
 export const getRunningTimer = query({
   args: {},
   handler: async (ctx) => {
-    const membership = await requireMembership(ctx);
+    const membership = await maybeMembership(ctx);
+
+    if (!membership) {
+      return null;
+    }
 
     const timer = await ctx.db
       .query("runningTimers")

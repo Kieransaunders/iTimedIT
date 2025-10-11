@@ -1,7 +1,7 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
-import { ensureMembership, requireMembership } from "./orgContext";
+import { ensureMembership, maybeMembership } from "./orgContext";
 
 export const list = query({
   args: {
@@ -9,7 +9,11 @@ export const list = query({
     paginationOpts: paginationOptsValidator,
   },
   handler: async (ctx, args) => {
-    const { organizationId, userId } = await requireMembership(ctx);
+    const membership = await maybeMembership(ctx);
+    if (!membership) {
+      return { page: [], isDone: true, continueCursor: "" };
+    }
+    const { organizationId, userId } = membership;
 
     let entriesQuery;
 

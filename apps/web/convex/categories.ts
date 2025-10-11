@@ -1,11 +1,15 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import { ensureMembership, requireMembership } from "./orgContext";
+import { ensureMembership, maybeMembership } from "./orgContext";
 
 export const getCategories = query({
   args: {},
   handler: async (ctx) => {
-    const membership = await requireMembership(ctx);
+    const membership = await maybeMembership(ctx);
+    
+    if (!membership) {
+      return [];
+    }
     
     const categories = await ctx.db
       .query("categories")
