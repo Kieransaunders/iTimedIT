@@ -212,7 +212,7 @@ export function ProjectsPage({ onProjectSelect, onStartTimer }: ProjectsPageProp
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label htmlFor="hourlyRate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Hourly Rate ($)
+                  Hourly Rate ({getCurrencySymbol()})
                 </label>
                 <input
                   type="number"
@@ -258,7 +258,7 @@ export function ProjectsPage({ onProjectSelect, onStartTimer }: ProjectsPageProp
                 ) : (
                   <>
                     <label htmlFor="budgetAmount" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Allocated Amount ($)
+                      Allocated Amount ({getCurrencySymbol()})
                     </label>
                     <input
                       type="number"

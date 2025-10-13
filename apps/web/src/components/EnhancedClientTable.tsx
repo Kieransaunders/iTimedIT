@@ -1,6 +1,6 @@
 import { Badge } from "./ui/badge";
-import { Button } from "./ui/button";
 import { ArrowDown, ArrowUp, ArrowUpDown, Edit2, Archive, Plus, RotateCcw } from "lucide-react";
+import { useCurrency } from "../hooks/useCurrency";
 
 interface ClientData {
   _id: string;
@@ -42,7 +42,7 @@ export function EnhancedClientTable({
   onUnarchiveClient,
   onCreateProject
 }: EnhancedClientTableProps) {
-  const formatCurrency = (amount: number) => `$${amount.toFixed(2)}`;
+  const { formatCurrency } = useCurrency();
   const formatHours = (seconds: number) => {
     const hours = seconds / 3600;
     return `${hours.toFixed(1)}h`;
