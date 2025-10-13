@@ -1,11 +1,22 @@
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Id } from "../../convex/_generated/dataModel";
 import { notifyMutationError } from "../lib/notifyMutationError";
 import { useOrganization } from "../lib/organization-context";
 import { WorkspaceHeader, WorkspaceType } from "./WorkspaceSwitcher";
 import { useCurrency } from "../hooks/useCurrency";
+import { Button } from "./ui/button";
+import { ProjectFilters, defaultProjectFilters } from "./ProjectFilters";
+import { LayoutGrid, Table2 } from "lucide-react";
+import { ProjectMetricsCards } from "./ProjectMetricsCards";
+
+type ViewMode = "table" | "cards";
+
+interface SortConfig {
+  key: keyof any | null;
+  direction: "asc" | "desc";
+}
 
 interface ProjectsPageProps {
   onProjectSelect?: (projectId: string) => void;
@@ -15,7 +26,7 @@ interface ProjectsPageProps {
 export function ProjectsPage({ onProjectSelect, onStartTimer }: ProjectsPageProps) {
   const [showForm, setShowForm] = useState(false);
   const [editingProject, setEditingProject] = useState<any>(null);
-  const [clientId, setClientId] = useState<Id<"clients"> | "">("");
+  const [formClientId, setFormClientId] = useState<Id<"clients"> | "">("");
   const [name, setName] = useState("");
   const [hourlyRate, setHourlyRate] = useState("");
   const [budgetType, setBudgetType] = useState<"hours" | "amount">("hours");
@@ -23,23 +34,38 @@ export function ProjectsPage({ onProjectSelect, onStartTimer }: ProjectsPageProp
   const [budgetHours, setBudgetHours] = useState("");
   const [budgetAmount, setBudgetAmount] = useState("");
   const [currentWorkspace, setCurrentWorkspace] = useState<WorkspaceType>("team");
-  const [showArchived, setShowArchived] = useState(false);
+  const [filters, setFilters] = useState(() => ({
+    ...defaultProjectFilters,
+    hourlyRate: { ...defaultProjectFilters.hourlyRate },
+  }));
+  const [viewMode, setViewMode] = useState<ViewMode>("table");
+  const [sortConfig, setSortConfig] = useState<SortConfig>({ key: null, direction: "asc" });
   const { isReady } = useOrganization();
 
   const clients = useQuery(
-    currentWorkspace === "personal" 
+    currentWorkspace === "personal"
       ? api.personalClients.listPersonal
       : api.clients.list,
-    isReady 
+    isReady
       ? (currentWorkspace === "personal" ? {} : { workspaceType: "team" })
       : "skip"
   );
   const projects = useQuery(
-    currentWorkspace === "personal" 
+    currentWorkspace === "personal"
       ? api.personalProjects.listPersonal
       : api.projects.listAll,
-    isReady 
-      ? (currentWorkspace === "personal" ? { includeArchived: showArchived } : { workspaceType: "team", includeArchived: showArchived })
+    isReady
+      ? currentWorkspace === "personal"
+        ? {
+            includeArchived: filters.status !== "active",
+            searchTerm: filters.search ? filters.search : undefined,
+          }
+        : {
+            workspaceType: "team",
+            includeArchived: filters.status !== "active",
+            ...(filters.search ? { searchTerm: filters.search } : {}),
+            ...(filters.clientId !== "all" ? { clientId: filters.clientId as Id<"clients"> } : {}),
+          }
       : "skip"
   );
   const createProject = useMutation(
@@ -82,15 +108,15 @@ export function ProjectsPage({ onProjectSelect, onStartTimer }: ProjectsPageProp
         
         // For team projects, clientId is required; for personal projects, it's optional
         if (currentWorkspace === "team") {
-          createData.clientId = clientId as Id<"clients">;
-        } else if (clientId) {
-          createData.clientId = clientId as Id<"clients">;
+          createData.clientId = formClientId as Id<"clients">;
+        } else if (formClientId) {
+          createData.clientId = formClientId as Id<"clients">;
         }
-        
+
         await createProject(createData);
         console.log("Project created successfully");
       }
-      
+
       resetForm();
     } catch (error) {
       notifyMutationError(error, {
@@ -103,7 +129,7 @@ export function ProjectsPage({ onProjectSelect, onStartTimer }: ProjectsPageProp
   };
 
   const resetForm = () => {
-    setClientId("");
+    setFormClientId("");
     setName("");
     setHourlyRate("");
     setBudgetType("hours");
@@ -115,7 +141,7 @@ export function ProjectsPage({ onProjectSelect, onStartTimer }: ProjectsPageProp
 
   const handleEdit = (project: any) => {
     setEditingProject(project);
-    setClientId(project.clientId);
+    setFormClientId(project.clientId);
     setName(project.name);
     setHourlyRate(project.hourlyRate.toString());
     setBudgetType(project.budgetType);
@@ -146,25 +172,169 @@ export function ProjectsPage({ onProjectSelect, onStartTimer }: ProjectsPageProp
     }
   };
 
+  const projectsMatchingStatus = useMemo(() => {
+    if (!projects) return [];
+
+    return projects.filter((project: any) => {
+      if (filters.status === "active") {
+        return !project.archived;
+      }
+
+      if (filters.status === "archived") {
+        return project.archived;
+      }
+
+      return true;
+    });
+  }, [filters.status, projects]);
+
+  const filteredAndSortedProjects = useMemo(() => {
+    if (!projectsMatchingStatus) return [];
+
+    let filtered = projectsMatchingStatus.filter((project: any) => {
+      if (filters.clientId !== "all" && project.client?._id !== filters.clientId) {
+        return false;
+      }
+
+      if (filters.budgetType !== "all" && project.budgetType !== filters.budgetType) {
+        return false;
+      }
+
+      const minRate = filters.hourlyRate.min || 0;
+      const maxRate = filters.hourlyRate.max ?? Number.POSITIVE_INFINITY;
+      if (project.hourlyRate < minRate || project.hourlyRate > maxRate) {
+        return false;
+      }
+
+      if (filters.search) {
+        const searchLower = filters.search.toLowerCase();
+        const matchesName = project.name.toLowerCase().includes(searchLower);
+        const matchesClient = project.client?.name?.toLowerCase().includes(searchLower);
+        if (!matchesName && !matchesClient) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+
+    if (sortConfig.key) {
+      filtered = [...filtered].sort((a, b) => {
+        let aValue = a[sortConfig.key as keyof typeof a];
+        let bValue = b[sortConfig.key as keyof typeof b];
+
+        if (sortConfig.key === "client") {
+          aValue = a.client?.name || "";
+          bValue = b.client?.name || "";
+        }
+
+        if (sortConfig.key === "budgetRemaining") {
+          aValue = a.budgetRemaining;
+          bValue = b.budgetRemaining;
+        }
+
+        if (sortConfig.key === "totalHours") {
+          aValue = a.totalHours;
+          bValue = b.totalHours;
+        }
+
+        if (aValue === undefined || aValue === null) return 1;
+        if (bValue === undefined || bValue === null) return -1;
+
+        if (aValue < bValue) {
+          return sortConfig.direction === "asc" ? -1 : 1;
+        }
+        if (aValue > bValue) {
+          return sortConfig.direction === "asc" ? 1 : -1;
+        }
+        return 0;
+      });
+    }
+
+    return filtered;
+  }, [filters, projectsMatchingStatus, sortConfig]);
+
+  const handleSort = (key: keyof any) => {
+    setSortConfig((current) => ({
+      key,
+      direction: current.key === key && current.direction === "asc" ? "desc" : "asc",
+    }));
+  };
+
+  const resetFilters = () => {
+    setFilters({
+      ...defaultProjectFilters,
+      hourlyRate: { ...defaultProjectFilters.hourlyRate },
+    });
+  };
+
   if (!isReady || !clients || !projects) {
     return <div className="animate-pulse bg-gray-200 dark:bg-gray-700 h-64 rounded-lg"></div>;
   }
 
   return (
     <div className="max-w-6xl mx-auto">
-      <WorkspaceHeader 
+      <WorkspaceHeader
         currentWorkspace={currentWorkspace}
         onWorkspaceChange={setCurrentWorkspace}
       />
-      <div className="flex justify-end mb-6">
-        {!showForm && (
-          <button
-            onClick={() => setShowForm(true)}
-            className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-hover shadow-lg transition-colors"
-          >
-            Add Project
-          </button>
-        )}
+      <div className="flex flex-col gap-4 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="flex-1 w-full">
+            <ProjectFilters
+              filters={filters}
+              onFiltersChange={setFilters}
+              onReset={resetFilters}
+              totalProjects={projectsMatchingStatus.length}
+              filteredCount={filteredAndSortedProjects.length}
+              clients={clients}
+            />
+          </div>
+
+          {!showForm && (
+            <Button
+              onClick={() => setShowForm(true)}
+              className="bg-primary hover:bg-primary-hover"
+            >
+              Add Project
+            </Button>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm p-1">
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              onClick={() => setViewMode("table")}
+              className={`h-10 w-10 rounded-md transition-colors ${
+                viewMode === "table"
+                  ? "bg-primary text-white hover:bg-primary/90"
+                  : "text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+              }`}
+              aria-label="Show table view"
+              title="Table view"
+            >
+              <Table2 className="h-5 w-5" />
+            </Button>
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              onClick={() => setViewMode("cards")}
+              className={`h-10 w-10 rounded-md transition-colors ${
+                viewMode === "cards"
+                  ? "bg-primary text-white hover:bg-primary/90"
+                  : "text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+              }`}
+              aria-label="Show card view"
+              title="Card view"
+            >
+              <LayoutGrid className="h-5 w-5" />
+            </Button>
+          </div>
+        </div>
       </div>
 
       {showForm && (
@@ -180,8 +350,8 @@ export function ProjectsPage({ onProjectSelect, onStartTimer }: ProjectsPageProp
                 </label>
                 <select
                   id="clientId"
-                  value={clientId}
-                  onChange={(e) => setClientId(e.target.value as Id<"clients">)}
+                  value={formClientId}
+                  onChange={(e) => setFormClientId(e.target.value as Id<"clients">)}
                   required={currentWorkspace === "team"}
                   disabled={!!editingProject}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-purple-timer bg-white dark:bg-gray-700/50 text-gray-900 dark:text-gray-100"
@@ -293,38 +463,74 @@ export function ProjectsPage({ onProjectSelect, onStartTimer }: ProjectsPageProp
         </div>
       )}
 
-      <div className="bg-white dark:bg-gray-800/50 dark:backdrop-blur-sm rounded-lg shadow dark:shadow-dark-card border-0 dark:border dark:border-gray-700/50">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 dark:bg-gray-700/50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Client / Project
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Hourly Rate
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Time Used
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Allocated
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Remaining
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white dark:bg-gray-800/50 divide-y divide-gray-200 dark:divide-gray-600">
-              {projects.map((project) => (
-                <tr key={project._id} className={project.archived ? "opacity-60 bg-gray-50 dark:bg-gray-700/30" : ""}>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center gap-3">
-                      <span
-                        className="h-4 w-4 rounded-full border border-gray-300 dark:border-gray-600"
+      {viewMode === "cards" ? (
+        <ProjectMetricsCards
+          projects={filteredAndSortedProjects}
+          onProjectSelect={onProjectSelect}
+          onStartTimer={onStartTimer}
+          onEditProject={handleEdit}
+          onArchiveProject={handleArchive}
+          onRestoreProject={handleUnarchive}
+          formatCurrency={formatCurrency}
+          getCurrencySymbol={getCurrencySymbol}
+        />
+      ) : (
+        <div className="bg-white dark:bg-gray-800/50 dark:backdrop-blur-sm rounded-lg shadow dark:shadow-dark-card border-0 dark:border dark:border-gray-700/50">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 dark:bg-gray-700/50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    <button
+                      type="button"
+                      className="flex items-center gap-1 text-left"
+                      onClick={() => handleSort("name")}
+                    >
+                      Client / Project
+                    </button>
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    <button
+                      type="button"
+                      className="flex items-center gap-1 text-left"
+                      onClick={() => handleSort("hourlyRate")}
+                    >
+                      Hourly Rate
+                    </button>
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    <button
+                      type="button"
+                      className="flex items-center gap-1 text-left"
+                      onClick={() => handleSort("totalHours")}
+                    >
+                      Time Used
+                    </button>
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Allocation
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    <button
+                      type="button"
+                      className="flex items-center gap-1 text-left"
+                      onClick={() => handleSort("budgetRemaining")}
+                    >
+                      Remaining
+                    </button>
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white dark:bg-gray-800/50 divide-y divide-gray-200 dark:divide-gray-600">
+                {filteredAndSortedProjects.map((project) => (
+                  <tr key={project._id} className={project.archived ? "opacity-60 bg-gray-50 dark:bg-gray-700/30" : ""}>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-3">
+                        <span
+                          className="h-4 w-4 rounded-full border border-gray-300 dark:border-gray-600"
                         style={{ backgroundColor: project.client?.color || "#8b5cf6" }}
                       />
                       <div>
@@ -424,51 +630,22 @@ export function ProjectsPage({ onProjectSelect, onStartTimer }: ProjectsPageProp
                         </>
                       )}
                     </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {projects.length === 0 && (
-          <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-            {showArchived 
-              ? "No archived projects found." 
-              : "No projects yet. Add your first project to get started!"
-            }
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        )}
-      </div>
 
-      {/* Floating Archive Toggle */}
-      <div className="fixed bottom-6 right-6 z-50">
-        <button
-          onClick={() => setShowArchived(!showArchived)}
-          className={`group relative p-4 rounded-full shadow-lg transition-all duration-200 hover:scale-105 ${
-            showArchived 
-              ? "bg-gray-600 text-white hover:bg-gray-700" 
-              : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600"
-          }`}
-          title={showArchived ? "Show Active Projects" : "Show Archived Projects"}
-        >
-          {showArchived ? (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l4-4 4 4m6 1V5a2 2 0 00-2-2H7a2 2 0 00-2 2v11a2 2 0 002 2h10a2 2 0 002-2z" />
-            </svg>
-          ) : (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8l4 4 4-4m6-1v11a2 2 0 01-2 2H7a2 2 0 01-2-2V7a2 2 0 012-2h10a2 2 0 012 2z" />
-            </svg>
+          {filteredAndSortedProjects.length === 0 && (
+            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+              {projects.length === 0
+                ? "No projects yet. Add your first project to get started!"
+                : "No projects match your current filters."}
+            </div>
           )}
-          
-          {/* Tooltip */}
-          <div className="absolute bottom-full right-0 mb-2 px-3 py-2 text-sm font-medium text-white bg-gray-900 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
-            {showArchived ? "Show Active Projects" : "Show Archived Projects"}
-            <div className="absolute top-full right-4 w-2 h-2 bg-gray-900 transform rotate-45"></div>
-          </div>
-        </button>
-      </div>
+        </div>
+      )}
     </div>
   );
 }
