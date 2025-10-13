@@ -239,7 +239,7 @@ export function ModernDashboard({
       // Only default to first project if no timer is running and no project selected
       setCurrentProjectId(projectsWithColors[0]._id);
     }
-  }, [runningTimer, currentProjectId, projectsWithColors]);
+  }, [runningTimer?.projectId, projectsWithColors.length]);
 
   // Update time display
   useEffect(() => {
