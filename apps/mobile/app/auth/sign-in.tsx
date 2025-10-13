@@ -120,22 +120,27 @@ export default function SignInScreen() {
       // Call Google sign-in function
       await signInWithGoogle();
 
-      // Show success message
-      Toast.show({
-        type: "success",
-        text1: "Welcome!",
-        text2: "You have successfully signed in with Google.",
-      });
+      // Only show success message if we're actually authenticated
+      // (signInWithGoogle returns early on cancel without throwing)
+      if (isAuthenticated) {
+        Toast.show({
+          type: "success",
+          text1: "Welcome!",
+          text2: "You have successfully signed in with Google.",
+        });
+      }
 
       // Don't manually redirect - let the useEffect handle it
       // This ensures user data is loaded before navigation
     } catch (error: any) {
-      // Show error message
-      Toast.show({
-        type: "error",
-        text1: "Google Sign In Failed",
-        text2: error.message || "Please try again.",
-      });
+      // Only show error toast for actual errors (not cancellation)
+      if (error.message && !error.message.includes("cancel")) {
+        Toast.show({
+          type: "error",
+          text1: "Google Sign In Failed",
+          text2: error.message || "Please try again.",
+        });
+      }
     } finally {
       setIsGoogleLoading(false);
     }

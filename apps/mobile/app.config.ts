@@ -24,16 +24,15 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         {
           CFBundleURLSchemes: ["itimeditapp"],
         },
+        {
+          // Google OAuth redirect scheme (reverse client ID)
+          CFBundleURLSchemes: ["com.googleusercontent.apps.434888822269-fgcqfko6njlc83eqbogltcgaj9ilpeeu"],
+        },
       ],
     },
   },
   android: {
-    adaptiveIcon: {
-      backgroundColor: "#1a1a2e",
-      foregroundImage: "./assets/images/android-icon-foreground.png",
-      backgroundImage: "./assets/images/android-icon-background.png",
-      monochromeImage: "./assets/images/android-icon-monochrome.png",
-    },
+    icon: "./assets/images/icon.png",
     package: "com.itimedit.app",
     permissions: ["RECEIVE_BOOT_COMPLETED", "VIBRATE", "SCHEDULE_EXACT_ALARM"],
     edgeToEdgeEnabled: true,

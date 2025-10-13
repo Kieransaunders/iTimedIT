@@ -29,14 +29,11 @@ apps/
 │       └── lib/            # Shared utilities
 │
 ├── mobile/                 # Expo/React Native mobile app
-│   ├── convex/            # Mobile-specific Convex functions
-│   │   ├── orgContext.ts  # Auto-creates "Personal Workspace"
-│   │   ├── timer.ts       # Simplified timer for mobile
-│   │   ├── entries.ts
-│   │   └── categories.ts
+│   ├── convex -> ../web/convex  # Symlink to shared Convex backend
 │   ├── app/               # Expo Router file-based routing
 │   │   ├── (tabs)/        # Tab navigation
-│   │   └── auth/          # Auth screens
+│   │   ├── auth/          # Auth screens
+│   │   └── _layout.tsx    # Auto-initializes "Personal Workspace"
 │   ├── components/
 │   ├── hooks/             # useAuth, useProjects, useClients
 │   └── services/          # googleAuth, notifications
@@ -57,7 +54,7 @@ packages/
 
 ### Mobile App
 - **Framework**: Expo ~54 + React Native 0.81
-- **Backend**: Convex (same schema as web, simplified functions)
+- **Backend**: Convex (shared with web via symlink at `apps/mobile/convex -> apps/web/convex`)
 - **Routing**: Expo Router (file-based)
 - **UI**: react-native-unistyles + custom components
 - **Auth**: Convex Auth + Google OAuth (expo-auth-session)
@@ -116,41 +113,29 @@ npx convex logs          # View function logs
 - **ModernDashboard.tsx is the ONLY active timer interface** - check `apps/web/src/App.tsx` to confirm which components are actually rendered
 - Search for component imports before assuming usage to avoid modifying legacy/unused code
 
-### Convex Backend Architecture
+### Convex Backend Architecture (Shared)
 
-#### Web App Backend
-- Full-featured Convex backend with:
-  - Server-side timer interruptions using `scheduler.runAt`
-  - 60-second grace periods for interruptions
-  - Pomodoro timer with work/break phases
-  - Budget alerts and overrun tracking
-  - Organization-based multitenancy
-  - Push notification system (web-push + VAPID)
+**IMPORTANT**: Both web and mobile apps share the same Convex backend via symlink (`apps/mobile/convex -> apps/web/convex`). All backend functions are defined in `apps/web/convex/` and used by both applications.
 
-#### Mobile App Backend
-- Simplified Convex functions in `apps/mobile/convex/`:
-  - **Auto-creates "Personal Workspace"** for new users (including anonymous)
-  - Uses `ensureMembership()` helper for mutations (creates org if needed)
-  - Uses `requireMembership().catch(() => null)` for queries (returns null if no org)
-  - Does NOT re-export from web app (previously caused path resolution issues)
-  - Basic timer start/stop, entry management, categories
-  - **Timer interrupts**: Same as web app - uses `awaitingInterruptAck` field and 60-second grace period for auto-stop
+#### Shared Backend Features
+- Server-side timer interruptions using `scheduler.runAt`
+- 60-second grace periods for timer interruptions
+- Pomodoro timer with work/break phases
+- Budget alerts and overrun tracking
+- Organization-based multitenancy
+- Push notification system:
+  - Web: web-push + VAPID
+  - Mobile: Expo push notifications
+- **Auto-creates "Personal Workspace"** for new users (including anonymous)
+  - Web: Uses `ensureMembership()` in Convex functions
+  - Mobile: Calls `api.organizations.ensurePersonalWorkspace` in `app/_layout.tsx` on authentication
 
-### Organization Context Pattern
-
-**Web App** (`apps/web/convex/orgContext.ts`):
+#### Organization Context Pattern (`apps/web/convex/orgContext.ts`)
 ```typescript
-// Multiple helpers for different contexts
+// Shared helpers used by both web and mobile
 requireMembership(ctx)      // Throws if no membership
 ensureMembership(ctx)       // Creates Personal Workspace if needed
 maybeMembership(ctx)        // Returns null if no membership
-```
-
-**Mobile App** (`apps/mobile/convex/orgContext.ts`):
-```typescript
-// Simpler pattern - auto-creates for all users
-ensureMembership(ctx)       // For mutations
-requireMembership(ctx)      // For queries (wrapped with .catch(() => null))
 ```
 
 ### Authentication Flow
@@ -246,13 +231,12 @@ Key tables (defined in `apps/web/convex/schema.ts`):
 5. Push notifications require Node.js 20 runtime in Convex actions
 
 ### For Mobile App Development
-1. **Mobile Convex functions are simplified** - don't assume web features exist
-2. **Auto-creates Personal Workspace** on first user action (no explicit setup needed)
-3. Use `ensureMembership()` in mutations, `requireMembership().catch(() => null)` in queries
-4. Don't re-export from web app - causes path resolution issues
-5. Google OAuth uses PKCE flow via `services/googleAuth.ts`
-6. Push notifications use Expo's system (`expo-notifications`)
-7. **Timer interrupts with auto-stop**: InterruptModal shows 60-second countdown and auto-stops timer if no action taken (matching web app behavior)
+1. **Mobile app shares Convex backend with web** via symlink at `apps/mobile/convex -> apps/web/convex`
+2. **All Convex functions are in `apps/web/convex/`** - mobile uses the same functions as web
+3. **Auto-creates Personal Workspace** via `app/_layout.tsx` when user authenticates
+4. Google OAuth uses PKCE flow via `services/googleAuth.ts`
+5. Push notifications use Expo's system (`expo-notifications`)
+6. **Timer interrupts with auto-stop**: Same backend logic as web app - uses `awaitingInterruptAck` field
 
 ### Deployment
 - Web: Netlify + Convex production backend

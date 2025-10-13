@@ -2,6 +2,7 @@ import { createRoot } from "react-dom/client";
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import { ConvexReactClient } from "convex/react";
 import * as Sentry from "@sentry/react";
+import { HelmetProvider } from "react-helmet-async";
 import "./index.css";
 import App from "./App";
 
@@ -21,7 +22,9 @@ Sentry.init({
 const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL!);
 
 createRoot(document.getElementById("root")!).render(
-  <ConvexAuthProvider client={convex}>
-    <App />
-  </ConvexAuthProvider>,
+  <HelmetProvider>
+    <ConvexAuthProvider client={convex}>
+      <App />
+    </ConvexAuthProvider>
+  </HelmetProvider>,
 );

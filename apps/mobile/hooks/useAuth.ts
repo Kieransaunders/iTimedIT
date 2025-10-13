@@ -124,11 +124,13 @@ export function useAuth(): UseAuthReturn {
       }
 
       // Initialize Google Auth Service with proper configuration
+      // For iOS OAuth clients, use the reverse client ID as the scheme
+      const clientIdReversed = googleClientId.split('.').reverse().join('.');
       const googleAuth = new GoogleAuthService({
         clientId: googleClientId,
         redirectUri: AuthSession.makeRedirectUri({
-          scheme: 'itimeditapp',
-          path: 'auth/callback'
+          scheme: clientIdReversed,
+          path: 'oauth2callback'
         }),
         scopes: ['openid', 'profile', 'email'],
         convexSignIn: convexSignIn,

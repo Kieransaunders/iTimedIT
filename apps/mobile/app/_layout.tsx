@@ -6,10 +6,12 @@ import { lightTheme, darkTheme } from "@/utils/theme";
 import { ThemeProvider, useTheme } from "@/utils/ThemeContext";
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import { Slot, useRouter, useSegments } from "expo-router";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import Toast from "react-native-toast-message";
 import { UnistylesRegistry } from "react-native-unistyles";
+import { useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
 
 // Configure Unistyles with our themes
 UnistylesRegistry.addThemes({
@@ -28,6 +30,23 @@ function ProtectedLayout() {
   const { colors } = useTheme();
   const segments = useSegments();
   const router = useRouter();
+  const workspaceInitializedRef = useRef(false);
+  const ensureWorkspace = useMutation(api.organizations.ensurePersonalWorkspace);
+
+  // Initialize Personal Workspace when user is authenticated
+  useEffect(() => {
+    if (isAuthenticated && !workspaceInitializedRef.current) {
+      workspaceInitializedRef.current = true;
+      ensureWorkspace().catch((error) => {
+        console.error("Failed to initialize workspace:", error);
+        // Reset on error so it can be retried
+        workspaceInitializedRef.current = false;
+      });
+    } else if (!isAuthenticated) {
+      // Reset when user logs out
+      workspaceInitializedRef.current = false;
+    }
+  }, [isAuthenticated, ensureWorkspace]);
 
   useEffect(() => {
     if (isLoading) {

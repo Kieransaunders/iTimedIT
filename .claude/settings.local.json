@@ -6,7 +6,14 @@
       "Bash(npx create-expo-app:*)",
       "Bash(npx ignite-cli@latest new mobile:*)",
       "Bash(npm install:*)",
-      "Bash(cp:*)"
+      "Bash(cp:*)",
+      "Bash(npx expo prebuild:*)",
+      "Bash(npx tsc:*)",
+      "Bash(find:*)",
+      "Bash(cat:*)",
+      "Bash(test:*)",
+      "Bash(readlink:*)",
+      "Bash(git log:*)"
     ],
     "deny": [],
     "ask": []

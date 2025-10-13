@@ -122,6 +122,7 @@ export async function ensureMembership(
     throw new Error("Not authenticated");
   }
 
+  // Check for existing membership
   const existing = await ctx.db
     .query("memberships")
     .withIndex("byUser", (q) => q.eq("userId", userId))
@@ -138,6 +139,7 @@ export async function ensureMembership(
     };
   }
 
+  // Auto-create "Personal Workspace" for new users (including anonymous)
   const now = Date.now();
   const organizationId = await ctx.db.insert("organizations", {
     name: "Personal Workspace",

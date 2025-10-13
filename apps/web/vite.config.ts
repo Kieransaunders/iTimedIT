@@ -1,51 +1,36 @@
+import { sentryVitePlugin } from "@sentry/vite-plugin";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
-import path from "path";
+import { visualizer } from "rollup-plugin-visualizer";
+import sitemap from "vite-plugin-sitemap";
 
-// https://vite.dev/config/
-const appVersion = process.env.VITE_APP_VERSION || process.env.npm_package_version || "dev";
-
+// https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
-    // The code below enables dev tools like taking screenshots of your site
-    // while it is being developed on chef.convex.dev.
-    // Feel free to remove this code if you're no longer developing your app with Chef.
-    mode === "development"
-      ? {
-          name: "inject-chef-dev",
-          transform(code: string, id: string) {
-            if (id.includes("main.tsx")) {
-              return {
-                code: `${code}
-
-/* Added by Vite plugin inject-chef-dev */
-window.addEventListener('message', async (message) => {
-  if (message.source !== window.parent) return;
-  if (message.data.type !== 'chefPreviewRequest') return;
-
-  const worker = await import('https://chef.convex.dev/scripts/worker.bundled.mjs');
-  await worker.respondToMessage(message);
-});
-            `,
-                map: null,
-              };
-            }
-            return null;
-          },
-        }
-      : null,
-    // End of code for taking screenshots on chef.convex.dev.
-  ].filter(Boolean),
-  server: {
-    port: 5173,
-  },
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
-    },
-  },
-  define: {
-    __APP_VERSION__: JSON.stringify(appVersion),
+    sitemap({
+      hostname: "https://itimedit.app", // Replace with your actual domain
+      dynamicRoutes: [
+        "/",
+        "/features",
+        "/pricing",
+        "/faq",
+        "/about",
+        "/privacy",
+        "/support",
+        "/terms",
+      ],
+    }),
+    sentryVitePlugin({
+      org: "serenity-dev",
+      project: "itimedit",
+      authToken: process.env.SENTRY_AUTH_TOKEN,
+    }),
+    ...(mode === "production"
+      ? [visualizer({ filename: "dist/stats.html" })]
+      : []),
+  ],
+  build: {
+    sourcemap: true,
   },
 }));
