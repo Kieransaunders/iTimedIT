@@ -287,7 +287,7 @@ export function ModernDashboard({
         setSelectedCategory(defaultCategory.name);
       }
     }
-  }, [categories, selectedCategory]);
+  }, [categories]);
 
   // Update selected category when timer is running
   useEffect(() => {
@@ -354,9 +354,8 @@ export function ModernDashboard({
     runningTimer?.pomodoroPhase,
     runningTimer?.isBreakTimer,
     runningTimer?.pomodoroCompletedCycles,
-    previousPhase,
-    previousBreakTimer,
-    soundPreferenceEnabled
+    soundPreferenceEnabled,
+    userSettings?.notificationSound
   ]);
 
   // Page visibility tracking for title updates
