@@ -1,10 +1,26 @@
 import type { ReactNode } from "react";
 import { buildAppPath } from "../lib/basePath";
 
-export type MarketingPageSlug = "home" | "privacy" | "support" | "terms";
+export type MarketingPageSlug =
+  | "home"
+  | "privacy"
+  | "support"
+  | "terms"
+  | "features"
+  | "pricing"
+  | "faq"
+  | "about";
 
 export function marketingPageToPath(page: MarketingPageSlug) {
   switch (page) {
+    case "features":
+      return "/features";
+    case "pricing":
+      return "/pricing";
+    case "faq":
+      return "/faq";
+    case "about":
+      return "/about";
     case "privacy":
       return "/privacy";
     case "support":
@@ -45,6 +61,20 @@ function MarketingLink({ page, children, onNavigate, className }: MarketingLinkP
   );
 }
 
+const PRIMARY_NAV: Array<{ page: MarketingPageSlug; label: string }> = [
+  { page: "home", label: "Home" },
+  { page: "features", label: "Features" },
+  { page: "pricing", label: "Pricing" },
+  { page: "faq", label: "FAQ" },
+  { page: "support", label: "Support" },
+];
+
+const LEGAL_NAV: Array<{ page: MarketingPageSlug; label: string }> = [
+  { page: "privacy", label: "Privacy" },
+  { page: "terms", label: "Terms" },
+  { page: "about", label: "About" },
+];
+
 function MarketingLayout({
   heading,
   intro,
@@ -67,18 +97,16 @@ function MarketingLayout({
             </div>
           </div>
           <nav className="flex flex-wrap items-center gap-4 text-sm font-medium text-slate-600">
-            <MarketingLink page="home" onNavigate={onNavigate} className="hover:text-slate-900">
-              Home
-            </MarketingLink>
-            <MarketingLink page="privacy" onNavigate={onNavigate} className="hover:text-slate-900">
-              Privacy
-            </MarketingLink>
-            <MarketingLink page="support" onNavigate={onNavigate} className="hover:text-slate-900">
-              Support
-            </MarketingLink>
-            <MarketingLink page="terms" onNavigate={onNavigate} className="hover:text-slate-900">
-              Terms
-            </MarketingLink>
+            {PRIMARY_NAV.map(({ page, label }) => (
+              <MarketingLink
+                key={page}
+                page={page}
+                onNavigate={onNavigate}
+                className="hover:text-slate-900"
+              >
+                {label}
+              </MarketingLink>
+            ))}
           </nav>
         </div>
       </header>
@@ -95,19 +123,203 @@ function MarketingLayout({
         <div className="mx-auto flex max-w-5xl flex-col gap-4 px-6 py-6 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
           <p>© {new Date().getFullYear()} iTimedIT by iConnectIT. All rights reserved.</p>
           <div className="flex flex-wrap gap-4">
-            <MarketingLink page="privacy" onNavigate={onNavigate} className="hover:text-slate-700">
-              Privacy
-            </MarketingLink>
-            <MarketingLink page="support" onNavigate={onNavigate} className="hover:text-slate-700">
-              Support
-            </MarketingLink>
-            <MarketingLink page="terms" onNavigate={onNavigate} className="hover:text-slate-700">
-              Terms
-            </MarketingLink>
+            {[...PRIMARY_NAV.slice(1), ...LEGAL_NAV].map(({ page, label }) => (
+              <MarketingLink
+                key={`footer-${page}`}
+                page={page}
+                onNavigate={onNavigate}
+                className="hover:text-slate-700"
+              >
+                {label}
+              </MarketingLink>
+            ))}
           </div>
         </div>
       </footer>
     </div>
+  );
+}
+
+export function FeaturesPage({ onNavigate }: MarketingPageProps) {
+  return (
+    <MarketingLayout
+      heading="Features built for productive teams"
+      intro="iTimedIT combines precise tracking with smart automation so your projects stay profitable and your teams stay focused."
+      onNavigate={onNavigate}
+    >
+      <section className="grid gap-6 md:grid-cols-2">
+        <FeatureCard
+          title="Intelligent Time Capture"
+          description="Log time with one click, switch projects without losing context, and rely on smart reminders to keep work recorded."
+        />
+        <FeatureCard
+          title="Budget Visibility"
+          description="Set billable targets, monitor burn-down in real time, and receive alerts before projects go over budget."
+        />
+        <FeatureCard
+          title="Client-ready Reporting"
+          description="Export branded summaries, invoice-ready breakdowns, and detailed audit trails your clients can trust."
+        />
+        <FeatureCard
+          title="Team Productivity Insights"
+          description="Track utilisation, spot bottlenecks, and coach your teams with dashboards designed for managers and leads."
+        />
+      </section>
+
+      <section className="space-y-4 rounded-3xl bg-slate-50 p-10 shadow-inner">
+        <h2 className="text-2xl font-semibold text-slate-900">Works the way your business already does</h2>
+        <p>
+          From freelancers to multi-agency teams, iTimedIT adapts to your workflow. Configure project templates,
+          automate approvals, and integrate with the tools you already rely on for billing and project management.
+        </p>
+        <ul className="list-disc space-y-2 pl-5">
+          <li>Granular permissions for contractors, managers, and clients.</li>
+          <li>Dedicated workspace per organisation with consolidated reporting.</li>
+          <li>Exports in CSV, PDF, and spreadsheet-friendly formats.</li>
+          <li>APIs and webhooks for custom automation.</li>
+        </ul>
+      </section>
+    </MarketingLayout>
+  );
+}
+
+export function PricingPage({ onNavigate }: MarketingPageProps) {
+  return (
+    <MarketingLayout
+      heading="Simple pricing that scales with your team"
+      intro="Start with the plan that fits today and upgrade when your organisation grows. Every plan includes core time tracking, reporting, and secure cloud hosting."
+      onNavigate={onNavigate}
+    >
+      <section className="grid gap-8 md:grid-cols-3">
+        <PricingPlan
+          name="Starter"
+          price="£9"
+          cadence="per user / month"
+          bulletPoints={[
+            "Up to 5 team members",
+            "Unlimited projects & clients",
+            "Real-time timers & reminders",
+            "Exportable reports",
+          ]}
+          highlight={false}
+        />
+        <PricingPlan
+          name="Growth"
+          price="£15"
+          cadence="per user / month"
+          bulletPoints={[
+            "Everything in Starter",
+            "Budget alerts & utilisation insights",
+            "Priority email support",
+            "Client portal access",
+          ]}
+          highlight
+        />
+        <PricingPlan
+          name="Enterprise"
+          price="Let’s talk"
+          cadence="custom"
+          bulletPoints={[
+            "Tailored onboarding & training",
+            "Advanced security review",
+            "Dedicated success manager",
+            "Custom integrations",
+          ]}
+          highlight={false}
+        />
+      </section>
+
+      <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+        <h2 className="text-xl font-semibold text-slate-900">Need help picking a plan?</h2>
+        <p className="mt-2 text-slate-600">
+          We can recommend the best starting point based on your project volume, reporting requirements, and team size.
+          Reach out via our{" "}
+          <MarketingLink page="support" onNavigate={onNavigate} className="font-medium text-orange-600">
+            Support page
+          </MarketingLink>{" "}
+          for a personalised walkthrough.
+        </p>
+      </section>
+    </MarketingLayout>
+  );
+}
+
+export function FaqPage({ onNavigate }: MarketingPageProps) {
+  return (
+    <MarketingLayout
+      heading="Frequently asked questions"
+      intro="Browse the most common questions about iTimedIT. Still looking for an answer? Our support team is ready to help."
+      onNavigate={onNavigate}
+    >
+      <section className="space-y-6">
+        {FAQ_ENTRIES.map(({ question, answer }) => (
+          <article key={question} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 className="text-lg font-semibold text-slate-900">{question}</h2>
+            <p className="mt-3 text-slate-700">{answer}</p>
+          </article>
+        ))}
+      </section>
+
+      <section className="rounded-3xl bg-slate-900 p-8 text-slate-100">
+        <h2 className="text-xl font-semibold">Don’t see your question?</h2>
+        <p className="mt-3">
+          Drop us a line at{" "}
+          <a className="font-medium text-orange-300" href="mailto:kieran@iconnectit.co.uk">
+            kieran@iconnectit.co.uk
+          </a>{" "}
+          and we will get back to you within one business day.
+        </p>
+        <div className="mt-4">
+          <MarketingLink page="support" onNavigate={onNavigate} className="font-medium text-orange-300 underline">
+            View support options
+          </MarketingLink>
+        </div>
+      </section>
+    </MarketingLayout>
+  );
+}
+
+export function AboutPage({ onNavigate }: MarketingPageProps) {
+  return (
+    <MarketingLayout
+      heading="About iTimedIT"
+      intro="iTimedIT is built by iConnectIT to help service businesses stay focused on delivering impact. We combine years of consultancy experience with modern product design."
+      onNavigate={onNavigate}
+    >
+      <section className="space-y-4">
+        <h2 className="text-2xl font-semibold text-slate-900">Our mission</h2>
+        <p>
+          We believe that teams should spend more time with clients and less time wrestling spreadsheets. iTimedIT was
+          created after seeing agencies, contractors, and internal teams struggle to get accurate billable data. Our
+          mission is to provide tooling that is effortless, transparent, and built for collaboration.
+        </p>
+      </section>
+
+      <section className="grid gap-6 md:grid-cols-2">
+        <article className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h3 className="text-lg font-semibold text-slate-900">Human-first design</h3>
+          <p className="mt-2 text-slate-700">
+            Everything we ship is tested with real teams. From intuitive timers to colour-coded dashboards, the product
+            is designed so every teammate feels confident using it on day one.
+          </p>
+        </article>
+        <article className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h3 className="text-lg font-semibold text-slate-900">Secure infrastructure</h3>
+          <p className="mt-2 text-slate-700">
+            iTimedIT runs on modern cloud infrastructure with regular backups, role-based access, and monitoring. We
+            treat customer data with the same care we use for our own internal systems.
+          </p>
+        </article>
+      </section>
+
+      <section className="space-y-3 rounded-3xl bg-slate-50 p-8">
+        <h3 className="text-lg font-semibold text-slate-900">Based in the UK, supporting teams worldwide</h3>
+        <p>
+          Our HQ is in the United Kingdom, but iTimedIT is trusted by teams across Europe and beyond. Wherever you are,
+          we are ready to help you run smarter projects.
+        </p>
+      </section>
+    </MarketingLayout>
   );
 }
 
@@ -291,5 +503,80 @@ export function TermsPage({ onNavigate }: MarketingPageProps) {
         </p>
       </section>
     </MarketingLayout>
+  );
+}
+
+const FAQ_ENTRIES: Array<{ question: string; answer: string }> = [
+  {
+    question: "How quickly can we get set up?",
+    answer:
+      "Most teams are up and running in under a day. Create your workspace, invite teammates, and start tracking time immediately. Our support team can help with data imports or onboarding sessions if needed.",
+  },
+  {
+    question: "Does iTimedIT integrate with our existing tools?",
+    answer:
+      "Yes. iTimedIT offers exports for accounting platforms and APIs for custom integrations. Our roadmap includes direct connectors for the most popular billing and project management suites.",
+  },
+  {
+    question: "Is our data secure?",
+    answer:
+      "Absolutely. We use encrypted storage, role-based access controls, and continuous monitoring. Privacy and compliance are central to our platform—see the Privacy Policy for full details.",
+  },
+  {
+    question: "Can we track billable versus non-billable time?",
+    answer:
+      "You can customise categories per project and report on billable versus internal time instantly. Filters make it easy to surface the data you need for invoicing or retrospectives.",
+  },
+];
+
+function FeatureCard({ title, description }: { title: string; description: string }) {
+  return (
+    <article className="space-y-3 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+      <h2 className="text-xl font-semibold text-slate-900">{title}</h2>
+      <p className="text-slate-700">{description}</p>
+    </article>
+  );
+}
+
+function PricingPlan({
+  name,
+  price,
+  cadence,
+  bulletPoints,
+  highlight,
+}: {
+  name: string;
+  price: string;
+  cadence: string;
+  bulletPoints: string[];
+  highlight: boolean;
+}) {
+  return (
+    <article
+      className={`flex flex-col rounded-3xl border p-8 shadow-sm ${
+        highlight
+          ? "border-orange-200 bg-orange-50"
+          : "border-slate-200 bg-white"
+      }`}
+    >
+      <h3 className="text-lg font-semibold text-slate-900">{name}</h3>
+      <div className="mt-4 flex items-baseline gap-1">
+        <span className="text-4xl font-bold text-slate-900">{price}</span>
+        <span className="text-sm text-slate-500">{cadence}</span>
+      </div>
+      <ul className="mt-6 flex flex-1 flex-col gap-2 text-sm text-slate-700">
+        {bulletPoints.map((item) => (
+          <li key={item} className="flex items-start gap-2">
+            <span className="mt-1 h-2 w-2 rounded-full bg-orange-500" />
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
+      {highlight && (
+        <p className="mt-6 text-sm font-medium text-orange-600">
+          Most popular with agencies growing beyond five team members.
+        </p>
+      )}
+    </article>
   );
 }

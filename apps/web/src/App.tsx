@@ -27,6 +27,10 @@ import {
 import { buildAppPath, stripBasePath } from "./lib/basePath";
 import {
   type MarketingPageSlug,
+  AboutPage,
+  FeaturesPage,
+  FaqPage,
+  PricingPage,
   PrivacyPolicyPage,
   SupportPage,
   TermsPage,
@@ -307,6 +311,14 @@ function UnauthenticatedView() {
   const { page, navigate } = useMarketingPage();
 
   switch (page) {
+    case "features":
+      return <FeaturesPage onNavigate={navigate} />;
+    case "pricing":
+      return <PricingPage onNavigate={navigate} />;
+    case "faq":
+      return <FaqPage onNavigate={navigate} />;
+    case "about":
+      return <AboutPage onNavigate={navigate} />;
     case "privacy":
       return <PrivacyPolicyPage onNavigate={navigate} />;
     case "support":
@@ -331,14 +343,20 @@ function LandingPage({ onNavigate }: { onNavigate: (page: MarketingPageSlug) => 
             </div>
           </div>
           <nav className="flex flex-wrap items-center gap-5 text-sm font-medium text-slate-600">
-            <LandingNavLink page="privacy" onNavigate={onNavigate}>
-              Privacy
+            <LandingNavLink page="features" onNavigate={onNavigate}>
+              Features
+            </LandingNavLink>
+            <LandingNavLink page="pricing" onNavigate={onNavigate}>
+              Pricing
+            </LandingNavLink>
+            <LandingNavLink page="faq" onNavigate={onNavigate}>
+              FAQ
             </LandingNavLink>
             <LandingNavLink page="support" onNavigate={onNavigate}>
               Support
             </LandingNavLink>
-            <LandingNavLink page="terms" onNavigate={onNavigate}>
-              Terms
+            <LandingNavLink page="about" onNavigate={onNavigate}>
+              About
             </LandingNavLink>
           </nav>
         </div>
@@ -406,14 +424,26 @@ function LandingPage({ onNavigate }: { onNavigate: (page: MarketingPageSlug) => 
       <footer className="px-6 pb-12">
         <div className="mx-auto flex w-full max-w-6xl flex-col items-center gap-4 text-sm text-slate-500">
           <div className="flex flex-wrap items-center justify-center gap-6">
-            <LandingNavLink page="privacy" onNavigate={onNavigate} className="hover:text-slate-700">
-              Privacy
+            <LandingNavLink page="features" onNavigate={onNavigate} className="hover:text-slate-700">
+              Features
+            </LandingNavLink>
+            <LandingNavLink page="pricing" onNavigate={onNavigate} className="hover:text-slate-700">
+              Pricing
+            </LandingNavLink>
+            <LandingNavLink page="faq" onNavigate={onNavigate} className="hover:text-slate-700">
+              FAQ
             </LandingNavLink>
             <LandingNavLink page="support" onNavigate={onNavigate} className="hover:text-slate-700">
               Support
             </LandingNavLink>
+            <LandingNavLink page="privacy" onNavigate={onNavigate} className="hover:text-slate-700">
+              Privacy
+            </LandingNavLink>
             <LandingNavLink page="terms" onNavigate={onNavigate} className="hover:text-slate-700">
               Terms
+            </LandingNavLink>
+            <LandingNavLink page="about" onNavigate={onNavigate} className="hover:text-slate-700">
+              About
             </LandingNavLink>
           </div>
           <p className="text-center">Trusted by professionals worldwide • Secure • Reliable • Efficient</p>
@@ -483,6 +513,22 @@ function getMarketingPageFromLocation(): MarketingPageSlug {
 
   const { pathname } = window.location;
   const relativePath = stripBasePath(pathname);
+
+  if (relativePath === "/features" || relativePath.startsWith("/features/")) {
+    return "features";
+  }
+
+  if (relativePath === "/pricing" || relativePath.startsWith("/pricing/")) {
+    return "pricing";
+  }
+
+  if (relativePath === "/faq" || relativePath.startsWith("/faq/")) {
+    return "faq";
+  }
+
+  if (relativePath === "/about" || relativePath.startsWith("/about/")) {
+    return "about";
+  }
 
   if (relativePath === "/privacy" || relativePath.startsWith("/privacy/")) {
     return "privacy";
