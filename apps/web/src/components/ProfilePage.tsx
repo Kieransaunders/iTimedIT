@@ -2,6 +2,7 @@ import type { Doc } from "../../convex/_generated/dataModel";
 import { getUserDisplayName, getUserEmail, getUserInitials, isAnonymousUser } from "../lib/user-utils";
 import { useOrganization } from "../lib/organization-context";
 import { OrganizationManagementCard } from "./OrganizationManagementCard";
+import { SignOutButton } from "../SignOutButton";
 
 export type AppPage =
   | "dashboard"
@@ -59,6 +60,7 @@ export function ProfilePage({
             >
               Go to dashboard
             </button>
+            <SignOutButton />
           </div>
         </div>
         {anonymous && (
