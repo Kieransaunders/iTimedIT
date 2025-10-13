@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
+import { useCurrency } from "../hooks/useCurrency";
 
 interface ClientData {
   _id: string;
@@ -24,13 +25,13 @@ interface ClientMetricsCardsProps {
   onArchiveClient?: (clientId: string) => void;
 }
 
-export function ClientMetricsCards({ 
-  clients, 
-  onClientSelect, 
-  onEditClient, 
-  onArchiveClient 
+export function ClientMetricsCards({
+  clients,
+  onClientSelect,
+  onEditClient,
+  onArchiveClient
 }: ClientMetricsCardsProps) {
-  const formatCurrency = (amount: number) => `$${amount.toFixed(2)}`;
+  const { formatCurrency } = useCurrency();
   const formatHours = (seconds: number) => {
     const hours = seconds / 3600;
     return `${hours.toFixed(1)}h`;

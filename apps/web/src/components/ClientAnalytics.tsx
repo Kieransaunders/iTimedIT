@@ -3,6 +3,7 @@ import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
+import { useCurrency } from "../hooks/useCurrency";
 
 interface ClientAnalyticsProps {
   clientId: Id<"clients">;
@@ -10,12 +11,12 @@ interface ClientAnalyticsProps {
 
 export function ClientAnalytics({ clientId }: ClientAnalyticsProps) {
   const analytics = useQuery(api.clients.getClientAnalytics, { clientId });
+  const { formatCurrency } = useCurrency();
 
   if (!analytics) {
     return <div className="animate-pulse bg-gray-200 dark:bg-gray-700 h-64 rounded-lg"></div>;
   }
 
-  const formatCurrency = (amount: number) => `$${amount.toFixed(2)}`;
   const formatHours = (seconds: number) => {
     const hours = seconds / 3600;
     return `${hours.toFixed(1)}h`;
