@@ -31,6 +31,7 @@ interface EnhancedClientTableProps {
   onArchiveClient: (clientId: string) => void;
   onUnarchiveClient?: (clientId: string) => void;
   onCreateProject: (clientId: string) => void;
+  onClientSelect?: (clientId: string) => void;
 }
 
 export function EnhancedClientTable({
@@ -40,7 +41,8 @@ export function EnhancedClientTable({
   onEditClient,
   onArchiveClient,
   onUnarchiveClient,
-  onCreateProject
+  onCreateProject,
+  onClientSelect
 }: EnhancedClientTableProps) {
   const { formatCurrency } = useCurrency();
   const formatHours = (seconds: number) => {
@@ -149,12 +151,17 @@ export function EnhancedClientTable({
             {clients.map((client) => (
               <tr key={client._id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
                 <td className="px-6 py-4">
-                  <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => onClientSelect?.(client._id)}
+                    className="flex w-full items-center gap-3 rounded-md bg-transparent p-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                    title="View client details"
+                  >
                     <span
                       className="h-4 w-4 rounded-full border border-gray-300 dark:border-gray-600"
                       style={{ backgroundColor: client.color || "#8b5cf6" }}
                     />
-                    <div>
+                    <div className="flex-1">
                       <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
                         {client.name}
                       </div>
@@ -164,7 +171,7 @@ export function EnhancedClientTable({
                         </div>
                       )}
                     </div>
-                  </div>
+                  </button>
                 </td>
                 
                 <td className="px-6 py-4">
