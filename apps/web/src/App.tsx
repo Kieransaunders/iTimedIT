@@ -18,6 +18,7 @@ import { InvitePage } from "./components/InvitePage";
 import { ProfilePage, type AppPage } from "./components/ProfilePage";
 import { ProfileAvatar } from "./components/ProfileAvatar";
 import { TestEmailPage } from "./components/TestEmailPage";
+import { EntriesPage } from "./components/EntriesPage";
 import {
   ensurePushSubscription,
   isPushSupported,
@@ -194,17 +195,18 @@ function AuthenticatedApp() {
               <NavButton icon={<DashboardIcon />} label="Dashboard" isActive={currentPage === "dashboard"} onClick={() => setCurrentPage("dashboard")} />
               <NavButton icon={<ClientsIcon />} label="Clients" isActive={currentPage === "clients"} onClick={() => setCurrentPage("clients")} />
               <NavButton icon={<ProjectsIcon />} label="Projects" isActive={currentPage === "projects"} onClick={() => setCurrentPage("projects")} />
+              <NavButton icon={<EntriesIcon />} label="Entries" isActive={currentPage === "entries"} onClick={() => setCurrentPage("entries")} />
               <NavButton icon={<SettingsIcon />} label="Settings" isActive={currentPage === "settings"} onClick={() => setCurrentPage("settings")} />
             </nav>
           </div>
           <div className="flex items-center gap-1 sm:gap-2">
             <ThemeToggle />
-            <div className="hidden sm:flex items-center gap-2">
-              <ProfileAvatar
-                user={loggedInUser}
-                onOpenProfile={() => setCurrentPage("profile")}
-                isActive={currentPage === "profile"}
-              />
+            <ProfileAvatar
+              user={loggedInUser}
+              onOpenProfile={() => setCurrentPage("profile")}
+              isActive={currentPage === "profile"}
+            />
+            <div className="hidden sm:block">
               <SignOutButton />
             </div>
           </div>
@@ -233,8 +235,8 @@ function AuthenticatedApp() {
                   }}
                   onStartTimer={async (projectId: string) => {
                     try {
-                      await startTimerMutation({ 
-                        projectId: projectId as Id<"projects">, 
+                      await startTimerMutation({
+                        projectId: projectId as Id<"projects">,
                         category: undefined,
                         pomodoroEnabled: false
                       });
@@ -247,6 +249,7 @@ function AuthenticatedApp() {
                 />
               )
             )}
+            {currentPage === "entries" && <EntriesPage />}
             {currentPage === "settings" && <Settings onNavigate={setCurrentPage} />}
             {currentPage === "profile" && <ProfilePage user={loggedInUser} onNavigate={setCurrentPage} />}
             {currentPage === "testEmail" && <TestEmailPage onNavigate={setCurrentPage} />}
@@ -268,23 +271,23 @@ function AuthenticatedApp() {
               isActive={currentPage === "clients"} 
               onClick={() => setCurrentPage("clients")} 
             />
-            <BottomNavButton 
-              icon={<ProjectsIcon />} 
-              label="Projects" 
-              isActive={currentPage === "projects"} 
-              onClick={() => setCurrentPage("projects")} 
+            <BottomNavButton
+              icon={<ProjectsIcon />}
+              label="Projects"
+              isActive={currentPage === "projects"}
+              onClick={() => setCurrentPage("projects")}
             />
-            <BottomNavButton 
-              icon={<SettingsIcon />} 
-              label="Settings" 
-              isActive={currentPage === "settings"} 
-              onClick={() => setCurrentPage("settings")} 
+            <BottomNavButton
+              icon={<EntriesIcon />}
+              label="Entries"
+              isActive={currentPage === "entries"}
+              onClick={() => setCurrentPage("entries")}
             />
-            <BottomNavButton 
-              icon={<ProfileIcon />} 
-              label="Profile" 
-              isActive={currentPage === "profile"} 
-              onClick={() => setCurrentPage("profile")} 
+            <BottomNavButton
+              icon={<SettingsIcon />}
+              label="Settings"
+              isActive={currentPage === "settings"}
+              onClick={() => setCurrentPage("settings")}
             />
           </div>
         </nav>
@@ -521,19 +524,19 @@ function ProjectsIcon() {
   );
 }
 
+function EntriesIcon() {
+  return (
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-full h-full">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h10M9 12h10m-6 5h6M5 7h.01M5 12h.01M5 17h.01" />
+    </svg>
+  );
+}
+
 function SettingsIcon() {
   return (
     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-full h-full">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-    </svg>
-  );
-}
-
-function ProfileIcon() {
-  return (
-    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-full h-full">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
     </svg>
   );
 }

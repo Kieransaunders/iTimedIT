@@ -1,0 +1,466 @@
+import { useEffect, useMemo, useState } from "react";
+import { useQuery, useMutation } from "convex/react";
+import { api } from "../../convex/_generated/api";
+import { Id } from "../../convex/_generated/dataModel";
+import { useOrganization } from "../lib/organization-context";
+import { RecentEntriesTable, type RecentEntriesFilters } from "./RecentEntriesTable";
+import { Input } from "./ui/input";
+import { Button } from "./ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
+import { toast } from "sonner";
+
+type CategoryFilter = "all" | "none" | string;
+
+type ProjectOption = {
+  _id: Id<"projects">;
+  name: string;
+  client?: {
+    _id: Id<"clients">;
+    name: string;
+  } | null;
+};
+
+type ClientOption = {
+  _id: Id<"clients">;
+  name: string;
+};
+
+export function EntriesPage() {
+  const { isReady } = useOrganization();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedClient, setSelectedClient] = useState<"all" | Id<"clients">>("all");
+  const [selectedProject, setSelectedProject] = useState<"all" | Id<"projects">>("all");
+  const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>("all");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+  const [showManualEntryDialog, setShowManualEntryDialog] = useState(false);
+  const [isSubmittingManualEntry, setIsSubmittingManualEntry] = useState(false);
+  const [manualEntryForm, setManualEntryForm] = useState({
+    projectId: "",
+    date: new Date().toISOString().split("T")[0],
+    startTime: "09:00",
+    endTime: "10:00",
+    note: "",
+    category: "",
+  });
+
+  const projects = useQuery(api.projects.listAll, isReady ? { workspaceType: "team" } : "skip");
+  const categories = useQuery(api.categories.getCategories, isReady ? {} : "skip");
+  const createManualEntry = useMutation(api.timer.createManualEntry);
+
+  const clientOptions = useMemo<ClientOption[]>(() => {
+    if (!projects) {
+      return [];
+    }
+
+    const uniqueClients = new Map<string, ClientOption>();
+    for (const project of projects as ProjectOption[]) {
+      if (project.client?._id) {
+        uniqueClients.set(project.client._id, {
+          _id: project.client._id,
+          name: project.client.name,
+        });
+      }
+    }
+
+    return Array.from(uniqueClients.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [projects]);
+
+  const projectOptions = useMemo<ProjectOption[]>(() => {
+    if (!projects) {
+      return [];
+    }
+
+    return (projects as ProjectOption[])
+      .filter((project) => {
+        if (selectedClient !== "all" && project.client?._id !== selectedClient) {
+          return false;
+        }
+        return true;
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [projects, selectedClient]);
+
+  useEffect(() => {
+    if (selectedProject !== "all") {
+      const stillVisible = projectOptions.some((project) => project._id === selectedProject);
+      if (!stillVisible) {
+        setSelectedProject("all");
+      }
+    }
+  }, [projectOptions, selectedProject]);
+
+  const hasProjects = projectOptions.length > 0;
+
+  const resetFilters = () => {
+    setSearchTerm("");
+    setSelectedClient("all");
+    setSelectedProject("all");
+    setSelectedCategory("all");
+    setFromDate("");
+    setToDate("");
+  };
+
+  const filtersActive = Boolean(
+    searchTerm ||
+    selectedClient !== "all" ||
+    selectedProject !== "all" ||
+    selectedCategory !== "all" ||
+    fromDate ||
+    toDate
+  );
+
+  const prepareManualEntryDefaults = () => {
+    setManualEntryForm((prev) => {
+      const preferredProject =
+        selectedProject !== "all"
+          ? (selectedProject as string)
+          : prev.projectId || (projectOptions[0]?._id ?? "");
+
+      const categoryValue =
+        selectedCategory === "all"
+          ? prev.category
+          : selectedCategory === "none"
+            ? ""
+            : selectedCategory;
+
+      return {
+        ...prev,
+        projectId: preferredProject,
+        category: categoryValue,
+        date: new Date().toISOString().split("T")[0],
+      };
+    });
+  };
+
+  const handleManualEntrySubmit = async () => {
+    if (!manualEntryForm.projectId) {
+      toast.error("Please select a project for this entry");
+      return;
+    }
+
+    const startDateTime = new Date(`${manualEntryForm.date}T${manualEntryForm.startTime}:00`);
+    const endDateTime = new Date(`${manualEntryForm.date}T${manualEntryForm.endTime}:00`);
+
+    if (Number.isNaN(startDateTime.getTime()) || Number.isNaN(endDateTime.getTime())) {
+      toast.error("Please provide a valid start and end time");
+      return;
+    }
+
+    if (endDateTime <= startDateTime) {
+      toast.error("End time must be after start time");
+      return;
+    }
+
+    setIsSubmittingManualEntry(true);
+    try {
+      await createManualEntry({
+        projectId: manualEntryForm.projectId as Id<"projects">,
+        startedAt: startDateTime.getTime(),
+        stoppedAt: endDateTime.getTime(),
+        note: manualEntryForm.note || undefined,
+        category: manualEntryForm.category || undefined,
+      });
+
+      const durationMinutes = Math.round((endDateTime.getTime() - startDateTime.getTime()) / (1000 * 60));
+      const matchingProject = projectOptions.find((project) => project._id === manualEntryForm.projectId);
+      const projectName = matchingProject?.name ?? "project";
+
+      toast.success(`Added ${durationMinutes} minute${durationMinutes === 1 ? "" : "s"} to ${projectName}`);
+
+      setManualEntryForm((prev) => ({
+        ...prev,
+        startTime: "09:00",
+        endTime: "10:00",
+        note: "",
+        category: "",
+      }));
+      setShowManualEntryDialog(false);
+    } catch (error) {
+      console.error("Failed to create manual entry", error);
+      toast.error("Failed to create time entry");
+    } finally {
+      setIsSubmittingManualEntry(false);
+    }
+  };
+
+  const entriesFilters: RecentEntriesFilters = {
+    projectId: selectedProject,
+    clientId: selectedClient,
+    category: selectedCategory,
+    searchTerm,
+    fromDate: fromDate || undefined,
+    toDate: toDate || undefined,
+  };
+
+  const selectedProjectId = selectedProject === "all" ? null : (selectedProject as Id<"projects">);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Entries</h1>
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            Review, search, and adjust recent time entries across your projects.
+          </p>
+        </div>
+        <Dialog
+          open={showManualEntryDialog}
+          onOpenChange={(open) => {
+            if (open) {
+              prepareManualEntryDefaults();
+            }
+            setShowManualEntryDialog(open);
+          }}
+        >
+          <DialogTrigger asChild>
+            <Button
+              onClick={() => {
+                if (!hasProjects) {
+                  return;
+                }
+              }}
+              disabled={!hasProjects}
+              className="bg-[#F85E00] text-white hover:bg-[#d14e00]"
+            >
+              + Add Time Entry
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Add Manual Time Entry</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Project</label>
+                <select
+                  value={manualEntryForm.projectId}
+                  onChange={(event) =>
+                    setManualEntryForm((prev) => ({ ...prev, projectId: event.target.value }))
+                  }
+                  className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  <option value="">Select a project...</option>
+                  {projectOptions.map((project) => (
+                    <option key={project._id} value={project._id}>
+                      {project.name}
+                      {project.client ? ` · ${project.client.name}` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Date</label>
+                  <Input
+                    type="date"
+                    value={manualEntryForm.date}
+                    onChange={(event) =>
+                      setManualEntryForm((prev) => ({ ...prev, date: event.target.value }))
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Start Time</label>
+                  <Input
+                    type="time"
+                    value={manualEntryForm.startTime}
+                    onChange={(event) =>
+                      setManualEntryForm((prev) => ({ ...prev, startTime: event.target.value }))
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">End Time</label>
+                  <Input
+                    type="time"
+                    value={manualEntryForm.endTime}
+                    onChange={(event) =>
+                      setManualEntryForm((prev) => ({ ...prev, endTime: event.target.value }))
+                    }
+                  />
+                </div>
+              </div>
+
+              {categories && categories.length > 0 && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Category (optional)</label>
+                  <select
+                    value={manualEntryForm.category}
+                    onChange={(event) =>
+                      setManualEntryForm((prev) => ({ ...prev, category: event.target.value }))
+                    }
+                    className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  >
+                    <option value="">Select category...</option>
+                    {categories.map((category) => (
+                      <option key={category._id} value={category.name}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Note (optional)</label>
+                <textarea
+                  value={manualEntryForm.note}
+                  onChange={(event) =>
+                    setManualEntryForm((prev) => ({ ...prev, note: event.target.value }))
+                  }
+                  placeholder="What did you work on?"
+                  className="w-full min-h-[96px] resize-none rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <Button
+                  onClick={handleManualEntrySubmit}
+                  disabled={isSubmittingManualEntry}
+                  className="flex-1"
+                >
+                  {isSubmittingManualEntry ? "Adding..." : "Add Entry"}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowManualEntryDialog(false)}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {!hasProjects && (
+        <div className="rounded-lg border border-dashed border-gray-300 bg-white/70 p-4 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-900/60 dark:text-gray-300">
+          Create a project first to log manual time entries.
+        </div>
+      )}
+
+      <div className="space-y-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900/60 dark:shadow-none">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Search</label>
+            <Input
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              placeholder="Search by project, client, note, or category"
+              className="mt-1"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Client</label>
+            <select
+              value={selectedClient}
+              onChange={(event) =>
+                setSelectedClient(
+                  event.target.value === "all"
+                    ? "all"
+                    : (event.target.value as Id<"clients">)
+                )
+              }
+              className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              <option value="all">All clients</option>
+              {clientOptions.map((client) => (
+                <option key={client._id} value={client._id}>
+                  {client.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Project</label>
+            <select
+              value={selectedProject}
+              onChange={(event) =>
+                setSelectedProject(
+                  event.target.value === "all"
+                    ? "all"
+                    : (event.target.value as Id<"projects">)
+                )
+              }
+              className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              <option value="all">All projects</option>
+              {projectOptions.map((project) => (
+                <option key={project._id} value={project._id}>
+                  {project.name}
+                  {project.client ? ` · ${project.client.name}` : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Category</label>
+            <select
+              value={selectedCategory}
+              onChange={(event) =>
+                setSelectedCategory(event.target.value as CategoryFilter)
+              }
+              className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              <option value="all">All categories</option>
+              <option value="none">No category</option>
+              {categories?.map((category) => (
+                <option key={category._id} value={category.name}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">From date</label>
+            <Input
+              type="date"
+              value={fromDate}
+              onChange={(event) => setFromDate(event.target.value)}
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">To date</label>
+            <Input
+              type="date"
+              value={toDate}
+              onChange={(event) => setToDate(event.target.value)}
+              className="mt-1"
+            />
+          </div>
+        </div>
+
+        <div className="flex justify-end">
+          <Button
+            variant="outline"
+            onClick={resetFilters}
+            disabled={!filtersActive}
+          >
+            Reset filters
+          </Button>
+        </div>
+      </div>
+
+      <RecentEntriesTable
+        projectId={selectedProjectId}
+        showHeader={false}
+        pageSize={50}
+        filters={entriesFilters}
+        emptyStateMessage="No entries match the current filters."
+      />
+    </div>
+  );
+}

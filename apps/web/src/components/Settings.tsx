@@ -12,6 +12,29 @@ import {
 } from "../lib/attention";
 import { useCurrency } from "../hooks/useCurrency";
 
+type SettingsTab = "timer" | "notifications" | "budget";
+
+const SETTINGS_TABS: { id: SettingsTab; label: string; description: string }[] = [
+  {
+    id: "timer",
+    label: "Timer & Focus",
+    description:
+      "Fine-tune interruption prompts and Pomodoro defaults so timers match your working style.",
+  },
+  {
+    id: "notifications",
+    label: "Notifications",
+    description:
+      "Control push alerts, escalation channels, and quiet hours to stay informed without overwhelm.",
+  },
+  {
+    id: "budget",
+    label: "Budget & Currency",
+    description:
+      "Stay ahead of budget overruns and pick how monetary values should appear across the workspace.",
+  },
+];
+
 export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void }) {
   const settings = useQuery(api.users.getUserSettings);
   const ensureSettings = useMutation(api.users.ensureUserSettings);
@@ -38,6 +61,9 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
   const [currency, setCurrency] = useState<"USD" | "EUR" | "GBP">("USD");
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaveTime, setLastSaveTime] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState<SettingsTab>("timer");
+  const activeTabConfig =
+    SETTINGS_TABS.find((tab) => tab.id === activeTab) ?? SETTINGS_TABS[0];
 
   // Notification preferences state
   const [webPushEnabled, setWebPushEnabled] = useState(true);
@@ -325,263 +351,333 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
         ) : (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-medium mb-4">Interruption Settings</h3>
-              <p className="text-gray-600 mb-4">
-                Configure when and how often you want to be asked if you're still working on a project.
-                This helps prevent accidentally leaving timers running and applies to all timer modes.
-              </p>
-
-              <div className="space-y-4">
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="interruptEnabled"
-                    checked={interruptEnabled}
-                    onChange={(event) => setInterruptEnabled(event.target.checked)}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                  />
-                  <label htmlFor="interruptEnabled" className="ml-2 block text-sm text-gray-900">
-                    Enable interruption prompts
-                  </label>
-                </div>
-
-                {interruptEnabled && (
-                  <div>
-                    <label htmlFor="interruptInterval" className="block text-sm font-medium text-gray-700 mb-2">
-                      Check interval
-                    </label>
-                    <select
-                      id="interruptInterval"
-                      value={interruptInterval}
-                      onChange={(event) => {
-                        const value = Number(event.target.value);
-                        setInterruptInterval(value);
-                        setIsCustomInterval(value === -1);
-                      }}
-                      className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+              <div className="flex flex-wrap items-center gap-2 border-b border-gray-200 pb-2 dark:border-gray-700">
+                {SETTINGS_TABS.map((tab) => {
+                  const isActive = tab.id === activeTab;
+                  return (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`inline-flex items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition-colors ${
+                        isActive
+                          ? "border-transparent bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-200"
+                          : "border-transparent text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white"
+                      }`}
                     >
-                      {intervalOptions.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                    {isCustomInterval && (
-                      <div className="mt-3">
-                        <label htmlFor="customIntervalValue" className="block text-sm font-medium text-gray-700 mb-2">
-                          Custom interval (minutes)
+                      {tab.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="mt-3 text-sm text-gray-600 dark:text-gray-300">
+                {activeTabConfig.description}
+              </p>
+            </div>
+
+
+            {activeTab === "timer" && (
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-lg font-medium mb-4">Interruption Settings</h3>
+                  <p className="text-gray-600 mb-4">
+                    Configure when and how often you want to be asked if you're still working on a project.
+                    This helps prevent accidentally leaving timers running and applies to all timer modes.
+                  </p>
+
+                  <div className="space-y-4">
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        id="interruptEnabled"
+                        checked={interruptEnabled}
+                        onChange={(event) => setInterruptEnabled(event.target.checked)}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="interruptEnabled" className="ml-2 block text-sm text-gray-900">
+                        Enable interruption prompts
+                      </label>
+                    </div>
+
+                    {interruptEnabled && (
+                      <div>
+                        <label htmlFor="interruptInterval" className="mb-2 block text-sm font-medium text-gray-700">
+                          Check interval
                         </label>
-                        <input
-                          type="number"
-                          id="customIntervalValue"
-                          value={customIntervalValue}
-                          onChange={(event) => setCustomIntervalValue(Math.max(1, Math.min(480, parseInt(event.target.value, 10) || 1)))}
-                          min={1}
-                          max={480}
-                          className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                          placeholder="Enter minutes (1-480)"
-                        />
-                        <p className="mt-1 text-sm text-gray-500">
-                          Enter a custom interval between 1 and 480 minutes (8 hours).
-                        </p>
+                        <select
+                          id="interruptInterval"
+                          value={interruptInterval}
+                          onChange={(event) => {
+                            const value = Number(event.target.value);
+                            setInterruptInterval(value);
+                            setIsCustomInterval(value === -1);
+                          }}
+                          className="block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                        >
+                          {intervalOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                        {isCustomInterval && (
+                          <div className="mt-3">
+                            <label htmlFor="customIntervalValue" className="mb-2 block text-sm font-medium text-gray-700">
+                              Custom interval (minutes)
+                            </label>
+                            <input
+                              type="number"
+                              id="customIntervalValue"
+                              value={customIntervalValue}
+                              onChange={(event) =>
+                                setCustomIntervalValue(
+                                  Math.max(1, Math.min(480, parseInt(event.target.value, 10) || 1)),
+                                )
+                              }
+                              min={1}
+                              max={480}
+                              className="block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                              placeholder="Enter minutes (1-480)"
+                            />
+                            <p className="mt-1 text-sm text-gray-500">
+                              Enter a custom interval between 1 and 480 minutes (8 hours).
+                            </p>
+                          </div>
+                        )}
+                        {!isCustomInterval && (
+                          <p className="mt-1 text-sm text-gray-500">
+                            You'll be asked if you're still working every {intervalOptions
+                              .find((option) => option.value === interruptInterval)
+                              ?.label.toLowerCase()}.
+                          </p>
+                        )}
                       </div>
                     )}
-                    {!isCustomInterval && (
-                      <p className="mt-1 text-sm text-gray-500">
-                        You'll be asked if you're still working every {intervalOptions
-                          .find((option) => option.value === interruptInterval)
-                          ?.label.toLowerCase()}.
-                      </p>
+
+                    {interruptEnabled && (
+                      <div>
+                        <label htmlFor="gracePeriod" className="mb-2 block text-sm font-medium text-gray-700">
+                          Auto-stop countdown
+                        </label>
+                        <select
+                          id="gracePeriod"
+                          value={gracePeriod}
+                          onChange={(event) => {
+                            const value = Number(event.target.value);
+                            setGracePeriod(value);
+                            setIsCustomGracePeriod(value === -1);
+                          }}
+                          className="block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                        >
+                          {gracePeriodOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                        {isCustomGracePeriod && (
+                          <div className="mt-3">
+                            <label htmlFor="customGracePeriodValue" className="mb-2 block text-sm font-medium text-gray-700">
+                              Custom countdown (seconds)
+                            </label>
+                            <input
+                              type="number"
+                              id="customGracePeriodValue"
+                              value={customGracePeriodValue}
+                              onChange={(event) =>
+                                setCustomGracePeriodValue(
+                                  Math.max(5, Math.min(300, parseInt(event.target.value, 10) || 5)),
+                                )
+                              }
+                              min={5}
+                              max={300}
+                              className="block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                              placeholder="Enter seconds (5-300)"
+                            />
+                            <p className="mt-1 text-sm text-gray-500">
+                              Enter a custom countdown between 5 and 300 seconds (5 minutes).
+                            </p>
+                          </div>
+                        )}
+                        {!isCustomGracePeriod && (
+                          <p className="mt-1 text-sm text-gray-500">
+                            Time to respond before the timer auto-stops: {gracePeriodOptions
+                              .find((option) => option.value === gracePeriod)
+                              ?.label.toLowerCase()}.
+                          </p>
+                        )}
+                      </div>
                     )}
                   </div>
-                )}
+                </div>
 
-                {interruptEnabled && (
-                  <div>
-                    <label htmlFor="gracePeriod" className="block text-sm font-medium text-gray-700 mb-2">
-                      Auto-stop countdown
-                    </label>
-                    <select
-                      id="gracePeriod"
-                      value={gracePeriod}
-                      onChange={(event) => {
-                        const value = Number(event.target.value);
-                        setGracePeriod(value);
-                        setIsCustomGracePeriod(value === -1);
-                      }}
-                      className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                    >
-                      {gracePeriodOptions.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                    {isCustomGracePeriod && (
-                      <div className="mt-3">
-                        <label htmlFor="customGracePeriodValue" className="block text-sm font-medium text-gray-700 mb-2">
-                          Custom countdown (seconds)
+                <div>
+                  <h3 className="text-lg font-medium mb-4">Focus Sessions (Pomodoro)</h3>
+                  <p className="text-gray-600 mb-4">
+                    Configure default settings for Pomodoro mode. You can choose between Normal and
+                    Pomodoro modes from the dashboard when starting a timer.
+                  </p>
+
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                      <div>
+                        <label htmlFor="pomodoroWorkMinutes" className="mb-2 block text-sm font-medium text-gray-700">
+                          Focus duration (minutes)
                         </label>
                         <input
                           type="number"
-                          id="customGracePeriodValue"
-                          value={customGracePeriodValue}
-                          onChange={(event) => setCustomGracePeriodValue(Math.max(5, Math.min(300, parseInt(event.target.value, 10) || 5)))}
+                          id="pomodoroWorkMinutes"
+                          value={pomodoroWorkMinutes}
+                          onChange={(event) =>
+                            setPomodoroWorkMinutes(Math.max(5, parseInt(event.target.value, 10) || 25))
+                          }
                           min={5}
-                          max={300}
-                          className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                          placeholder="Enter seconds (5-300)"
+                          max={120}
+                          className="block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
                         />
                         <p className="mt-1 text-sm text-gray-500">
-                          Enter a custom countdown between 5 and 300 seconds (5 minutes).
+                          Default focus session length when using Pomodoro mode.
                         </p>
                       </div>
-                    )}
-                    {!isCustomGracePeriod && (
-                      <p className="mt-1 text-sm text-gray-500">
-                        Time to respond before the timer auto-stops: {gracePeriodOptions
-                          .find((option) => option.value === gracePeriod)
-                          ?.label.toLowerCase()}.
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
 
-            <div>
-              <h3 className="text-lg font-medium mb-4">Focus Sessions (Pomodoro)</h3>
-              <p className="text-gray-600 mb-4">
-                Configure default settings for Pomodoro mode. You can choose between Normal and 
-                Pomodoro modes from the dashboard when starting a timer.
-              </p>
-
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label htmlFor="pomodoroWorkMinutes" className="block text-sm font-medium text-gray-700 mb-2">
-                      Focus duration (minutes)
-                    </label>
-                    <input
-                      type="number"
-                      id="pomodoroWorkMinutes"
-                      value={pomodoroWorkMinutes}
-                      onChange={(event) =>
-                        setPomodoroWorkMinutes(Math.max(5, parseInt(event.target.value, 10) || 25))
-                      }
-                      min={5}
-                      max={120}
-                      className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                    />
-                    <p className="mt-1 text-sm text-gray-500">
-                      Default focus session length when using Pomodoro mode.
-                    </p>
-                  </div>
-
-                  <div>
-                    <label htmlFor="pomodoroBreakMinutes" className="block text-sm font-medium text-gray-700 mb-2">
-                      Break duration (minutes)
-                    </label>
-                    <input
-                      type="number"
-                      id="pomodoroBreakMinutes"
-                      value={pomodoroBreakMinutes}
-                      onChange={(event) =>
-                        setPomodoroBreakMinutes(Math.max(1, parseInt(event.target.value, 10) || 5))
-                      }
-                      min={1}
-                      max={60}
-                      className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                    />
-                    <p className="mt-1 text-sm text-gray-500">
-                      Default break length when using Pomodoro mode.
-                    </p>
+                      <div>
+                        <label htmlFor="pomodoroBreakMinutes" className="mb-2 block text-sm font-medium text-gray-700">
+                          Break duration (minutes)
+                        </label>
+                        <input
+                          type="number"
+                          id="pomodoroBreakMinutes"
+                          value={pomodoroBreakMinutes}
+                          onChange={(event) =>
+                            setPomodoroBreakMinutes(Math.max(1, parseInt(event.target.value, 10) || 5))
+                          }
+                          min={1}
+                          max={60}
+                          className="block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                        />
+                        <p className="mt-1 text-sm text-gray-500">
+                          Default break length when using Pomodoro mode.
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            )}
+            {activeTab === "budget" && (
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-lg font-medium mb-4">Budget Warning Settings</h3>
+                  <p className="text-gray-600 mb-4">
+                    Get warned when you're approaching your project budget limits. The timer will flash and
+                    show a warning when you're close to exceeding your budget.
+                  </p>
 
-            <div>
-              <h3 className="text-lg font-medium mb-4">Budget Warning Settings</h3>
-              <p className="text-gray-600 mb-4">
-                Get warned when you're approaching your project budget limits. The timer will flash and
-                show a warning when you're close to exceeding your budget.
-              </p>
-
-              <div className="space-y-4">
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="budgetWarningEnabled"
-                    checked={budgetWarningEnabled}
-                    onChange={(event) => setBudgetWarningEnabled(event.target.checked)}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                  />
-                  <label htmlFor="budgetWarningEnabled" className="ml-2 block text-sm text-gray-900">
-                    Enable budget warnings
-                  </label>
-                </div>
-
-                {budgetWarningEnabled && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label
-                        htmlFor="budgetWarningThresholdHours"
-                        className="block text-sm font-medium text-gray-700 mb-2"
-                      >
-                        Time warning threshold (hours)
-                      </label>
+                  <div className="space-y-4">
+                    <div className="flex items-center">
                       <input
-                        type="number"
-                        id="budgetWarningThresholdHours"
-                        value={budgetWarningThresholdHours}
-                        onChange={(event) =>
-                          setBudgetWarningThresholdHours(
-                            Math.max(0.1, parseFloat(event.target.value) || 1.0),
-                          )
-                        }
-                        min="0.1"
-                        step="0.1"
-                        className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                        type="checkbox"
+                        id="budgetWarningEnabled"
+                        checked={budgetWarningEnabled}
+                        onChange={(event) => setBudgetWarningEnabled(event.target.checked)}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                       />
-                      <p className="mt-1 text-sm text-gray-500">
-                        Warn when less than {budgetWarningThresholdHours} hours remain in time-based
-                        budgets.
-                      </p>
+                      <label htmlFor="budgetWarningEnabled" className="ml-2 block text-sm text-gray-900">
+                        Enable budget warnings
+                      </label>
                     </div>
 
+                    {budgetWarningEnabled && (
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <div>
+                          <label
+                            htmlFor="budgetWarningThresholdHours"
+                            className="mb-2 block text-sm font-medium text-gray-700"
+                          >
+                            Time warning threshold (hours)
+                          </label>
+                          <input
+                            type="number"
+                            id="budgetWarningThresholdHours"
+                            value={budgetWarningThresholdHours}
+                            onChange={(event) =>
+                              setBudgetWarningThresholdHours(
+                                Math.max(0.1, parseFloat(event.target.value) || 1.0),
+                              )
+                            }
+                            min="0.1"
+                            step="0.1"
+                            className="block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                          />
+                          <p className="mt-1 text-sm text-gray-500">
+                            Warn when less than {budgetWarningThresholdHours} hours remain in time-based
+                            budgets.
+                          </p>
+                        </div>
+
+                        <div>
+                          <label
+                            htmlFor="budgetWarningThresholdAmount"
+                            className="mb-2 block text-sm font-medium text-gray-700"
+                          >
+                            Amount warning threshold ({getCurrencySymbol()})
+                          </label>
+                          <input
+                            type="number"
+                            id="budgetWarningThresholdAmount"
+                            value={budgetWarningThresholdAmount}
+                            onChange={(event) =>
+                              setBudgetWarningThresholdAmount(
+                                Math.max(1, parseFloat(event.target.value) || 50.0),
+                              )
+                            }
+                            min="1"
+                            step="1"
+                            className="block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                          />
+                          <p className="mt-1 text-sm text-gray-500">
+                            Warn when less than {getCurrencySymbol()}{budgetWarningThresholdAmount} remains in amount-based
+                            budgets.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-lg font-medium mb-4">Currency Preferences</h3>
+                  <p className="mb-4 text-gray-600">
+                    Choose your preferred currency for displaying rates and budget amounts throughout the app.
+                  </p>
+
+                  <div className="space-y-4">
                     <div>
-                      <label
-                        htmlFor="budgetWarningThresholdAmount"
-                        className="block text-sm font-medium text-gray-700 mb-2"
-                      >
-                        Amount warning threshold ({getCurrencySymbol()})
+                      <label htmlFor="currency" className="mb-2 block text-sm font-medium text-gray-700">
+                        Display Currency
                       </label>
-                      <input
-                        type="number"
-                        id="budgetWarningThresholdAmount"
-                        value={budgetWarningThresholdAmount}
-                        onChange={(event) =>
-                          setBudgetWarningThresholdAmount(
-                            Math.max(1, parseFloat(event.target.value) || 50.0),
-                          )
-                        }
-                        min="1"
-                        step="1"
-                        className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                      />
+                      <select
+                        id="currency"
+                        value={currency}
+                        onChange={(event) => setCurrency(event.target.value as "USD" | "EUR" | "GBP")}
+                        className="block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                      >
+                        <option value="USD">US Dollar ($)</option>
+                        <option value="EUR">Euro (€)</option>
+                        <option value="GBP">British Pound (£)</option>
+                      </select>
                       <p className="mt-1 text-sm text-gray-500">
-                        Warn when less than {getCurrencySymbol()}{budgetWarningThresholdAmount} remains in amount-based
-                        budgets.
+                        This will change how currency amounts are displayed in projects, budgets, and reports.
                       </p>
                     </div>
                   </div>
-                )}
+                </div>
               </div>
-            </div>
+            )}
 
-            <div>
-              <h3 className="text-lg font-medium mb-4">Notifications & Attention</h3>
+            {activeTab === "notifications" && (
+              <div>
+                <h3 className="text-lg font-medium mb-4">Notifications & Attention</h3>
               <p className="text-gray-600 mb-4">
                 Configure how you want to be notified when interruptions occur. Push notifications will be automatically requested when needed.
               </p>
@@ -863,39 +959,12 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                 </div>
               </div>
             </div>
+          )}
 
-            <div>
-              <h3 className="text-lg font-medium mb-4">Currency Preferences</h3>
-              <p className="text-gray-600 mb-4">
-                Choose your preferred currency for displaying rates and budget amounts throughout the app.
-              </p>
-
-              <div className="space-y-4">
-                <div>
-                  <label htmlFor="currency" className="block text-sm font-medium text-gray-700 mb-2">
-                    Display Currency
-                  </label>
-                  <select
-                    id="currency"
-                    value={currency}
-                    onChange={(event) => setCurrency(event.target.value as "USD" | "EUR" | "GBP")}
-                    className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                  >
-                    <option value="USD">US Dollar ($)</option>
-                    <option value="EUR">Euro (€)</option>
-                    <option value="GBP">British Pound (£)</option>
-                  </select>
-                  <p className="mt-1 text-sm text-gray-500">
-                    This will change how currency amounts are displayed in projects, budgets, and reports.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="pt-4 border-t">
-              <div className="flex gap-4">
-                <button
-                  onClick={handleSave}
+          <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+            <div className="flex gap-4">
+              <button
+                onClick={handleSave}
                   disabled={isSaving}
                   className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-lg transition-colors"
                 >

@@ -1,4 +1,5 @@
 import { Button } from "./ui/button";
+import { useCurrency } from "../hooks/useCurrency";
 
 interface ClientData {
   _id: string;
@@ -29,7 +30,7 @@ interface ClientExportToolsProps {
 }
 
 export function ClientExportTools({ clients, filteredClients, onExportData }: ClientExportToolsProps) {
-  const formatCurrency = (amount: number) => `$${amount.toFixed(2)}`;
+  const { formatCurrency } = useCurrency();
   const formatHours = (seconds: number) => `${(seconds / 3600).toFixed(1)}h`;
 
   const generateCSV = (data: ClientData[]) => {
