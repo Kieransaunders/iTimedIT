@@ -1,15 +1,36 @@
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Id } from "../../convex/_generated/dataModel";
 import { useOrganization } from "../lib/organization-context";
 import { formatDateTime, formatDate } from "../lib/utils";
 
 interface RecentEntriesTableProps {
   projectId: Id<"projects"> | null;
+  title?: string;
+  showHeader?: boolean;
+  pageSize?: number;
+  emptyStateMessage?: string;
+  filters?: RecentEntriesFilters;
 }
 
-export function RecentEntriesTable({ projectId }: RecentEntriesTableProps) {
+export interface RecentEntriesFilters {
+  projectId?: Id<"projects"> | "all";
+  clientId?: Id<"clients"> | "all";
+  category?: string | "all" | "none";
+  searchTerm?: string;
+  fromDate?: string;
+  toDate?: string;
+}
+
+export function RecentEntriesTable({
+  projectId,
+  title = "Recent Entries",
+  showHeader = true,
+  pageSize = 20,
+  emptyStateMessage = "No time entries yet. Start a timer to begin tracking!",
+  filters,
+}: RecentEntriesTableProps) {
   const [editingEntry, setEditingEntry] = useState<string | null>(null);
   const [editNote, setEditNote] = useState("");
   const [editingDuration, setEditingDuration] = useState<string | null>(null);
@@ -21,7 +42,7 @@ export function RecentEntriesTable({ projectId }: RecentEntriesTableProps) {
 
   const entries = useQuery(api.entries.list, isReady ? {
     projectId: projectId || undefined,
-    paginationOpts: { numItems: 20, cursor: null },
+    paginationOpts: { numItems: pageSize, cursor: null },
   } : "skip");
 
   const editEntry = useMutation(api.entries.edit);
@@ -80,16 +101,67 @@ export function RecentEntriesTable({ projectId }: RecentEntriesTableProps) {
   //   });
   // };
 
-  // COMMENTED OUT: Filter overrun entries - now showing all entries
-  // const overrunEntries = entries.page.filter(entry => entry.isOverrun);
-  // const regularEntries = entries.page.filter(entry => !entry.isOverrun);
-  const regularEntries = entries.page; // Show all entries
+  const displayEntries = useMemo(() => {
+    const projectFilter = filters?.projectId && filters.projectId !== "all" ? filters.projectId : null;
+    const clientFilter = filters?.clientId && filters.clientId !== "all" ? filters.clientId : null;
+    const categoryFilter = filters?.category && filters.category !== "all" ? filters.category : null;
+    const searchTerm = filters?.searchTerm?.trim().toLowerCase() ?? "";
+    const hasSearch = searchTerm.length > 0;
+    const fromMs = filters?.fromDate ? new Date(filters.fromDate).setHours(0, 0, 0, 0) : null;
+    const toMs = filters?.toDate ? new Date(filters.toDate).setHours(23, 59, 59, 999) : null;
+
+    return entries.page.filter((entry) => {
+      if (projectFilter && entry.projectId !== projectFilter) {
+        return false;
+      }
+
+      if (clientFilter && entry.client?._id !== clientFilter) {
+        return false;
+      }
+
+      if (categoryFilter) {
+        if (categoryFilter === "none") {
+          if (entry.category) {
+            return false;
+          }
+        } else if (entry.category !== categoryFilter) {
+          return false;
+        }
+      }
+
+      const startedAt = entry.startedAt ?? entry._creationTime;
+      if (fromMs && startedAt < fromMs) {
+        return false;
+      }
+      if (toMs && startedAt > toMs) {
+        return false;
+      }
+
+      if (hasSearch) {
+        const fields = [
+          entry.project?.name ?? "",
+          entry.client?.name ?? "",
+          entry.note ?? "",
+          entry.category ?? "",
+        ];
+
+        const matchesSearch = fields.some((field) => field.toLowerCase().includes(searchTerm));
+        if (!matchesSearch) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [entries.page, filters]);
 
   return (
     <div className="bg-white dark:bg-gray-800/50 dark:backdrop-blur-sm rounded-lg shadow dark:shadow-dark-card border-0 dark:border dark:border-gray-700/50">
-      <div className="p-6 border-b border-gray-200 dark:border-gray-600">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Recent Entries</h3>
-      </div>
+      {showHeader && (
+        <div className="p-6 border-b border-gray-200 dark:border-gray-600">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{title}</h3>
+        </div>
+      )}
 
       {/* COMMENTED OUT: Overrun placeholders section */}
       {/* {overrunEntries.length > 0 && (
@@ -117,7 +189,7 @@ export function RecentEntriesTable({ projectId }: RecentEntriesTableProps) {
                     defaultValue=""
                   >
                     <option value="">Merge into...</option>
-                    {regularEntries
+                    {displayEntries
                       .filter(e => e.projectId === entry.projectId)
                       .slice(0, 5)
                       .map(e => (
@@ -164,7 +236,7 @@ export function RecentEntriesTable({ projectId }: RecentEntriesTableProps) {
             </tr>
           </thead>
           <tbody className="bg-white dark:bg-gray-800/50 divide-y divide-gray-200 dark:divide-gray-600">
-            {regularEntries.map((entry) => {
+            {displayEntries.map((entry) => {
               const duration = entry.seconds || (entry.stoppedAt ? (entry.stoppedAt - entry.startedAt) / 1000 : 0);
               
               return (
@@ -326,9 +398,9 @@ export function RecentEntriesTable({ projectId }: RecentEntriesTableProps) {
         </table>
       </div>
 
-      {regularEntries.length === 0 && (
+      {displayEntries.length === 0 && (
         <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-          No time entries yet. Start a timer to begin tracking!
+          {emptyStateMessage}
         </div>
       )}
     </div>
