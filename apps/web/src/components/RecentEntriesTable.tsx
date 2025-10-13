@@ -48,12 +48,6 @@ export function RecentEntriesTable({
   const editEntry = useMutation(api.entries.edit);
   const deleteEntry = useMutation(api.entries.deleteEntry);
   const categories = useQuery(api.categories.getCategories, isReady ? {} : "skip");
-  // COMMENTED OUT: Overrun merge functionality
-  // const mergeOverrun = useMutation(api.entries.mergeOverrun);
-
-  if (!isReady || !entries) {
-    return <div className="animate-pulse bg-gray-200 dark:bg-gray-700 h-64 rounded-lg"></div>;
-  }
 
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
@@ -102,6 +96,8 @@ export function RecentEntriesTable({
   // };
 
   const displayEntries = useMemo(() => {
+    if (!entries) return [];
+
     const projectFilter = filters?.projectId && filters.projectId !== "all" ? filters.projectId : null;
     const clientFilter = filters?.clientId && filters.clientId !== "all" ? filters.clientId : null;
     const categoryFilter = filters?.category && filters.category !== "all" ? filters.category : null;
@@ -153,7 +149,11 @@ export function RecentEntriesTable({
 
       return true;
     });
-  }, [entries.page, filters]);
+  }, [entries, filters]);
+
+  if (!isReady || !entries) {
+    return <div className="animate-pulse bg-gray-200 dark:bg-gray-700 h-64 rounded-lg"></div>;
+  }
 
   return (
     <div className="bg-white dark:bg-gray-800/50 dark:backdrop-blur-sm rounded-lg shadow dark:shadow-dark-card border-0 dark:border dark:border-gray-700/50">
