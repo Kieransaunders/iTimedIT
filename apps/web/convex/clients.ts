@@ -1,13 +1,18 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
-import { requireMembership, ensureMembershipWithRole, requireMembershipWithRole } from "./orgContext";
+import { requireMembership, maybeMembership, ensureMembershipWithRole, requireMembershipWithRole } from "./orgContext";
 
 export const list = query({
   args: {
     workspaceType: v.optional(v.union(v.literal("personal"), v.literal("team"))),
   },
   handler: async (ctx, args) => {
-    const { organizationId } = await requireMembership(ctx);
+    const membership = await maybeMembership(ctx);
+    if (!membership) {
+      return [];
+    }
+
+    const { organizationId } = membership;
 
     let clientsQuery = ctx.db
       .query("clients")
@@ -177,11 +182,16 @@ export const getClientAnalytics = query({
     clientId: v.id("clients"),
   },
   handler: async (ctx, args) => {
-    const { organizationId } = await requireMembership(ctx);
+    const membership = await maybeMembership(ctx);
+    if (!membership) {
+      return null;
+    }
+
+    const { organizationId } = membership;
 
     const client = await ctx.db.get(args.clientId);
     if (!client || client.organizationId !== organizationId) {
-      throw new Error("Client not found");
+      return null;
     }
 
     // Get all projects for this client (both active and archived)

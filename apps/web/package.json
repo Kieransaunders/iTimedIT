@@ -30,8 +30,10 @@
     "lucide-react": "^0.544.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-helmet-async": "^2.0.5",
     "sonner": "^2.0.3",
     "tailwind-merge": "^3.1.0",
+    "vite-plugin-sitemap": "^0.8.2",
     "web-push": "^3.6.7"
   },
   "devDependencies": {

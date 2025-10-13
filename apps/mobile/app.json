@@ -1,6 +1,32 @@
 {
   "expo": {
-    "name": "iTimedITAPP",
-    "slug": "iTimedITAPP"
+    "name": "iTimedIT",
+    "slug": "iTimedITAPP",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/images/icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.itimedit.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.itimedit.app"
+    },
+    "web": {
+      "favicon": "./assets/images/icon.png"
+    }
   }
 }

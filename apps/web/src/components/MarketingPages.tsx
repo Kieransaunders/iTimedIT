@@ -187,31 +187,31 @@ export function PricingPage({ onNavigate }: MarketingPageProps) {
   return (
     <MarketingLayout
       heading="Simple pricing that scales with your team"
-      intro="Start with the plan that fits today and upgrade when your organisation grows. Every plan includes core time tracking, reporting, and secure cloud hosting."
+      intro="Track time for free as a solo user and upgrade when you are ready to invite your team. Every plan includes core time tracking, reporting, and secure cloud hosting."
       onNavigate={onNavigate}
     >
       <section className="grid gap-8 md:grid-cols-3">
         <PricingPlan
-          name="Starter"
-          price="£9"
-          cadence="per user / month"
+          name="Free"
+          price="£0"
+          cadence="for solo professionals"
           bulletPoints={[
-            "Up to 5 team members",
+            "Single user workspace",
             "Unlimited projects & clients",
             "Real-time timers & reminders",
-            "Exportable reports",
+            "Standard exports",
           ]}
           highlight={false}
         />
         <PricingPlan
-          name="Growth"
+          name="Team"
           price="£15"
           cadence="per user / month"
           bulletPoints={[
-            "Everything in Starter",
+            "Invite unlimited teammates",
+            "Shared dashboards & approvals",
             "Budget alerts & utilisation insights",
             "Priority email support",
-            "Client portal access",
           ]}
           highlight
         />
@@ -220,6 +220,7 @@ export function PricingPage({ onNavigate }: MarketingPageProps) {
           price="Let’s talk"
           cadence="custom"
           bulletPoints={[
+            "Everything in Team",
             "Tailored onboarding & training",
             "Advanced security review",
             "Dedicated success manager",
