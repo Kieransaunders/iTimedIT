@@ -9,6 +9,7 @@ export type AppPage =
   | "modern"
   | "clients"
   | "projects"
+  | "entries"
   | "settings"
   | "profile"
   | "testEmail";

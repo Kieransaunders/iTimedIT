@@ -18,6 +18,7 @@ import { InvitePage } from "./components/InvitePage";
 import { ProfilePage, type AppPage } from "./components/ProfilePage";
 import { ProfileAvatar } from "./components/ProfileAvatar";
 import { TestEmailPage } from "./components/TestEmailPage";
+import { EntriesPage } from "./components/EntriesPage";
 import {
   ensurePushSubscription,
   isPushSupported,
@@ -194,6 +195,7 @@ function AuthenticatedApp() {
               <NavButton icon={<DashboardIcon />} label="Dashboard" isActive={currentPage === "dashboard"} onClick={() => setCurrentPage("dashboard")} />
               <NavButton icon={<ClientsIcon />} label="Clients" isActive={currentPage === "clients"} onClick={() => setCurrentPage("clients")} />
               <NavButton icon={<ProjectsIcon />} label="Projects" isActive={currentPage === "projects"} onClick={() => setCurrentPage("projects")} />
+              <NavButton icon={<EntriesIcon />} label="Entries" isActive={currentPage === "entries"} onClick={() => setCurrentPage("entries")} />
               <NavButton icon={<SettingsIcon />} label="Settings" isActive={currentPage === "settings"} onClick={() => setCurrentPage("settings")} />
             </nav>
           </div>
@@ -233,8 +235,8 @@ function AuthenticatedApp() {
                   }}
                   onStartTimer={async (projectId: string) => {
                     try {
-                      await startTimerMutation({ 
-                        projectId: projectId as Id<"projects">, 
+                      await startTimerMutation({
+                        projectId: projectId as Id<"projects">,
                         category: undefined,
                         pomodoroEnabled: false
                       });
@@ -247,6 +249,7 @@ function AuthenticatedApp() {
                 />
               )
             )}
+            {currentPage === "entries" && <EntriesPage />}
             {currentPage === "settings" && <Settings onNavigate={setCurrentPage} />}
             {currentPage === "profile" && <ProfilePage user={loggedInUser} onNavigate={setCurrentPage} />}
             {currentPage === "testEmail" && <TestEmailPage onNavigate={setCurrentPage} />}
@@ -268,17 +271,23 @@ function AuthenticatedApp() {
               isActive={currentPage === "clients"} 
               onClick={() => setCurrentPage("clients")} 
             />
-            <BottomNavButton 
-              icon={<ProjectsIcon />} 
-              label="Projects" 
-              isActive={currentPage === "projects"} 
-              onClick={() => setCurrentPage("projects")} 
+            <BottomNavButton
+              icon={<ProjectsIcon />}
+              label="Projects"
+              isActive={currentPage === "projects"}
+              onClick={() => setCurrentPage("projects")}
             />
-            <BottomNavButton 
-              icon={<SettingsIcon />} 
-              label="Settings" 
-              isActive={currentPage === "settings"} 
-              onClick={() => setCurrentPage("settings")} 
+            <BottomNavButton
+              icon={<EntriesIcon />}
+              label="Entries"
+              isActive={currentPage === "entries"}
+              onClick={() => setCurrentPage("entries")}
+            />
+            <BottomNavButton
+              icon={<SettingsIcon />}
+              label="Settings"
+              isActive={currentPage === "settings"}
+              onClick={() => setCurrentPage("settings")}
             />
           </div>
         </nav>
@@ -511,6 +520,14 @@ function ProjectsIcon() {
   return (
     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-full h-full">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+    </svg>
+  );
+}
+
+function EntriesIcon() {
+  return (
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-full h-full">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h10M9 12h10m-6 5h6M5 7h.01M5 12h.01M5 17h.01" />
     </svg>
   );
 }
