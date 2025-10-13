@@ -1,5 +1,9 @@
 import { ConfigContext, ExpoConfig } from "expo/config";
 
+// Dynamically get the reversed client ID for the Google OAuth scheme
+const googleClientId = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID;
+const googleClientScheme = googleClientId?.split(".").reverse().join(".");
+
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: "iTimedIT",
@@ -24,10 +28,14 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         {
           CFBundleURLSchemes: ["itimeditapp"],
         },
-        {
-          // Google OAuth redirect scheme (reverse client ID)
-          CFBundleURLSchemes: ["com.googleusercontent.apps.434888822269-fgcqfko6njlc83eqbogltcgaj9ilpeeu"],
-        },
+        // Add Google OAuth redirect scheme if client ID is configured
+        ...(googleClientScheme
+          ? [
+              {
+                CFBundleURLSchemes: [googleClientScheme],
+              },
+            ]
+          : []),
       ],
     },
   },
