@@ -1,0 +1,8 @@
+{
+  "android": {
+    "package": "com.mrzang77.itimeditmonorepo"
+  },
+  "ios": {
+    "bundleIdentifier": "com.mrzang77.itimeditmonorepo"
+  }
+}
