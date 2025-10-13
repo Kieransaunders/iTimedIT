@@ -567,6 +567,7 @@ export function ClientsPage() {
           onArchiveClient={handleArchive}
           onUnarchiveClient={handleUnarchive}
           onCreateProject={handleCreateProject}
+          onClientSelect={handleClientSelect}
         />
       ) : (
         <ClientMetricsCards

@@ -528,26 +528,31 @@ export function ProjectsPage({ onProjectSelect, onStartTimer }: ProjectsPageProp
                 {filteredAndSortedProjects.map((project) => (
                   <tr key={project._id} className={project.archived ? "opacity-60 bg-gray-50 dark:bg-gray-700/30" : ""}>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => onProjectSelect?.(project._id)}
+                        className="flex w-full items-center gap-3 rounded-md bg-transparent p-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                        title="View project details"
+                      >
                         <span
                           className="h-4 w-4 rounded-full border border-gray-300 dark:border-gray-600"
-                        style={{ backgroundColor: project.client?.color || "#8b5cf6" }}
-                      />
-                      <div>
-                        <div className="text-sm font-medium text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                          {project.name}
-                          {project.archived && (
-                            <span className="px-2 py-1 text-xs font-medium bg-gray-200 text-gray-700 dark:bg-gray-600 dark:text-gray-300 rounded-full">
-                              ARCHIVED
-                            </span>
-                          )}
+                          style={{ backgroundColor: project.client?.color || "#8b5cf6" }}
+                        />
+                        <div>
+                          <div className="text-sm font-medium text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                            {project.name}
+                            {project.archived && (
+                              <span className="px-2 py-1 text-xs font-medium bg-gray-200 text-gray-700 dark:bg-gray-600 dark:text-gray-300 rounded-full">
+                                ARCHIVED
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400">
+                            {project.client?.name}
+                          </div>
                         </div>
-                        <div className="text-sm text-gray-500 dark:text-gray-400">
-                          {project.client?.name}
-                        </div>
-                      </div>
-                    </div>
-                  </td>
+                      </button>
+                    </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                     {getCurrencySymbol()}{project.hourlyRate}/hr
                   </td>
