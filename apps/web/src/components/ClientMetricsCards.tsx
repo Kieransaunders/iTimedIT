@@ -15,7 +15,6 @@ interface ClientData {
   lastActivityAt: number | null;
   daysSinceLastActivity: number | null;
   status: 'active' | 'inactive' | 'at-risk';
-  healthScore: number;
   averageHourlyEarning: number;
 }
 
@@ -44,13 +43,6 @@ export function ClientMetricsCards({
       case 'at-risk': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
       default: return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
     }
-  };
-
-  const getHealthScoreColor = (score: number) => {
-    if (score >= 80) return 'text-green-600 dark:text-green-400';
-    if (score >= 60) return 'text-yellow-600 dark:text-yellow-400';
-    if (score >= 40) return 'text-orange-600 dark:text-orange-400';
-    return 'text-red-600 dark:text-red-400';
   };
 
   const formatLastActivity = (daysSince: number | null) => {
@@ -118,17 +110,11 @@ export function ClientMetricsCards({
           </CardHeader>
           
           <CardContent className="space-y-4">
-            {/* Status and Health Score */}
+            {/* Status */}
             <div className="flex items-center justify-between">
               <Badge className={getStatusColor(client.status)}>
                 {client.status}
               </Badge>
-              <div className="text-right">
-                <div className={`text-sm font-semibold ${getHealthScoreColor(client.healthScore)}`}>
-                  {client.healthScore}/100
-                </div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">health</div>
-              </div>
             </div>
 
             {/* Revenue */}

@@ -160,15 +160,7 @@ export const list = query({
               hours: data.seconds / 3600,
               percentage: totalAmount > 0 ? (data.amount / totalAmount) * 100 : 0
             }))
-            .sort((a, b) => b.amount - a.amount),
-
-          // Health score (0-100)
-          healthScore: Math.min(100, Math.max(0, 
-            (daysSinceLastActivity < 7 ? 40 : 0) +
-            (projects.length > 0 ? 30 : 0) +
-            (totalAmount > 1000 ? 20 : totalAmount > 100 ? 10 : 0) +
-            (utilizationRate > 0.8 ? 10 : utilizationRate > 0.5 ? 5 : 0)
-          ))
+            .sort((a, b) => b.amount - a.amount)
         };
       })
     );
