@@ -143,8 +143,12 @@ export const create = mutation({
       "admin",
     ]);
 
+    const [organization, inviter] = await Promise.all([
+      ctx.db.get(organizationId),
+      ctx.db.get(userId),
+    ]);
+
     // Block invitations to Personal Workspaces
-    const organization = await ctx.db.get(organizationId);
     if (organization?.isPersonalWorkspace === true) {
       throw new Error("Cannot invite members to a Personal Workspace. Create a Team Workspace to collaborate.");
     }
@@ -168,11 +172,6 @@ export const create = mutation({
       acceptedAt: undefined,
       revokedAt: undefined,
     });
-
-    const [organization, inviter] = await Promise.all([
-      ctx.db.get(organizationId),
-      ctx.db.get(userId),
-    ]);
 
     await ctx.scheduler.runAfter(0, internal.sendEmails.sendInvitationEmail, {
       to: normalizedEmail,
