@@ -63,6 +63,7 @@ export default function SettingsScreen() {
   const { user, signOut } = useAuth();
   const router = useRouter();
   const { colors } = useTheme();
+  const currentMembership = useQuery(api.organizations.currentMembership);
 
   const [preferences, setPreferences] = useState<SoundPreferences>({
     enabled: true,
@@ -402,6 +403,11 @@ export default function SettingsScreen() {
             <Text style={[styles.profileName, { color: colors.textPrimary }]}>{getUserDisplayName(user)}</Text>
             {getUserEmail(user) && (
               <Text style={[styles.profileEmail, { color: colors.textSecondary }]}>{getUserEmail(user)}</Text>
+            )}
+            {currentMembership && (
+              <Text style={[styles.profileEmail, { color: colors.textSecondary, marginTop: 4 }]}>
+                Org ID: {currentMembership.organization._id}
+              </Text>
             )}
             <TouchableOpacity
               onPress={handleSignOut}

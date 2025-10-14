@@ -1,5 +1,5 @@
 import DateTimePicker from "@react-native-community/datetimepicker";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
     Alert,
     Modal,
@@ -14,8 +14,9 @@ import { Id } from "../../convex/_generated/dataModel";
 import { useCategories } from "../../hooks/useCategories";
 import { useEntries } from "../../hooks/useEntries";
 import { useProjects } from "../../hooks/useProjects";
+import { useTheme } from "../../utils/ThemeContext";
 import { formatDateTime, formatDuration } from "../../utils/formatters";
-import { colors, spacing, typography } from "../../utils/theme";
+import { spacing, typography } from "../../utils/theme";
 import { ProjectSelectorModal } from "../projects";
 import { Button, Input } from "../ui";
 
@@ -34,9 +35,13 @@ export function EditEntryModal({
   onSuccess,
   onDelete,
 }: EditEntryModalProps) {
+  const { colors } = useTheme();
   const { projects } = useProjects();
   const { categories } = useCategories();
   const { editEntry, deleteEntry } = useEntries();
+
+  // Create styles with theme colors using useMemo
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   const [selectedProject, setSelectedProject] = useState<any>(null);
   const [startDate, setStartDate] = useState(new Date());
@@ -50,21 +55,39 @@ export function EditEntryModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [durationHours, setDurationHours] = useState(0);
+  const [durationMinutes, setDurationMinutes] = useState(0);
+  const [durationSeconds, setDurationSeconds] = useState(0);
 
   // Pre-fill form when entry changes
   useEffect(() => {
     if (entry && visible) {
       setSelectedProject(entry.project || null);
-      setStartDate(new Date(entry.startedAt));
-      setEndDate(new Date(entry.stoppedAt || entry.startedAt + (entry.seconds || 0) * 1000));
+      const start = new Date(entry.startedAt);
+      const end = new Date(entry.stoppedAt || entry.startedAt + (entry.seconds || 0) * 1000);
+      setStartDate(start);
+      setEndDate(end);
       setNote(entry.note || "");
       setSelectedCategory(entry.category || null);
       setError(null);
+
+      const durationInSeconds = Math.max(0, Math.floor((end.getTime() - start.getTime()) / 1000));
+      setDurationHours(Math.floor(durationInSeconds / 3600));
+      setDurationMinutes(Math.floor((durationInSeconds % 3600) / 60));
+      setDurationSeconds(durationInSeconds % 60);
     }
   }, [entry, visible]);
 
   const duration = Math.max(0, Math.floor((endDate.getTime() - startDate.getTime()) / 1000));
   const isValid = selectedProject && endDate > startDate;
+
+  useEffect(() => {
+    const newDurationInSeconds = (durationHours * 3600) + (durationMinutes * 60) + durationSeconds;
+    if (!isNaN(newDurationInSeconds) && startDate) {
+      const newEndDate = new Date(startDate.getTime() + newDurationInSeconds * 1000);
+      setEndDate(newEndDate);
+    }
+  }, [durationHours, durationMinutes, durationSeconds, startDate]);
 
   const handleSubmit = async () => {
     if (!isValid || !selectedProject || !entry) {
@@ -191,13 +214,34 @@ export function EditEntryModal({
               </TouchableOpacity>
             </View>
 
-            {/* Duration Display */}
+            {/* Duration Input */}
             <View style={styles.field}>
-              <Text style={styles.label}>Duration</Text>
-              <View style={styles.durationDisplay}>
-                <Text style={styles.durationText}>
-                  {formatDuration(duration)}
-                </Text>
+              <Text style={[styles.label, { color: colors.textPrimary }]}>Duration</Text>
+              <View style={[styles.durationInputContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                <Input
+                  value={String(durationHours)}
+                  onChangeText={(text) => setDurationHours(Number(text) || 0)}
+                  keyboardType="number-pad"
+                  style={[styles.durationInput, { color: colors.textPrimary }]}
+                  placeholderTextColor={colors.textSecondary}
+                />
+                <Text style={[styles.durationSeparator, { color: colors.textSecondary }]}>h</Text>
+                <Input
+                  value={String(durationMinutes)}
+                  onChangeText={(text) => setDurationMinutes(Number(text) || 0)}
+                  keyboardType="number-pad"
+                  style={[styles.durationInput, { color: colors.textPrimary }]}
+                  placeholderTextColor={colors.textSecondary}
+                />
+                <Text style={[styles.durationSeparator, { color: colors.textSecondary }]}>m</Text>
+                <Input
+                  value={String(durationSeconds)}
+                  onChangeText={(text) => setDurationSeconds(Number(text) || 0)}
+                  keyboardType="number-pad"
+                  style={[styles.durationInput, { color: colors.textPrimary }]}
+                  placeholderTextColor={colors.textSecondary}
+                />
+                <Text style={[styles.durationSeparator, { color: colors.textSecondary }]}>s</Text>
               </View>
             </View>
 
@@ -349,7 +393,7 @@ export function EditEntryModal({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: typeof import("../../utils/theme").lightColors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -426,6 +470,23 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontWeight: "600",
   },
+  durationInputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: spacing.sm,
+  },
+  durationInput: {
+    flex: 1,
+    textAlign: "center",
+    paddingVertical: spacing.md,
+  },
+  durationSeparator: {
+    ...typography.body,
+    fontWeight: "bold",
+    marginHorizontal: spacing.xs,
+  },
   noteInput: {
     minHeight: 80,
     textAlignVertical: "top",
@@ -444,7 +505,8 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     borderTopWidth: 1,
     borderTopColor: colors.border,
-    gap: spacing.md,
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
   deleteButton: {
     backgroundColor: colors.error,

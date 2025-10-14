@@ -153,7 +153,7 @@ export const deleteEntry = mutation({
     id: v.id("timeEntries"),
   },
   handler: async (ctx, args) => {
-    const { organizationId, userId } = await requireMembership(ctx);
+    const { organizationId, userId } = await ensureMembership(ctx);
 
     const entry = await ctx.db.get(args.id);
     if (!entry || entry.organizationId !== organizationId || entry.userId !== userId) {

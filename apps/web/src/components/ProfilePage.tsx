@@ -101,8 +101,9 @@ export function ProfilePage({
                   className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/40 px-4 py-3"
                 >
                   <div>
-                    <p className="text-base font-medium text-gray-900 dark:text-white">
+                    <p className="text-base font-medium text-gray-900 dark:text-white flex items-center gap-2">
                       {organization?.name ?? "Workspace"}
+                      <span className="text-xs font-mono text-gray-500 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full">{organization?._id}</span>
                     </p>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
                       Role: <span className="capitalize">{membership.role}</span>

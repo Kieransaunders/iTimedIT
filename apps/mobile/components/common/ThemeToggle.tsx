@@ -1,45 +1,40 @@
 import React from "react";
-import { TouchableOpacity } from "react-native";
+import { StyleSheet, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { createStyleSheet, useStyles } from "react-native-unistyles";
+import { useTheme } from "../../utils/ThemeContext";
 
 /**
  * Theme toggle button component
  * Switches between light and dark mode
- * Uses Unistyles for theming
+ * Uses ThemeContext for theming
  */
 export function ThemeToggle() {
-  const { styles, theme } = useStyles(stylesheet);
-
-  const handleToggle = () => {
-    theme.setTheme(theme.name === "light" ? "dark" : "light");
-  };
+  const { theme, colors, toggleTheme } = useTheme();
 
   return (
     <TouchableOpacity
-      onPress={handleToggle}
-      style={styles.container}
+      onPress={toggleTheme}
+      style={[styles.container, { backgroundColor: colors.surface }]}
       accessible={true}
       accessibilityLabel="Toggle theme"
       accessibilityRole="button"
-      accessibilityHint={`Switch to ${theme.name === "light" ? "dark" : "light"} mode`}
+      accessibilityHint={`Switch to ${theme === "light" ? "dark" : "light"} mode`}
     >
       <Ionicons
-        name={theme.name === "light" ? "sunny" : "moon"}
+        name={theme === "light" ? "sunny" : "moon"}
         size={20}
-        color={theme.colors.textSecondary}
+        color={colors.textSecondary}
       />
     </TouchableOpacity>
   );
 }
 
-const stylesheet = createStyleSheet((theme) => ({
+const styles = StyleSheet.create({
   container: {
     width: 40,
     height: 40,
     borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: theme.colors.surface,
   },
-}));
+});
