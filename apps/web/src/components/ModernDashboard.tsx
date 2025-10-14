@@ -162,6 +162,7 @@ export function ModernDashboard({
   const userSettings = useQuery(api.users.getUserSettings);
   const startTimer = useMutation(api.timer.start);
   const stopTimer = useMutation(api.timer.stop);
+  const resetTimer = useMutation(api.timer.reset);
   const heartbeat = useMutation(api.timer.heartbeat);
   const requestInterrupt = useMutation(api.timer.requestInterrupt);
   const categories = useQuery(api.categories.getCategories);
@@ -231,6 +232,11 @@ export function ModernDashboard({
 
   const hasProjects = projectsWithColors.length > 0;
   const hasClients = (clients?.length ?? 0) > 0;
+
+  // Reset currentProjectId when workspace changes to avoid fetching wrong project type
+  useEffect(() => {
+    setCurrentProjectId(null);
+  }, [currentWorkspace]);
 
   // Set current project from running timer or default to first
   useEffect(() => {
@@ -1413,11 +1419,11 @@ export function ModernDashboard({
                 
                 <button
                   className="inline-flex items-center justify-center px-8 py-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white focus-visible:ring-slate-400 dark:focus-visible:ring-offset-gray-900 bg-white/80 dark:bg-gray-700/80 hover:bg-white dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white font-medium border border-gray-200/50 dark:border-gray-600/50 backdrop-blur-sm"
-                  onClick={() => {
+                  onClick={async () => {
                     if (timerState.running) {
-                      stopTimer();
+                      await resetTimer();
+                      toast.success("Timer reset");
                     }
-                    // Reset functionality would go here - for now just stops the timer
                   }}
                   aria-label="Reset timer"
                 >

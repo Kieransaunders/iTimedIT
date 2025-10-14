@@ -387,12 +387,12 @@ export function ClientsPage({
           </div>
 
           {!showForm && (
-            <Button
+            <button
               onClick={() => setShowForm(true)}
-              className="bg-primary hover:bg-primary-hover"
+              className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-hover shadow-lg transition-colors"
             >
               Add Client
-            </Button>
+            </button>
           )}
         </div>
 
@@ -600,13 +600,16 @@ export function ClientsPage({
                 </div>
               </div>
             </div>
-            <div className="flex gap-2">
-              <Button type="submit">
+            <div className="flex gap-2 pt-4">
+              <button
+                type="submit"
+                className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-hover shadow-lg transition-colors"
+              >
                 {editingClient ? "Update" : "Create"} Client
-              </Button>
-              <Button
+              </button>
+              <button
                 type="button"
-                variant="outline"
+                className="px-4 py-2 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
                 onClick={() => {
                   setShowForm(false);
                   setEditingClient(null);
@@ -620,7 +623,7 @@ export function ClientsPage({
                 }}
               >
                 Cancel
-              </Button>
+              </button>
             </div>
           </form>
         </div>

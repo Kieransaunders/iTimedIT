@@ -123,11 +123,23 @@ export const start = mutation({
     const pomodoroWorkMinutes = settings?.pomodoroWorkMinutes ?? 25;
     const pomodoroBreakMinutes = settings?.pomodoroBreakMinutes ?? 5;
 
-    // Stop any existing timer
+    // Stop ALL existing timers for this user (both personal and team workspaces)
+    // This ensures only one timer runs globally
     const existingTimer = await getRunningTimerForUser(ctx, userId, organizationId);
-
     if (existingTimer) {
       await stopInternal(ctx, organizationId, userId, "timer");
+    }
+
+    // Also check for timers in other workspaces
+    const allUserTimers = await ctx.db
+      .query("runningTimers")
+      .filter((q) => q.eq(q.field("userId"), userId))
+      .collect();
+
+    for (const timer of allUserTimers) {
+      if (timer._id !== existingTimer?._id) {
+        await stopInternal(ctx, timer.organizationId, userId, "timer");
+      }
     }
 
     const now = Date.now();
@@ -211,6 +223,61 @@ export const stop = mutation({
       userId,
       args.sourceOverride || "timer"
     );
+  },
+});
+
+export const reset = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
+
+    // Try to get membership for team workspace, but allow personal workspace too
+    const membership = await maybeMembership(ctx);
+    const organizationId = membership?.organizationId;
+
+    const timer = await getRunningTimerForUser(ctx, userId, organizationId);
+
+    if (!timer) {
+      return { success: false, message: "No running timer" };
+    }
+
+    // Find the active time entry - need to handle both personal and team workspaces
+    const activeEntry = await ctx.db
+      .query("timeEntries")
+      .withIndex("byProject", (q) => q.eq("projectId", timer.projectId))
+      .filter((q) => {
+        if (organizationId) {
+          // Team workspace
+          return q.and(
+            q.eq(q.field("organizationId"), organizationId),
+            q.eq(q.field("userId"), userId),
+            q.eq(q.field("stoppedAt"), undefined),
+            q.eq(q.field("isOverrun"), false)
+          );
+        } else {
+          // Personal workspace
+          return q.and(
+            q.eq(q.field("userId"), userId),
+            q.eq(q.field("organizationId"), undefined),
+            q.eq(q.field("stoppedAt"), undefined),
+            q.eq(q.field("isOverrun"), false)
+          );
+        }
+      })
+      .first();
+
+    // Delete the active time entry (don't save it)
+    if (activeEntry) {
+      await ctx.db.delete(activeEntry._id);
+    }
+
+    // Delete running timer
+    await ctx.db.delete(timer._id);
+
+    return { success: true };
   },
 });
 

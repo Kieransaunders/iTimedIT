@@ -755,6 +755,7 @@ function WorkspaceIndicator({
 }) {
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const { memberships, switchOrganization, isReady } = useOrganization();
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -771,6 +772,32 @@ function WorkspaceIndicator({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [showDropdown]);
+
+  const handleWorkspaceSwitch = async (targetWorkspace: "personal" | "team") => {
+    if (!isReady) return;
+
+    // Find the appropriate organization to switch to
+    if (targetWorkspace === "personal") {
+      // Find the Personal Workspace
+      const personalMembership = memberships.find(
+        (item) => item.organization?.isPersonalWorkspace === true
+      );
+      if (personalMembership?.organization) {
+        await switchOrganization(personalMembership.organization._id);
+      }
+    } else {
+      // Find the first team workspace (non-personal)
+      const teamMembership = memberships.find(
+        (item) => item.organization?.isPersonalWorkspace !== true
+      );
+      if (teamMembership?.organization) {
+        await switchOrganization(teamMembership.organization._id);
+      }
+    }
+
+    onWorkspaceChange(targetWorkspace);
+    setShowDropdown(false);
+  };
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -795,10 +822,7 @@ function WorkspaceIndicator({
       {showDropdown && (
         <div className="absolute top-full left-0 mt-2 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50">
           <button
-            onClick={() => {
-              onWorkspaceChange("personal");
-              setShowDropdown(false);
-            }}
+            onClick={() => handleWorkspaceSwitch("personal")}
             className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
               currentWorkspace === "personal"
                 ? "text-blue-600 dark:text-blue-400 font-medium"
@@ -814,10 +838,7 @@ function WorkspaceIndicator({
             )}
           </button>
           <button
-            onClick={() => {
-              onWorkspaceChange("team");
-              setShowDropdown(false);
-            }}
+            onClick={() => handleWorkspaceSwitch("team")}
             className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors rounded-b-lg ${
               currentWorkspace === "team"
                 ? "text-purple-600 dark:text-purple-400 font-medium"

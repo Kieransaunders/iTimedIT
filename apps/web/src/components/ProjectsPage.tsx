@@ -6,6 +6,7 @@ import { notifyMutationError } from "../lib/notifyMutationError";
 import { useOrganization } from "../lib/organization-context";
 import { WorkspaceHeader, WorkspaceType } from "./WorkspaceSwitcher";
 import { useCurrency } from "../hooks/useCurrency";
+import { Briefcase } from "lucide-react";
 
 interface ProjectsPageProps {
   onProjectSelect?: (projectId: string) => void;
@@ -478,13 +479,26 @@ export function ProjectsPage({
         </div>
 
         {filteredProjects.length === 0 && (
-          <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-            {clientFilter
-              ? "No projects found for this client."
-              : showArchived
-                ? "No archived projects found."
-                : "No projects yet. Add your first project to get started!"
-            }
+          <div className="text-center py-16">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-purple-100 to-blue-100 dark:from-purple-900/30 dark:to-blue-900/30 mb-4">
+              <Briefcase className="w-8 h-8 text-purple-600 dark:text-purple-400" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+              {clientFilter
+                ? "No projects for this client"
+                : showArchived
+                  ? "No archived projects"
+                  : "No projects yet"
+              }
+            </h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm mx-auto">
+              {clientFilter
+                ? "This client doesn't have any projects yet."
+                : showArchived
+                  ? "You don't have any archived projects."
+                  : "Start tracking your work by adding your first project"
+              }
+            </p>
           </div>
         )}
       </div>

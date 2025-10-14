@@ -324,9 +324,9 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="bg-white/60 dark:bg-gray-800/30 backdrop-blur-sm rounded-lg shadow p-6 border border-gray-300/50 dark:border-gray-700/50">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-semibold">Settings</h2>
+          <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">Settings</h2>
           <div className="flex items-center gap-2 text-sm">
             {isSaving && (
               <div className="flex items-center gap-2 text-blue-600">
@@ -379,8 +379,8 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
             {activeTab === "timer" && (
               <div className="space-y-6">
                 <div>
-                  <h3 className="text-lg font-medium mb-4">Interruption Settings</h3>
-                  <p className="text-gray-600 mb-4">
+                  <h3 className="text-lg font-medium mb-4 text-gray-900 dark:text-white">Interruption Settings</h3>
+                  <p className="text-gray-600 dark:text-gray-300 mb-4">
                     Configure when and how often you want to be asked if you're still working on a project.
                     This helps prevent accidentally leaving timers running and applies to all timer modes.
                   </p>
@@ -394,14 +394,14 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                         onChange={(event) => setInterruptEnabled(event.target.checked)}
                         className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                       />
-                      <label htmlFor="interruptEnabled" className="ml-2 block text-sm text-gray-900">
+                      <label htmlFor="interruptEnabled" className="ml-2 block text-sm text-gray-900 dark:text-white">
                         Enable interruption prompts
                       </label>
                     </div>
 
                     {interruptEnabled && (
                       <div>
-                        <label htmlFor="interruptInterval" className="mb-2 block text-sm font-medium text-gray-700">
+                        <label htmlFor="interruptInterval" className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
                           Check interval
                         </label>
                         <select
@@ -412,7 +412,7 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                             setInterruptInterval(value);
                             setIsCustomInterval(value === -1);
                           }}
-                          className="block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                          className="block w-full rounded-md border border-gray-300/50 px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700/50 dark:text-gray-100 bg-white backdrop-blur-sm"
                         >
                           {intervalOptions.map((option) => (
                             <option key={option.value} value={option.value}>
@@ -422,7 +422,7 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                         </select>
                         {isCustomInterval && (
                           <div className="mt-3">
-                            <label htmlFor="customIntervalValue" className="mb-2 block text-sm font-medium text-gray-700">
+                            <label htmlFor="customIntervalValue" className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
                               Custom interval (minutes)
                             </label>
                             <input
@@ -436,16 +436,16 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                               }
                               min={1}
                               max={480}
-                              className="block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                              className="block w-full rounded-md border border-gray-300/50 px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700/50 dark:text-gray-100 bg-white backdrop-blur-sm"
                               placeholder="Enter minutes (1-480)"
                             />
-                            <p className="mt-1 text-sm text-gray-500">
+                            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                               Enter a custom interval between 1 and 480 minutes (8 hours).
                             </p>
                           </div>
                         )}
                         {!isCustomInterval && (
-                          <p className="mt-1 text-sm text-gray-500">
+                          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                             You'll be asked if you're still working every {intervalOptions
                               .find((option) => option.value === interruptInterval)
                               ?.label.toLowerCase()}.
@@ -456,7 +456,7 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
 
                     {interruptEnabled && (
                       <div>
-                        <label htmlFor="gracePeriod" className="mb-2 block text-sm font-medium text-gray-700">
+                        <label htmlFor="gracePeriod" className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
                           Auto-stop countdown
                         </label>
                         <select
@@ -467,7 +467,7 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                             setGracePeriod(value);
                             setIsCustomGracePeriod(value === -1);
                           }}
-                          className="block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                          className="block w-full rounded-md border border-gray-300/50 px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700/50 dark:text-gray-100 bg-white backdrop-blur-sm"
                         >
                           {gracePeriodOptions.map((option) => (
                             <option key={option.value} value={option.value}>
@@ -477,7 +477,7 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                         </select>
                         {isCustomGracePeriod && (
                           <div className="mt-3">
-                            <label htmlFor="customGracePeriodValue" className="mb-2 block text-sm font-medium text-gray-700">
+                            <label htmlFor="customGracePeriodValue" className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
                               Custom countdown (seconds)
                             </label>
                             <input
@@ -491,16 +491,16 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                               }
                               min={5}
                               max={300}
-                              className="block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                              className="block w-full rounded-md border border-gray-300/50 px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700/50 dark:text-gray-100 bg-white backdrop-blur-sm"
                               placeholder="Enter seconds (5-300)"
                             />
-                            <p className="mt-1 text-sm text-gray-500">
+                            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                               Enter a custom countdown between 5 and 300 seconds (5 minutes).
                             </p>
                           </div>
                         )}
                         {!isCustomGracePeriod && (
-                          <p className="mt-1 text-sm text-gray-500">
+                          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                             Time to respond before the timer auto-stops: {gracePeriodOptions
                               .find((option) => option.value === gracePeriod)
                               ?.label.toLowerCase()}.
@@ -512,8 +512,8 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                 </div>
 
                 <div>
-                  <h3 className="text-lg font-medium mb-4">Focus Sessions (Pomodoro)</h3>
-                  <p className="text-gray-600 mb-4">
+                  <h3 className="text-lg font-medium mb-4 text-gray-900 dark:text-white">Focus Sessions (Pomodoro)</h3>
+                  <p className="text-gray-600 dark:text-gray-300 mb-4">
                     Configure default settings for Pomodoro mode. You can choose between Normal and
                     Pomodoro modes from the dashboard when starting a timer.
                   </p>
@@ -521,7 +521,7 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                   <div className="space-y-4">
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                       <div>
-                        <label htmlFor="pomodoroWorkMinutes" className="mb-2 block text-sm font-medium text-gray-700">
+                        <label htmlFor="pomodoroWorkMinutes" className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
                           Focus duration (minutes)
                         </label>
                         <input
@@ -533,15 +533,15 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                           }
                           min={5}
                           max={120}
-                          className="block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                          className="block w-full rounded-md border border-gray-300/50 px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700/50 dark:text-gray-100 bg-white backdrop-blur-sm"
                         />
-                        <p className="mt-1 text-sm text-gray-500">
+                        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                           Default focus session length when using Pomodoro mode.
                         </p>
                       </div>
 
                       <div>
-                        <label htmlFor="pomodoroBreakMinutes" className="mb-2 block text-sm font-medium text-gray-700">
+                        <label htmlFor="pomodoroBreakMinutes" className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
                           Break duration (minutes)
                         </label>
                         <input
@@ -553,9 +553,9 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                           }
                           min={1}
                           max={60}
-                          className="block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                          className="block w-full rounded-md border border-gray-300/50 px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700/50 dark:text-gray-100 bg-white backdrop-blur-sm"
                         />
-                        <p className="mt-1 text-sm text-gray-500">
+                        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                           Default break length when using Pomodoro mode.
                         </p>
                       </div>
@@ -567,8 +567,8 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
             {activeTab === "budget" && (
               <div className="space-y-6">
                 <div>
-                  <h3 className="text-lg font-medium mb-4">Budget Warning Settings</h3>
-                  <p className="text-gray-600 mb-4">
+                  <h3 className="text-lg font-medium mb-4 text-gray-900 dark:text-white">Budget Warning Settings</h3>
+                  <p className="text-gray-600 dark:text-gray-300 mb-4">
                     Get warned when you're approaching your project budget limits. The timer will flash and
                     show a warning when you're close to exceeding your budget.
                   </p>
@@ -582,7 +582,7 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                         onChange={(event) => setBudgetWarningEnabled(event.target.checked)}
                         className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                       />
-                      <label htmlFor="budgetWarningEnabled" className="ml-2 block text-sm text-gray-900">
+                      <label htmlFor="budgetWarningEnabled" className="ml-2 block text-sm text-gray-900 dark:text-white">
                         Enable budget warnings
                       </label>
                     </div>
@@ -592,7 +592,7 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                         <div>
                           <label
                             htmlFor="budgetWarningThresholdHours"
-                            className="mb-2 block text-sm font-medium text-gray-700"
+                            className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
                           >
                             Time warning threshold (hours)
                           </label>
@@ -607,9 +607,9 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                             }
                             min="0.1"
                             step="0.1"
-                            className="block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                            className="block w-full rounded-md border border-gray-300/50 px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700/50 dark:text-gray-100 bg-white backdrop-blur-sm"
                           />
-                          <p className="mt-1 text-sm text-gray-500">
+                          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                             Warn when less than {budgetWarningThresholdHours} hours remain in time-based
                             budgets.
                           </p>
@@ -618,7 +618,7 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                         <div>
                           <label
                             htmlFor="budgetWarningThresholdAmount"
-                            className="mb-2 block text-sm font-medium text-gray-700"
+                            className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
                           >
                             Amount warning threshold ({getCurrencySymbol()})
                           </label>
@@ -633,9 +633,9 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                             }
                             min="1"
                             step="1"
-                            className="block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                            className="block w-full rounded-md border border-gray-300/50 px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700/50 dark:text-gray-100 bg-white backdrop-blur-sm"
                           />
-                          <p className="mt-1 text-sm text-gray-500">
+                          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                             Warn when less than {getCurrencySymbol()}{budgetWarningThresholdAmount} remains in amount-based
                             budgets.
                           </p>
@@ -646,27 +646,27 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                 </div>
 
                 <div>
-                  <h3 className="text-lg font-medium mb-4">Currency Preferences</h3>
-                  <p className="mb-4 text-gray-600">
+                  <h3 className="text-lg font-medium mb-4 text-gray-900 dark:text-white">Currency Preferences</h3>
+                  <p className="mb-4 text-gray-600 dark:text-gray-300">
                     Choose your preferred currency for displaying rates and budget amounts throughout the app.
                   </p>
 
                   <div className="space-y-4">
                     <div>
-                      <label htmlFor="currency" className="mb-2 block text-sm font-medium text-gray-700">
+                      <label htmlFor="currency" className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
                         Display Currency
                       </label>
                       <select
                         id="currency"
                         value={currency}
                         onChange={(event) => setCurrency(event.target.value as "USD" | "EUR" | "GBP")}
-                        className="block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                        className="block w-full rounded-md border border-gray-300/50 px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700/50 dark:text-gray-100 bg-white backdrop-blur-sm"
                       >
                         <option value="USD">US Dollar ($)</option>
                         <option value="EUR">Euro (€)</option>
                         <option value="GBP">British Pound (£)</option>
                       </select>
-                      <p className="mt-1 text-sm text-gray-500">
+                      <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                         This will change how currency amounts are displayed in projects, budgets, and reports.
                       </p>
                     </div>
@@ -677,15 +677,15 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
 
             {activeTab === "notifications" && (
               <div>
-                <h3 className="text-lg font-medium mb-4">Notifications & Attention</h3>
-              <p className="text-gray-600 mb-4">
+                <h3 className="text-lg font-medium mb-4 text-gray-900 dark:text-white">Notifications & Attention</h3>
+              <p className="text-gray-600 dark:text-gray-300 mb-4">
                 Configure how you want to be notified when interruptions occur. Push notifications will be automatically requested when needed.
               </p>
 
               <div className="space-y-6">
                 {/* In-App Attention */}
                 <div>
-                  <h4 className="font-medium mb-3">In-App Attention</h4>
+                  <h4 className="font-medium mb-3 text-gray-900 dark:text-white">In-App Attention</h4>
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center">
@@ -697,12 +697,12 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                           disabled={!isSoundSupported()}
                           className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded disabled:opacity-50"
                         />
-                        <label htmlFor="soundEnabled" className="ml-2 text-sm text-gray-900">
+                        <label htmlFor="soundEnabled" className="ml-2 text-sm text-gray-900 dark:text-white">
                           Play alert sounds
                         </label>
                       </div>
                       {!isSoundSupported() && (
-                        <span className="text-xs text-gray-500">Not supported</span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">Not supported</span>
                       )}
                     </div>
 
@@ -716,12 +716,12 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                           disabled={!isVibrationSupported()}
                           className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded disabled:opacity-50"
                         />
-                        <label htmlFor="vibrationEnabled" className="ml-2 text-sm text-gray-900">
+                        <label htmlFor="vibrationEnabled" className="ml-2 text-sm text-gray-900 dark:text-white">
                           Vibrate device (mobile)
                         </label>
                       </div>
                       {!isVibrationSupported() && (
-                        <span className="text-xs text-gray-500">Not supported</span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">Not supported</span>
                       )}
                     </div>
 
@@ -735,23 +735,23 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                           disabled={!isWakeLockSupported()}
                           className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded disabled:opacity-50"
                         />
-                        <label htmlFor="wakeLockEnabled" className="ml-2 text-sm text-gray-900">
+                        <label htmlFor="wakeLockEnabled" className="ml-2 text-sm text-gray-900 dark:text-white">
                           Keep screen awake during timing
                         </label>
                       </div>
                       {!isWakeLockSupported() && (
-                        <span className="text-xs text-gray-500">Not supported</span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">Not supported</span>
                       )}
                     </div>
                   </div>
                   {isBadgeSupported() && (
-                    <p className="text-xs text-gray-500 mt-2">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
                       App badge counts are automatically enabled
                     </p>
                   )}
                   
                   {/* Test Notification Button */}
-                  <div className="mt-4 pt-4 border-t border-gray-200">
+                  <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
                     <button
                       onClick={async () => {
                         const permission = Notification.permission;
@@ -781,7 +781,7 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                     >
                       Test Notification
                     </button>
-                    <p className="text-xs text-gray-500 mt-2">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
                       Current permission: <span className="font-mono">{typeof Notification !== 'undefined' ? Notification.permission : 'not supported'}</span>
                     </p>
                   </div>
@@ -789,8 +789,8 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
 
                 {/* Escalation Channels */}
                 <div>
-                  <h4 className="font-medium mb-3">Escalation Channels</h4>
-                  <p className="text-sm text-gray-500 mb-3">
+                  <h4 className="font-medium mb-3 text-gray-900 dark:text-white">Escalation Channels</h4>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
                     If push alerts go unanswered, we'll fall back to these channels after {escalationDelayMinutes} minute(s).
                   </p>
                   <div className="space-y-4">
@@ -803,7 +803,7 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                           onChange={(event) => setEmailFallbackEnabled(event.target.checked)}
                           className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                         />
-                        <label htmlFor="emailFallbackEnabled" className="ml-2 text-sm text-gray-900">
+                        <label htmlFor="emailFallbackEnabled" className="ml-2 text-sm text-gray-900 dark:text-white">
                           Send an email alert
                         </label>
                       </div>
@@ -814,9 +814,9 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                             value={fallbackEmail}
                             onChange={(event) => setFallbackEmail(event.target.value)}
                             placeholder="you@example.com"
-                            className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                            className="block w-full px-3 py-2 border border-gray-300/50 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700/50 text-gray-900 dark:text-gray-100 backdrop-blur-sm"
                           />
-                          <p className="text-xs text-gray-500">
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
                             We'll email you with a deep link back to the running timer.
                           </p>
                         </div>
@@ -832,7 +832,7 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                           onChange={(event) => setSmsFallbackEnabled(event.target.checked)}
                           className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                         />
-                        <label htmlFor="smsFallbackEnabled" className="ml-2 text-sm text-gray-900">
+                        <label htmlFor="smsFallbackEnabled" className="ml-2 text-sm text-gray-900 dark:text-white">
                           Send an SMS alert
                         </label>
                       </div>
@@ -843,9 +843,9 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                             value={smsNumber}
                             onChange={(event) => setSmsNumber(event.target.value)}
                             placeholder="+1 (555) 123-4567"
-                            className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                            className="block w-full px-3 py-2 border border-gray-300/50 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700/50 text-gray-900 dark:text-gray-100 backdrop-blur-sm"
                           />
-                          <p className="text-xs text-gray-500">
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
                             Standard carrier rates apply. Reply STOP to opt out.
                           </p>
                         </div>
@@ -861,7 +861,7 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                           onChange={(event) => setSlackFallbackEnabled(event.target.checked)}
                           className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                         />
-                        <label htmlFor="slackFallbackEnabled" className="ml-2 text-sm text-gray-900">
+                        <label htmlFor="slackFallbackEnabled" className="ml-2 text-sm text-gray-900 dark:text-white">
                           Post to Slack/Discord webhook
                         </label>
                       </div>
@@ -872,9 +872,9 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                             value={slackWebhookUrl}
                             onChange={(event) => setSlackWebhookUrl(event.target.value)}
                             placeholder="https://hooks.slack.com/services/..."
-                            className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                            className="block w-full px-3 py-2 border border-gray-300/50 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700/50 text-gray-900 dark:text-gray-100 backdrop-blur-sm"
                           />
-                          <p className="text-xs text-gray-500">
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
                             We'll send a concise alert with action links to this webhook URL.
                           </p>
                         </div>
@@ -885,7 +885,7 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
 
                 {/* Quiet Hours */}
                 <div>
-                  <h4 className="font-medium mb-3">Quiet Hours</h4>
+                  <h4 className="font-medium mb-3 text-gray-900 dark:text-white">Quiet Hours</h4>
                   <div className="space-y-3">
                     <div className="flex items-center">
                       <input
@@ -895,7 +895,7 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                         onChange={(event) => setDoNotDisturbEnabled(event.target.checked)}
                         className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                       />
-                      <label htmlFor="doNotDisturbEnabled" className="ml-2 text-sm text-gray-900">
+                      <label htmlFor="doNotDisturbEnabled" className="ml-2 text-sm text-gray-900 dark:text-white">
                         Enable quiet hours
                       </label>
                     </div>
@@ -903,7 +903,7 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                     {doNotDisturbEnabled && (
                       <div className="ml-6 grid grid-cols-2 gap-4">
                         <div>
-                          <label htmlFor="quietHoursStart" className="block text-sm font-medium text-gray-700 mb-1">
+                          <label htmlFor="quietHoursStart" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                             Start time
                           </label>
                           <input
@@ -911,11 +911,11 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                             id="quietHoursStart"
                             value={quietHoursStart}
                             onChange={(event) => setQuietHoursStart(event.target.value)}
-                            className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                            className="block w-full px-3 py-2 border border-gray-300/50 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700/50 text-gray-900 dark:text-gray-100 backdrop-blur-sm"
                           />
                         </div>
                         <div>
-                          <label htmlFor="quietHoursEnd" className="block text-sm font-medium text-gray-700 mb-1">
+                          <label htmlFor="quietHoursEnd" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                             End time
                           </label>
                           <input
@@ -923,12 +923,12 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                             id="quietHoursEnd"
                             value={quietHoursEnd}
                             onChange={(event) => setQuietHoursEnd(event.target.value)}
-                            className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                            className="block w-full px-3 py-2 border border-gray-300/50 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700/50 text-gray-900 dark:text-gray-100 backdrop-blur-sm"
                           />
                         </div>
                       </div>
                     )}
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
                       We'll honor quiet hours in your {notificationPrefs?.timezone ?? defaultTimezone} timezone and pause alerts when your OS-level Do Not Disturb is active.
                     </p>
                   </div>
@@ -936,23 +936,23 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
 
                 {/* Escalation */}
                 <div>
-                  <h4 className="font-medium mb-3">Escalation Timing</h4>
+                  <h4 className="font-medium mb-3 text-gray-900 dark:text-white">Escalation Timing</h4>
                   <div>
-                    <label htmlFor="escalationDelayMinutes" className="block text-sm font-medium text-gray-700 mb-2">
+                    <label htmlFor="escalationDelayMinutes" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Escalation delay (minutes)
                     </label>
                     <select
                       id="escalationDelayMinutes"
                       value={escalationDelayMinutes}
                       onChange={(event) => setEscalationDelayMinutes(Number(event.target.value))}
-                      className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                      className="block w-full px-3 py-2 border border-gray-300/50 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700/50 text-gray-900 dark:text-gray-100 backdrop-blur-sm"
                     >
                       <option value={1}>1 minute</option>
                       <option value={2}>2 minutes</option>
                       <option value={5}>5 minutes</option>
                       <option value={10}>10 minutes</option>
                     </select>
-                    <p className="mt-1 text-sm text-gray-500">
+                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                       How long to wait before trying the backup channels above.
                     </p>
                   </div>
@@ -973,22 +973,13 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                   )}
                   {isSaving ? "Saving..." : "Save Settings"}
                 </button>
-
-                <button
-                  onClick={() => {
-                    throw new Error("This is your first error!");
-                  }}
-                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2 shadow-lg transition-colors"
-                >
-                  Break the world
-                </button>
               </div>
             </div>
           </div>
         )}
       </div>
       
-      <div className="rounded-lg border border-gray-200 p-6 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900/70">
+      <div className="rounded-lg border border-gray-200/50 p-6 bg-white/60 dark:bg-gray-800/30 backdrop-blur-sm shadow-sm dark:border-gray-700/50">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="space-y-1">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Team Management</h2>

@@ -7,6 +7,8 @@ import { RecentEntriesTable, type RecentEntriesFilters } from "./RecentEntriesTa
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import { Search, SlidersHorizontal, X } from "lucide-react";
 import { toast } from "sonner";
 
 type CategoryFilter = "all" | "none" | string;
@@ -34,6 +36,7 @@ export function EntriesPage() {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [showManualEntryDialog, setShowManualEntryDialog] = useState(false);
+  const [showSearchPanel, setShowSearchPanel] = useState(false);
   const [isSubmittingManualEntry, setIsSubmittingManualEntry] = useState(false);
   const [manualEntryForm, setManualEntryForm] = useState({
     projectId: "",
@@ -345,113 +348,185 @@ export function EntriesPage() {
         </div>
       )}
 
-      <div className="space-y-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900/60 dark:shadow-none">
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Search</label>
-            <Input
-              value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
-              placeholder="Search by project, client, note, or category"
-              className="mt-1"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Client</label>
-            <select
-              value={selectedClient}
-              onChange={(event) =>
-                setSelectedClient(
-                  event.target.value === "all"
-                    ? "all"
-                    : (event.target.value as Id<"clients">)
-                )
-              }
-              className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+      <div className="flex items-center gap-2">
+        <Popover open={showSearchPanel} onOpenChange={setShowSearchPanel}>
+          <PopoverTrigger asChild>
+            <button
+              className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm"
             >
-              <option value="all">All clients</option>
-              {clientOptions.map((client) => (
-                <option key={client._id} value={client._id}>
-                  {client.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Project</label>
-            <select
-              value={selectedProject}
-              onChange={(event) =>
-                setSelectedProject(
-                  event.target.value === "all"
-                    ? "all"
-                    : (event.target.value as Id<"projects">)
-                )
-              }
-              className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-            >
-              <option value="all">All projects</option>
-              {projectOptions.map((project) => (
-                <option key={project._id} value={project._id}>
-                  {project.name}
-                  {project.client ? ` · ${project.client.name}` : ""}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Category</label>
-            <select
-              value={selectedCategory}
-              onChange={(event) =>
-                setSelectedCategory(event.target.value as CategoryFilter)
-              }
-              className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-            >
-              <option value="all">All categories</option>
-              <option value="none">No category</option>
-              {categories?.map((category) => (
-                <option key={category._id} value={category.name}>
-                  {category.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">From date</label>
-            <Input
-              type="date"
-              value={fromDate}
-              onChange={(event) => setFromDate(event.target.value)}
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">To date</label>
-            <Input
-              type="date"
-              value={toDate}
-              onChange={(event) => setToDate(event.target.value)}
-              className="mt-1"
-            />
-          </div>
-        </div>
-
-        <div className="flex justify-end">
-          <Button
-            variant="outline"
-            onClick={resetFilters}
-            disabled={!filtersActive}
+              <Search className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Search & Filter
+              </span>
+              {filtersActive && (
+                <span className="inline-flex items-center justify-center w-5 h-5 text-xs font-semibold text-white bg-primary rounded-full">
+                  !
+                </span>
+              )}
+              <SlidersHorizontal className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent
+            className="w-[90vw] max-w-2xl p-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
+            align="start"
+            side="bottom"
           >
-            Reset filters
-          </Button>
-        </div>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Search & Filter Entries
+                </h3>
+                <button
+                  onClick={() => setShowSearchPanel(false)}
+                  className="p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                >
+                  <X className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Search
+                  </label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <Input
+                      value={searchTerm}
+                      onChange={(event) => setSearchTerm(event.target.value)}
+                      placeholder="Search by project, client, note, or category"
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Client
+                    </label>
+                    <select
+                      value={selectedClient}
+                      onChange={(event) =>
+                        setSelectedClient(
+                          event.target.value === "all"
+                            ? "all"
+                            : (event.target.value as Id<"clients">)
+                        )
+                      }
+                      className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    >
+                      <option value="all">All clients</option>
+                      {clientOptions.map((client) => (
+                        <option key={client._id} value={client._id}>
+                          {client.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Project
+                    </label>
+                    <select
+                      value={selectedProject}
+                      onChange={(event) =>
+                        setSelectedProject(
+                          event.target.value === "all"
+                            ? "all"
+                            : (event.target.value as Id<"projects">)
+                        )
+                      }
+                      className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    >
+                      <option value="all">All projects</option>
+                      {projectOptions.map((project) => (
+                        <option key={project._id} value={project._id}>
+                          {project.name}
+                          {project.client ? ` · ${project.client.name}` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Category
+                  </label>
+                  <select
+                    value={selectedCategory}
+                    onChange={(event) =>
+                      setSelectedCategory(event.target.value as CategoryFilter)
+                    }
+                    className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  >
+                    <option value="all">All categories</option>
+                    <option value="none">No category</option>
+                    {categories?.map((category) => (
+                      <option key={category._id} value={category.name}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      From date
+                    </label>
+                    <Input
+                      type="date"
+                      value={fromDate}
+                      onChange={(event) => setFromDate(event.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      To date
+                    </label>
+                    <Input
+                      type="date"
+                      value={toDate}
+                      onChange={(event) => setToDate(event.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-between items-center pt-2 border-t border-gray-200 dark:border-gray-700">
+                  <Button
+                    variant="outline"
+                    onClick={resetFilters}
+                    disabled={!filtersActive}
+                    size="sm"
+                  >
+                    Reset filters
+                  </Button>
+                  <Button
+                    onClick={() => setShowSearchPanel(false)}
+                    size="sm"
+                  >
+                    Apply
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </PopoverContent>
+        </Popover>
+
+        {filtersActive && (
+          <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+            <span>Filters active</span>
+            <button
+              onClick={resetFilters}
+              className="text-primary hover:text-primary-hover underline"
+            >
+              Clear all
+            </button>
+          </div>
+        )}
       </div>
 
       <RecentEntriesTable

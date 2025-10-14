@@ -3,6 +3,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { visualizer } from "rollup-plugin-visualizer";
 import sitemap from "vite-plugin-sitemap";
+import path from "path";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
@@ -30,6 +31,11 @@ export default defineConfig(({ mode }) => ({
       ? [visualizer({ filename: "dist/stats.html" })]
       : []),
   ],
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
+    },
+  },
   build: {
     sourcemap: true,
   },

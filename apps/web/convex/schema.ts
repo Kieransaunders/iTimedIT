@@ -8,6 +8,7 @@ const applicationTables = {
     slug: v.optional(v.string()),
     createdBy: v.id("users"),
     createdAt: v.number(),
+    isPersonalWorkspace: v.optional(v.boolean()),
   })
     .index("byCreator", ["createdBy"])
     .index("bySlug", ["slug"]),

@@ -143,6 +143,12 @@ export const create = mutation({
       "admin",
     ]);
 
+    // Block invitations to Personal Workspaces
+    const organization = await ctx.db.get(organizationId);
+    if (organization?.isPersonalWorkspace === true) {
+      throw new Error("Cannot invite members to a Personal Workspace. Create a Team Workspace to collaborate.");
+    }
+
     const normalizedEmail = normalizeInvitationEmail(args.email);
     await ensureInviteCanBeCreated(ctx, organizationId, normalizedEmail);
 

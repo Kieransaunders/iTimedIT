@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { useCurrency } from "../hooks/useCurrency";
+import { Building2 } from "lucide-react";
 
 interface ClientData {
   _id: string;
@@ -62,10 +63,16 @@ export function ClientMetricsCards({
 
   if (clients.length === 0) {
     return (
-      <div className="text-center py-12">
-        <div className="text-6xl mb-4">👥</div>
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No clients yet</h3>
-        <p className="text-gray-500 dark:text-gray-400">Add your first client to get started!</p>
+      <div className="bg-white dark:bg-gray-800/50 dark:backdrop-blur-sm rounded-lg shadow dark:shadow-dark-card border-0 dark:border dark:border-gray-700/50">
+        <div className="text-center py-16">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-purple-100 to-blue-100 dark:from-purple-900/30 dark:to-blue-900/30 mb-4">
+            <Building2 className="w-8 h-8 text-purple-600 dark:text-purple-400" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No clients yet</h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm mx-auto">
+            Start building your client portfolio by adding your first client
+          </p>
+        </div>
       </div>
     );
   }

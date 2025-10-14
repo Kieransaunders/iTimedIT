@@ -31,6 +31,8 @@ export function OrganizationManagementCard() {
   const [isSending, setIsSending] = useState(false);
   const [invitationInProgress, setInvitationInProgress] = useState<Id<"invitations"> | null>(null);
   const [memberInProgress, setMemberInProgress] = useState<Id<"memberships"> | null>(null);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [newName, setNewName] = useState("");
 
   const canManage = activeRole === "owner" || activeRole === "admin";
   const hasOrganization = Boolean(activeOrganization);
@@ -50,6 +52,7 @@ export function OrganizationManagementCard() {
   const resendInvitation = useMutation(api.invitations.resend);
   const revokeInvitation = useMutation(api.invitations.revoke);
   const removeMember = useMutation(api.organizations.removeMember);
+  const renameOrganization = useMutation(api.organizations.renameOrganization);
 
   const sortedMembers = useMemo(() => {
     if (!members) {
@@ -200,12 +203,106 @@ export function OrganizationManagementCard() {
     }
   };
 
+  const handleRename = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const trimmed = newName.trim();
+    if (!trimmed) {
+      toast.error("Workspace name cannot be empty");
+      return;
+    }
+
+    try {
+      await renameOrganization({ name: trimmed });
+      toast.success("Workspace renamed successfully");
+      setIsEditingName(false);
+      setNewName("");
+    } catch (error) {
+      notifyMutationError(error, {
+        fallbackMessage: "Unable to rename workspace. Please try again.",
+      });
+    }
+  };
+
+  const startRename = () => {
+    setNewName(activeOrganization?.name ?? "");
+    setIsEditingName(true);
+  };
+
+  const cancelRename = () => {
+    setIsEditingName(false);
+    setNewName("");
+  };
+
+  const isPersonalWorkspace = activeOrganization?.isPersonalWorkspace === true;
+
   return (
     <div className="bg-white dark:bg-gray-900 rounded-lg shadow p-6 space-y-6">
+      {/* Workspace Name Section */}
+      <div className="pb-6 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center gap-2 mb-2">
+          <h2 className="text-xl font-semibold">Workspace Settings</h2>
+          {isPersonalWorkspace && (
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-100">
+              Personal
+            </span>
+          )}
+        </div>
+        {isEditingName ? (
+          <form onSubmit={handleRename} className="flex items-end gap-2">
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+                Workspace name
+              </label>
+              <input
+                type="text"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100"
+                placeholder="My Workspace"
+                autoFocus
+                maxLength={100}
+              />
+            </div>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-hover transition-colors"
+            >
+              Save
+            </button>
+            <button
+              type="button"
+              onClick={cancelRename}
+              className="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            >
+              Cancel
+            </button>
+          </form>
+        ) : (
+          <div className="flex items-center gap-3">
+            <p className="text-lg font-medium text-gray-900 dark:text-white">
+              {activeOrganization?.name}
+            </p>
+            <button
+              type="button"
+              onClick={startRename}
+              className="text-sm text-primary hover:underline"
+            >
+              Rename
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Team Members Section */}
       <div>
-        <h2 className="text-xl font-semibold mb-2">Team Members</h2>
+        <h2 className="text-xl font-semibold mb-2">
+          {isPersonalWorkspace ? "Workspace Owner" : "Team Members"}
+        </h2>
         <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
-          Manage who can access <strong>{activeOrganization?.name}</strong> and control their roles.
+          {isPersonalWorkspace
+            ? "This is your personal workspace. To collaborate with others, create a Team Workspace."
+            : <>Manage who can access <strong>{activeOrganization?.name}</strong> and control their roles.</>
+          }
         </p>
         {isMembersLoading ? (
           <div className="animate-pulse h-24 bg-gray-100 dark:bg-gray-800 rounded" />
@@ -251,13 +348,15 @@ export function OrganizationManagementCard() {
         )}
       </div>
 
-      <form onSubmit={handleInvite} className="border border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-4 space-y-4">
-        <div>
-          <h3 className="text-lg font-medium">Invite a teammate</h3>
-          <p className="text-sm text-gray-600 dark:text-gray-300">
-            Send an invitation to collaborate on projects and track time together.
-          </p>
-        </div>
+      {/* Invitation Form - Only show for Team Workspaces */}
+      {!isPersonalWorkspace && (
+        <form onSubmit={handleInvite} className="border border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-4 space-y-4">
+          <div>
+            <h3 className="text-lg font-medium">Invite a teammate</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-300">
+              Send an invitation to collaborate on projects and track time together.
+            </p>
+          </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div className="md:col-span-2">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
@@ -298,10 +397,13 @@ export function OrganizationManagementCard() {
             {isSending ? "Sending..." : "Send Invitation"}
           </button>
         </div>
-      </form>
+        </form>
+      )}
 
-      <div>
-        <h3 className="text-lg font-medium mb-3">Pending invitations</h3>
+      {/* Pending Invitations - Only show for Team Workspaces */}
+      {!isPersonalWorkspace && (
+        <div>
+          <h3 className="text-lg font-medium mb-3">Pending invitations</h3>
         {isInvitationsLoading ? (
           <div className="animate-pulse h-20 bg-gray-100 dark:bg-gray-800 rounded" />
         ) : sortedInvitations.length === 0 ? (
@@ -396,7 +498,8 @@ export function OrganizationManagementCard() {
             </table>
           </div>
         )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

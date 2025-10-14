@@ -145,6 +145,7 @@ export async function ensureMembership(
     name: "Personal Workspace",
     createdBy: userId,
     createdAt: now,
+    isPersonalWorkspace: true,
   });
 
   const membershipId = await ctx.db.insert("memberships", {

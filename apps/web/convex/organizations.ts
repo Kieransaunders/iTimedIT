@@ -188,6 +188,28 @@ export const setActiveOrganization = mutation({
   },
 });
 
+export const renameOrganization = mutation({
+  args: {
+    name: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const { organizationId } = await requireMembershipWithRole(ctx, ["owner", "admin"]);
+
+    const trimmedName = args.name.trim();
+    if (!trimmedName) {
+      throw new Error("Organization name cannot be empty");
+    }
+
+    if (trimmedName.length > 100) {
+      throw new Error("Organization name must be 100 characters or less");
+    }
+
+    await ctx.db.patch(organizationId, { name: trimmedName });
+
+    return { success: true };
+  },
+});
+
 async function backfillLegacyData(
   ctx: MutationCtx,
   membership: MembershipContext
