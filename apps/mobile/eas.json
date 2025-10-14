@@ -1,0 +1,33 @@
+{
+  "cli": {
+    "version": ">= 16.20.4",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_EAS_PROJECT_ID": "9765d9ef-1bbf-43eb-9200-6ecd31389a64",
+        "EXPO_PUBLIC_GOOGLE_CLIENT_ID": "434888822269-fgcqfko6njlc83eqbogltcgaj9ilpeeu.apps.googleusercontent.com"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_EAS_PROJECT_ID": "9765d9ef-1bbf-43eb-9200-6ecd31389a64",
+        "EXPO_PUBLIC_GOOGLE_CLIENT_ID": "434888822269-fgcqfko6njlc83eqbogltcgaj9ilpeeu.apps.googleusercontent.com"
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_EAS_PROJECT_ID": "9765d9ef-1bbf-43eb-9200-6ecd31389a64",
+        "EXPO_PUBLIC_GOOGLE_CLIENT_ID": "434888822269-fgcqfko6njlc83eqbogltcgaj9ilpeeu.apps.googleusercontent.com"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}

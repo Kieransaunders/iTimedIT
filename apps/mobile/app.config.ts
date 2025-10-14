@@ -26,16 +26,11 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       UIBackgroundModes: ["fetch", "remote-notification"],
       CFBundleURLTypes: [
         {
-          CFBundleURLSchemes: ["itimeditapp"],
+          CFBundleURLSchemes: [
+            "itimeditapp",
+            ...(googleClientScheme ? [googleClientScheme] : []),
+          ],
         },
-        // Add Google OAuth redirect scheme if client ID is configured
-        ...(googleClientScheme
-          ? [
-              {
-                CFBundleURLSchemes: [googleClientScheme],
-              },
-            ]
-          : []),
       ],
     },
   },

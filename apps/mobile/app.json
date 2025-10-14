@@ -15,7 +15,26 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.itimedit.app"
+      "bundleIdentifier": "com.itimedit.app",
+      "infoPlist": {
+        "UIBackgroundModes": [
+          "fetch",
+          "remote-notification"
+        ],
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLSchemes": [
+              "itimeditapp"
+            ]
+          },
+          {
+            "CFBundleURLSchemes": [
+              "com.googleusercontent.apps.434888822269-fgcqfko6njlc83eqbogltcgaj9ilpeeu"
+            ]
+          }
+        ],
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "icon": "./assets/images/icon.png",
