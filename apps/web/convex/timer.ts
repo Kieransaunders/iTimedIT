@@ -406,11 +406,19 @@ export const ackInterrupt = mutation({
       throw new Error("Not authenticated");
     }
 
-    // Try to get membership for team workspace, but allow personal workspace too
+    // Try to find timer in team workspace first
     const membership = await maybeMembership(ctx);
-    const organizationId = membership?.organizationId;
+    let organizationId = membership?.organizationId;
+    let timer = await getRunningTimerForUser(ctx, userId, organizationId);
 
-    const timer = await getRunningTimerForUser(ctx, userId, organizationId);
+    // If not found or not awaiting ack, try personal workspace
+    if (!timer || !timer.awaitingInterruptAck) {
+      const personalTimer = await getRunningTimerForUser(ctx, userId, undefined);
+      if (personalTimer && personalTimer.awaitingInterruptAck) {
+        timer = personalTimer;
+        organizationId = undefined;
+      }
+    }
 
     if (!timer || !timer.awaitingInterruptAck) {
       return { success: false, action: "already_acked", nextInterruptAt: null };

@@ -22,6 +22,7 @@ export default function Index() {
     timerMode,
     isLoading,
     error,
+    userSettings,
     startTimer,
     stopTimer,
     resetTimer,
@@ -231,7 +232,7 @@ export default function Index() {
         projectName={runningTimer?.project?.name || "this project"}
         onContinue={() => handleAcknowledgeInterrupt(true)}
         onStop={() => handleAcknowledgeInterrupt(false)}
-        gracePeriodSeconds={60}
+        gracePeriodSeconds={userSettings?.gracePeriod ?? 60}
       />
     </View>
   );

@@ -1753,6 +1753,7 @@ export function ModernDashboard({
         <InterruptModal
           projectName={currentProject.name}
           onClose={() => setShowInterruptModal(false)}
+          gracePeriod={userSettings?.gracePeriod ?? 5}
         />
       )}
 

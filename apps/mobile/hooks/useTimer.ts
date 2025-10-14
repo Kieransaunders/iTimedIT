@@ -18,6 +18,7 @@ export interface UseTimerReturn {
   timerMode: "normal" | "pomodoro";
   isLoading: boolean;
   error: string | null;
+  userSettings: { gracePeriod: number } | undefined;
   startTimer: (
     projectId: Id<"projects">,
     category?: string,
@@ -55,8 +56,9 @@ export function useTimer(): UseTimerReturn {
   const resetMutation = useMutation(api.timer.reset);
   const heartbeatMutation = useMutation(api.timer.heartbeat);
   const ackInterruptMutation = useMutation(api.timer.ackInterrupt);
+  const userSettings = useQuery(api.users.getUserSettings);
 
-  const isLoading = runningTimer === undefined;
+  const isLoading = runningTimer === undefined || userSettings === undefined;
 
   /**
    * Calculate elapsed time from running timer
@@ -268,6 +270,7 @@ export function useTimer(): UseTimerReturn {
     timerMode,
     isLoading,
     error,
+    userSettings,
     startTimer,
     stopTimer,
     resetTimer,
