@@ -24,6 +24,7 @@ import type * as lib_notificationHelpers from "../lib/notificationHelpers.js";
 import type * as orgContext from "../orgContext.js";
 import type * as organizations from "../organizations.js";
 import type * as personalClients from "../personalClients.js";
+import type * as personalEntries from "../personalEntries.js";
 import type * as personalProjects from "../personalProjects.js";
 import type * as projects from "../projects.js";
 import type * as pushActions from "../pushActions.js";
@@ -64,6 +65,7 @@ declare const fullApi: ApiFromModules<{
   orgContext: typeof orgContext;
   organizations: typeof organizations;
   personalClients: typeof personalClients;
+  personalEntries: typeof personalEntries;
   personalProjects: typeof personalProjects;
   projects: typeof projects;
   pushActions: typeof pushActions;

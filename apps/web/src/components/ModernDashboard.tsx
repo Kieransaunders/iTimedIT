@@ -42,6 +42,8 @@ import { SoundSelectionModal } from "./SoundSelectionModal";
 interface ModernDashboardProps {
   pushSwitchRequest?: any | null;
   onPushSwitchHandled?: () => void;
+  workspaceType?: WorkspaceType;
+  onWorkspaceChange?: (workspace: WorkspaceType) => void;
 }
 
 interface TimerState {
@@ -58,7 +60,7 @@ interface ProjectWithClient {
   client: {
     _id: Id<"clients">;
     name: string;
-  };
+  } | null;
   color: string;
 }
 
@@ -103,9 +105,11 @@ function formatBudgetTime(seconds: number): string {
 export function ModernDashboard({
   pushSwitchRequest,
   onPushSwitchHandled,
+  workspaceType = "team",
+  onWorkspaceChange,
 }: ModernDashboardProps) {
   const [currentProjectId, setCurrentProjectId] = useState<Id<"projects"> | null>(null);
-  const [currentWorkspace, setCurrentWorkspace] = useState<WorkspaceType>("team");
+  const currentWorkspace = workspaceType;
   const { formatCurrency: formatCurrencyWithSymbol } = useCurrency();
   const [now, setNow] = useState(Date.now());
   const [showInterruptModal, setShowInterruptModal] = useState(false);
@@ -154,7 +158,7 @@ export function ModernDashboard({
       : api.projects.listAll,
     currentWorkspace === "personal" ? {} : { workspaceType: "team" }
   );
-  const runningTimer = useQuery(api.timer.getRunningTimer);
+  const runningTimer = useQuery(api.timer.getRunningTimer, { workspaceType: currentWorkspace });
   const userSettings = useQuery(api.users.getUserSettings);
   const startTimer = useMutation(api.timer.start);
   const stopTimer = useMutation(api.timer.stop);
@@ -207,7 +211,7 @@ export function ModernDashboard({
     if (!projects) return [];
     return projects.map(project => ({
       ...project,
-      color: project.client.color || getClientColor(project.client._id),
+      color: project.client?.color || (project.client?._id ? getClientColor(project.client._id) : FALLBACK_COLORS[0]),
     }));
   }, [projects]);
 
@@ -215,9 +219,9 @@ export function ModernDashboard({
   const filteredProjects = useMemo(() => {
     if (!searchTerm.trim()) return projectsWithColors;
     const term = searchTerm.toLowerCase();
-    return projectsWithColors.filter(project => 
-      project.name.toLowerCase().includes(term) || 
-      project.client.name.toLowerCase().includes(term)
+    return projectsWithColors.filter(project =>
+      project.name.toLowerCase().includes(term) ||
+      (project.client?.name && project.client.name.toLowerCase().includes(term))
     );
   }, [projectsWithColors, searchTerm]);
 
@@ -968,18 +972,19 @@ export function ModernDashboard({
         }
       `}</style>
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex min-h-full flex-col items-center justify-center gap-6 sm:gap-8 py-6 sm:py-10">
-        {/* Workspace Switcher */}
-        <div className="w-full flex justify-center mb-4">
-          <WorkspaceSwitcher 
-            currentWorkspace={currentWorkspace}
-            onWorkspaceChange={(workspace) => {
-              setCurrentWorkspace(workspace);
-              // Reset current project when switching workspaces
-              setCurrentProjectId(null);
-            }}
-            className="max-w-xs"
-          />
-        </div>
+        {/* Workspace Switcher - Only show if onWorkspaceChange prop is not provided (for backwards compatibility) */}
+        {!onWorkspaceChange && (
+          <div className="w-full flex justify-center mb-4">
+            <WorkspaceSwitcher
+              currentWorkspace={currentWorkspace}
+              onWorkspaceChange={(workspace) => {
+                // This shouldn't happen since we're hiding the switcher
+                console.warn("Workspace change requested but no handler provided");
+              }}
+              className="max-w-xs"
+            />
+          </div>
+        )}
 
         {/* Project Switcher */}
         <div className="w-full flex flex-col items-center gap-3">
@@ -995,7 +1000,7 @@ export function ModernDashboard({
                 />
                 <div className="flex-1">
                   <div className="text-gray-900 dark:text-white font-medium">{currentProject.name}</div>
-                  <div className="text-gray-600 dark:text-gray-300 text-sm">– {currentProject.client.name}</div>
+                  <div className="text-gray-600 dark:text-gray-300 text-sm">– {currentProject.client?.name || 'No Client'}</div>
                 </div>
                 <svg 
                   className={`w-4 h-4 text-gray-500 dark:text-gray-400 transition-transform ${showDropdown ? 'rotate-180' : ''}`} 
@@ -1582,7 +1587,7 @@ export function ModernDashboard({
         {/* Project Summary */}
         {currentProjectId && (
           <section className="w-full max-w-6xl px-4 sm:px-0">
-            <ProjectSummaryGrid projectId={currentProjectId} />
+            <ProjectSummaryGrid projectId={currentProjectId} workspaceType={currentWorkspace} />
           </section>
         )}
 
@@ -1626,7 +1631,7 @@ export function ModernDashboard({
                     />
                     <span className="font-medium text-gray-900 dark:text-white text-sm truncate">{project.name}</span>
                   </div>
-                  <div className="text-gray-700 dark:text-gray-300 text-xs truncate font-medium">{project.client.name}</div>
+                  <div className="text-gray-700 dark:text-gray-300 text-xs truncate font-medium">{project.client?.name || 'No Client'}</div>
                   <div className="text-gray-600 dark:text-gray-400 text-xs mt-1">
                     {formatCurrencyWithSymbol(project.hourlyRate)}/hr
                   </div>
@@ -1732,7 +1737,7 @@ export function ModernDashboard({
                 </Dialog>
               )}
             </div>
-            <RecentEntriesTable projectId={currentProjectId} />
+            <RecentEntriesTable projectId={currentProjectId} workspaceType={currentWorkspace} />
           </div>
         </section>
       </div>
@@ -1748,10 +1753,10 @@ export function ModernDashboard({
       {/* Project Switch Modal */}
       {showProjectSwitchModal && pendingProjectId && (
         <ProjectSwitchModal
-          currentProjectName={`${currentProject.name} – ${currentProject.client.name}`}
+          currentProjectName={`${currentProject.name} – ${currentProject.client?.name || 'No Client'}`}
           newProjectName={(() => {
             const pendingProject = projectsWithColors.find(p => p._id === pendingProjectId);
-            return pendingProject ? `${pendingProject.name} – ${pendingProject.client.name}` : '';
+            return pendingProject ? `${pendingProject.name} – ${pendingProject.client?.name || 'No Client'}` : '';
           })()}
           onStopAndSwitch={handleStopAndSwitch}
           onTransferTimer={handleTransferTimer}

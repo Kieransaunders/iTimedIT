@@ -12,6 +12,7 @@ interface RecentEntriesTableProps {
   pageSize?: number;
   emptyStateMessage?: string;
   filters?: RecentEntriesFilters;
+  workspaceType?: "personal" | "team";
 }
 
 export interface RecentEntriesFilters {
@@ -30,6 +31,7 @@ export function RecentEntriesTable({
   pageSize = 20,
   emptyStateMessage = "No time entries yet. Start a timer to begin tracking!",
   filters,
+  workspaceType = "team",
 }: RecentEntriesTableProps) {
   const [editingEntry, setEditingEntry] = useState<string | null>(null);
   const [editNote, setEditNote] = useState("");
@@ -40,14 +42,21 @@ export function RecentEntriesTable({
   const [editCategoryValue, setEditCategoryValue] = useState("");
   const { isReady } = useOrganization();
 
-  const entries = useQuery(api.entries.list, isReady ? {
-    projectId: projectId || undefined,
-    paginationOpts: { numItems: pageSize, cursor: null },
-  } : "skip");
+  const entries = useQuery(
+    workspaceType === "personal" ? api.personalEntries.listPersonal : api.entries.list,
+    (workspaceType === "personal" || isReady) ? {
+      projectId: projectId || undefined,
+      paginationOpts: { numItems: pageSize, cursor: null },
+    } : "skip"
+  );
 
-  const editEntry = useMutation(api.entries.edit);
-  const deleteEntry = useMutation(api.entries.deleteEntry);
-  const categories = useQuery(api.categories.getCategories, isReady ? {} : "skip");
+  const editEntry = useMutation(
+    workspaceType === "personal" ? api.personalEntries.editPersonal : api.entries.edit
+  );
+  const deleteEntry = useMutation(
+    workspaceType === "personal" ? api.personalEntries.deletePersonalEntry : api.entries.deleteEntry
+  );
+  const categories = useQuery(api.categories.getCategories, (workspaceType === "personal" || isReady) ? {} : "skip");
 
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
@@ -151,7 +160,7 @@ export function RecentEntriesTable({
     });
   }, [entries, filters]);
 
-  if (!isReady || !entries) {
+  if ((workspaceType === "team" && !isReady) || !entries) {
     return <div className="animate-pulse bg-gray-200 dark:bg-gray-700 h-64 rounded-lg"></div>;
   }
 

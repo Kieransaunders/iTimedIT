@@ -4,11 +4,18 @@ import { Id } from "../../convex/_generated/dataModel";
 
 interface ProjectSummaryGridProps {
   projectId: Id<"projects">;
+  workspaceType?: "personal" | "team";
 }
 
-export function ProjectSummaryGrid({ projectId }: ProjectSummaryGridProps) {
-  const project = useQuery(api.projects.get, { id: projectId });
-  const stats = useQuery(api.projects.getStats, { projectId });
+export function ProjectSummaryGrid({ projectId, workspaceType = "team" }: ProjectSummaryGridProps) {
+  const project = useQuery(
+    workspaceType === "personal" ? api.personalProjects.getPersonal : api.projects.get,
+    { id: projectId }
+  );
+  const stats = useQuery(
+    workspaceType === "personal" ? api.personalProjects.getStatsPersonal : api.projects.getStats,
+    { projectId }
+  );
 
   if (!project || !stats) {
     return <div className="animate-pulse bg-gray-200 dark:bg-gray-700 h-32 rounded-lg"></div>;
@@ -47,7 +54,7 @@ export function ProjectSummaryGrid({ projectId }: ProjectSummaryGridProps) {
   return (
     <div className="bg-white/60 dark:bg-gray-800/30 backdrop-blur-sm border border-gray-300/50 dark:border-gray-700/50 rounded-xl p-6">
       <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
-        {project.client.name} – {project.name}
+        {project.client?.name || 'No Client'} – {project.name}
       </h3>
       
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

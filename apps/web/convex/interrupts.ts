@@ -5,7 +5,7 @@ import { Id } from "./_generated/dataModel";
 
 export const check = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.optional(v.id("organizations")),
     userId: v.id("users"),
   },
   handler: async (ctx, args) => {
@@ -20,8 +20,8 @@ export const check = action({
       return { action: "no_timer", graceJobScheduled: false, graceJobTime: null };
     }
 
-    if (!timer.organizationId || !timer.userId) {
-      // Legacy timer without organization linkage; skip until backfilled
+    if (!timer.userId) {
+      // Timer without user; skip
       return { action: "legacy_timer", graceJobScheduled: false, graceJobTime: null };
     }
 
@@ -103,7 +103,7 @@ export const check = action({
 
 export const autoStopIfNoAck = action({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.optional(v.id("organizations")),
     userId: v.id("users"),
     interruptAt: v.number(),
   },
@@ -121,7 +121,7 @@ export const autoStopIfNoAck = action({
       return { action: "stale_job", stoppedEntryId: null, overrunEntryId: null };
     }
 
-    if (!timer.organizationId || !timer.userId) {
+    if (!timer.userId) {
       return { action: "legacy_timer", stoppedEntryId: null, overrunEntryId: null };
     }
 
@@ -166,7 +166,7 @@ export const sweep = action({
     for (const timer of timers) {
       checkedTimers++;
 
-      if (!timer.organizationId || !timer.userId) {
+      if (!timer.userId) {
         continue;
       }
 
@@ -271,16 +271,27 @@ export const sweep = action({
 
 export const getTimerForInterrupt = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.optional(v.id("organizations")),
     userId: v.id("users"),
   },
   handler: async (ctx, args) => {
-    return await ctx.db
-      .query("runningTimers")
-      .withIndex("byOrgUser", (q) =>
-        q.eq("organizationId", args.organizationId).eq("userId", args.userId)
-      )
-      .unique();
+    if (args.organizationId) {
+      // Team workspace
+      return await ctx.db
+        .query("runningTimers")
+        .withIndex("byOrgUser", (q) =>
+          q.eq("organizationId", args.organizationId).eq("userId", args.userId)
+        )
+        .unique();
+    } else {
+      // Personal workspace
+      return await ctx.db
+        .query("runningTimers")
+        .withIndex("byOrgUser", (q) =>
+          q.eq("organizationId", undefined).eq("userId", args.userId)
+        )
+        .unique();
+    }
   },
 });
 
@@ -293,7 +304,7 @@ export const getAllTimersForSweep = internalMutation({
 
 export const setAwaitingInterrupt = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.optional(v.id("organizations")),
     userId: v.id("users"),
     timerId: v.id("runningTimers"),
     interruptAt: v.number(),
@@ -308,7 +319,7 @@ export const setAwaitingInterrupt = internalMutation({
 
 export const autoStopStaleTimer = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.optional(v.id("organizations")),
     userId: v.id("users"),
     timerId: v.id("runningTimers"),
   },
@@ -316,22 +327,35 @@ export const autoStopStaleTimer = internalMutation({
     const timer = await ctx.db.get(args.timerId);
     if (!timer) return;
 
-    if (!timer.organizationId || !timer.userId) {
+    if (!timer.userId) {
       return;
     }
 
     const now = Date.now();
 
-    // Find the active time entry
+    // Find the active time entry - handle both personal and team workspaces
     const activeEntry = await ctx.db
       .query("timeEntries")
       .withIndex("byProject", (q) => q.eq("projectId", timer.projectId))
-      .filter((q) => q.and(
-        q.eq(q.field("organizationId"), args.organizationId),
-        q.eq(q.field("userId"), args.userId),
-        q.eq(q.field("stoppedAt"), undefined),
-        q.eq(q.field("isOverrun"), false)
-      ))
+      .filter((q) => {
+        if (args.organizationId) {
+          // Team workspace
+          return q.and(
+            q.eq(q.field("organizationId"), args.organizationId),
+            q.eq(q.field("userId"), args.userId),
+            q.eq(q.field("stoppedAt"), undefined),
+            q.eq(q.field("isOverrun"), false)
+          );
+        } else {
+          // Personal workspace
+          return q.and(
+            q.eq(q.field("userId"), args.userId),
+            q.eq(q.field("organizationId"), undefined),
+            q.eq(q.field("stoppedAt"), undefined),
+            q.eq(q.field("isOverrun"), false)
+          );
+        }
+      })
       .first();
 
     if (activeEntry) {

@@ -3,22 +3,62 @@ import { v } from "convex/values";
 import { internal, api } from "./_generated/api";
 import { Doc, Id } from "./_generated/dataModel";
 import { ensureMembership, requireMembership, maybeMembership } from "./orgContext";
+import { getAuthUserId } from "@convex-dev/auth/server";
+
+// Helper to detect if project is personal workspace
+function isPersonalProject(project: Doc<"projects"> | null): boolean {
+  return project?.workspaceType === "personal" || project?.organizationId === undefined;
+}
+
+// Helper to get running timer for both personal and team workspaces
+async function getRunningTimerForUser(
+  ctx: { db: any },
+  userId: Id<"users">,
+  organizationId?: Id<"organizations">
+): Promise<Doc<"runningTimers"> | null> {
+  if (organizationId) {
+    // Team workspace - use byOrgUser index
+    return await ctx.db
+      .query("runningTimers")
+      .withIndex("byOrgUser", (q: any) =>
+        q.eq("organizationId", organizationId).eq("userId", userId)
+      )
+      .unique();
+  } else {
+    // Personal workspace - use byUserProject index or filter
+    return await ctx.db
+      .query("runningTimers")
+      .withIndex("byOrgUser", (q: any) =>
+        q.eq("organizationId", undefined).eq("userId", userId)
+      )
+      .unique();
+  }
+}
 
 export const getRunningTimer = query({
-  args: {},
-  handler: async (ctx) => {
-    const membership = await maybeMembership(ctx);
-
-    if (!membership) {
+  args: {
+    workspaceType: v.optional(v.union(v.literal("personal"), v.literal("team"))),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
       return null;
     }
 
-    const timer = await ctx.db
-      .query("runningTimers")
-      .withIndex("byOrgUser", (q) =>
-        q.eq("organizationId", membership.organizationId).eq("userId", membership.userId)
-      )
-      .unique();
+    // Determine organizationId based on workspace type
+    let organizationId: Id<"organizations"> | undefined;
+
+    if (args.workspaceType === "personal") {
+      // Force personal workspace (no organization)
+      organizationId = undefined;
+    } else {
+      // Default to team workspace if available
+      const membership = await maybeMembership(ctx);
+      organizationId = membership?.organizationId;
+    }
+
+    // Get timer for current workspace context
+    const timer = await getRunningTimerForUser(ctx, userId, organizationId);
 
     if (!timer) {
       return null;
@@ -42,12 +82,33 @@ export const start = mutation({
     pomodoroEnabled: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const membership = await ensureMembership(ctx);
-    const { organizationId, userId } = membership;
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
 
     const project = await ctx.db.get(args.projectId);
-    if (!project || project.organizationId !== organizationId) {
+    if (!project) {
       throw new Error("Project not found");
+    }
+
+    // Detect workspace type
+    const isPersonal = isPersonalProject(project);
+    let organizationId: Id<"organizations"> | undefined;
+
+    if (isPersonal) {
+      // Personal workspace - verify user owns the project
+      if (project.ownerId !== userId) {
+        throw new Error("Personal project not found");
+      }
+      organizationId = undefined;
+    } else {
+      // Team workspace - verify organization membership
+      const membership = await ensureMembership(ctx);
+      if (project.organizationId !== membership.organizationId) {
+        throw new Error("Project not found");
+      }
+      organizationId = membership.organizationId;
     }
 
     // Get user settings for interrupt interval
@@ -58,17 +119,12 @@ export const start = mutation({
 
     const interruptInterval = settings?.interruptInterval ?? 60; // default 60 minutes
     const interruptEnabled = settings?.interruptEnabled ?? true;
-    const pomodoroEnabled = args.pomodoroEnabled ?? settings?.pomodoroEnabled ?? false;
+    const pomodoroEnabledSetting = args.pomodoroEnabled ?? settings?.pomodoroEnabled ?? false;
     const pomodoroWorkMinutes = settings?.pomodoroWorkMinutes ?? 25;
     const pomodoroBreakMinutes = settings?.pomodoroBreakMinutes ?? 5;
 
     // Stop any existing timer
-    const existingTimer = await ctx.db
-      .query("runningTimers")
-      .withIndex("byOrgUser", (q) =>
-        q.eq("organizationId", organizationId).eq("userId", userId)
-      )
-      .unique();
+    const existingTimer = await getRunningTimerForUser(ctx, userId, organizationId);
 
     if (existingTimer) {
       await stopInternal(ctx, organizationId, userId, "timer");
@@ -76,7 +132,7 @@ export const start = mutation({
 
     const now = Date.now();
     const nextInterruptAt = interruptEnabled ? now + (interruptInterval * 60 * 1000) : undefined;
-    const pomodoroTransitionAt = pomodoroEnabled ? now + pomodoroWorkMinutes * 60 * 1000 : undefined;
+    const pomodoroTransitionAt = pomodoroEnabledSetting ? now + pomodoroWorkMinutes * 60 * 1000 : undefined;
 
     // Create running timer
     const timerId = await ctx.db.insert("runningTimers", {
@@ -87,14 +143,14 @@ export const start = mutation({
       lastHeartbeatAt: now,
       awaitingInterruptAck: false,
       nextInterruptAt,
-      pomodoroEnabled,
-      pomodoroPhase: pomodoroEnabled ? "work" : undefined,
+      pomodoroEnabled: pomodoroEnabledSetting,
+      pomodoroPhase: pomodoroEnabledSetting ? "work" : undefined,
       pomodoroTransitionAt,
-      pomodoroWorkMinutes: pomodoroEnabled ? pomodoroWorkMinutes : undefined,
-      pomodoroBreakMinutes: pomodoroEnabled ? pomodoroBreakMinutes : undefined,
-      pomodoroCurrentCycle: pomodoroEnabled ? 1 : undefined,
-      pomodoroCompletedCycles: pomodoroEnabled ? 0 : undefined,
-      pomodoroSessionStartedAt: pomodoroEnabled ? now : undefined,
+      pomodoroWorkMinutes: pomodoroEnabledSetting ? pomodoroWorkMinutes : undefined,
+      pomodoroBreakMinutes: pomodoroEnabledSetting ? pomodoroBreakMinutes : undefined,
+      pomodoroCurrentCycle: pomodoroEnabledSetting ? 1 : undefined,
+      pomodoroCompletedCycles: pomodoroEnabledSetting ? 0 : undefined,
+      pomodoroSessionStartedAt: pomodoroEnabledSetting ? now : undefined,
       category: args.category,
     });
 
@@ -109,7 +165,7 @@ export const start = mutation({
       console.log(`❌ No interrupt scheduled - interruptEnabled: ${interruptEnabled}`);
     }
 
-    if (pomodoroEnabled && pomodoroTransitionAt) {
+    if (pomodoroEnabledSetting && pomodoroTransitionAt) {
       await ctx.scheduler.runAt(pomodoroTransitionAt, api.timer.handlePomodoroTransition, {
         timerId,
       });
@@ -119,6 +175,7 @@ export const start = mutation({
     await ctx.db.insert("timeEntries", {
       organizationId,
       userId,
+      ownerId: isPersonal ? userId : undefined,
       projectId: args.projectId,
       startedAt: now,
       source: "timer",
@@ -139,11 +196,19 @@ export const stop = mutation({
     sourceOverride: v.optional(v.union(v.literal("manual"), v.literal("timer"), v.literal("autoStop"), v.literal("overrun"), v.literal("pomodoroBreak"))),
   },
   handler: async (ctx, args) => {
-    const membership = await ensureMembership(ctx);
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
+
+    // Try to get membership for team workspace, but allow personal workspace too
+    const membership = await maybeMembership(ctx);
+    const organizationId = membership?.organizationId;
+
     return await stopInternal(
       ctx,
-      membership.organizationId,
-      membership.userId,
+      organizationId,
+      userId,
       args.sourceOverride || "timer"
     );
   },
@@ -151,16 +216,11 @@ export const stop = mutation({
 
 async function stopInternal(
   ctx: MutationCtx,
-  organizationId: Id<"organizations">,
+  organizationId: Id<"organizations"> | undefined,
   userId: Id<"users">,
   source: "manual" | "timer" | "autoStop" | "overrun" | "pomodoroBreak"
 ) {
-  const timer = await ctx.db
-    .query("runningTimers")
-    .withIndex("byOrgUser", (q) =>
-      q.eq("organizationId", organizationId).eq("userId", userId)
-    )
-    .unique();
+  const timer = await getRunningTimerForUser(ctx, userId, organizationId);
 
   if (!timer) {
     return { success: false, message: "No running timer" };
@@ -168,16 +228,29 @@ async function stopInternal(
 
   const now = Date.now();
 
-  // Find the active time entry
+  // Find the active time entry - need to handle both personal and team workspaces
   const activeEntry = await ctx.db
     .query("timeEntries")
     .withIndex("byProject", (q) => q.eq("projectId", timer.projectId))
-    .filter((q) => q.and(
-      q.eq(q.field("organizationId"), organizationId),
-      q.eq(q.field("userId"), userId),
-      q.eq(q.field("stoppedAt"), undefined),
-      q.eq(q.field("isOverrun"), false)
-    ))
+    .filter((q) => {
+      if (organizationId) {
+        // Team workspace
+        return q.and(
+          q.eq(q.field("organizationId"), organizationId),
+          q.eq(q.field("userId"), userId),
+          q.eq(q.field("stoppedAt"), undefined),
+          q.eq(q.field("isOverrun"), false)
+        );
+      } else {
+        // Personal workspace
+        return q.and(
+          q.eq(q.field("userId"), userId),
+          q.eq(q.field("organizationId"), undefined),
+          q.eq(q.field("stoppedAt"), undefined),
+          q.eq(q.field("isOverrun"), false)
+        );
+      }
+    })
     .first();
 
   if (activeEntry) {
@@ -201,37 +274,41 @@ async function stopInternal(
 export const heartbeat = mutation({
   args: {},
   handler: async (ctx) => {
-    const membership = await ensureMembership(ctx);
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
 
-    const timer = await ctx.db
-      .query("runningTimers")
-      .withIndex("byOrgUser", (q) =>
-        q.eq("organizationId", membership.organizationId).eq("userId", membership.userId)
-      )
-      .unique();
+    // Try to get membership for team workspace, but allow personal workspace too
+    const membership = await maybeMembership(ctx);
+    const organizationId = membership?.organizationId;
 
-  if (timer) {
-    const now = Date.now();
-    await ctx.db.patch(timer._id, {
-      lastHeartbeatAt: now,
-    });
+    const timer = await getRunningTimerForUser(ctx, userId, organizationId);
 
-    await maybeSendBudgetAlerts(ctx, timer);
-  }
+    if (timer) {
+      const now = Date.now();
+      await ctx.db.patch(timer._id, {
+        lastHeartbeatAt: now,
+      });
+
+      await maybeSendBudgetAlerts(ctx, timer);
+    }
   },
 });
 
 export const requestInterrupt = mutation({
   args: {},
   handler: async (ctx) => {
-    const membership = await ensureMembership(ctx);
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
 
-    const timer = await ctx.db
-      .query("runningTimers")
-      .withIndex("byOrgUser", (q) =>
-        q.eq("organizationId", membership.organizationId).eq("userId", membership.userId)
-      )
-      .unique();
+    // Try to get membership for team workspace, but allow personal workspace too
+    const membership = await maybeMembership(ctx);
+    const organizationId = membership?.organizationId;
+
+    const timer = await getRunningTimerForUser(ctx, userId, organizationId);
 
     if (!timer) {
       return { shouldShowInterrupt: false };
@@ -244,8 +321,8 @@ export const requestInterrupt = mutation({
 
     // Schedule auto-stop after 60 seconds
     await ctx.scheduler.runAfter(60000, internal.timer.autoStopForMissedAck, {
-      organizationId: membership.organizationId,
-      userId: membership.userId,
+      organizationId: organizationId,
+      userId: userId,
     });
 
     return { shouldShowInterrupt: true };
@@ -257,15 +334,16 @@ export const ackInterrupt = mutation({
     continue: v.boolean(),
   },
   handler: async (ctx, args) => {
-    const membership = await ensureMembership(ctx);
-    const { organizationId, userId } = membership;
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
 
-    const timer = await ctx.db
-      .query("runningTimers")
-      .withIndex("byOrgUser", (q) =>
-        q.eq("organizationId", organizationId).eq("userId", userId)
-      )
-      .unique();
+    // Try to get membership for team workspace, but allow personal workspace too
+    const membership = await maybeMembership(ctx);
+    const organizationId = membership?.organizationId;
+
+    const timer = await getRunningTimerForUser(ctx, userId, organizationId);
 
     if (!timer || !timer.awaitingInterruptAck) {
       return { success: false, action: "already_acked", nextInterruptAt: null };
@@ -391,22 +469,17 @@ export const ackInterrupt = mutation({
 
 export const autoStopForMissedAck = internalMutation({
   args: {
-    organizationId: v.id("organizations"),
+    organizationId: v.optional(v.id("organizations")),
     userId: v.id("users"),
   },
   handler: async (ctx, args) => {
-    const timer = await ctx.db
-      .query("runningTimers")
-      .withIndex("byOrgUser", (q) =>
-        q.eq("organizationId", args.organizationId).eq("userId", args.userId)
-      )
-      .unique();
+    const timer = await getRunningTimerForUser(ctx, args.userId, args.organizationId);
 
     if (!timer || !timer.awaitingInterruptAck || !timer.interruptShownAt) {
       return;
     }
 
-    if (!timer.organizationId || !timer.userId) {
+    if (!timer.userId) {
       return;
     }
 
@@ -453,9 +526,11 @@ export const processPomodoroTransition = internalMutation({
       return;
     }
 
-    if (!timer.organizationId || !timer.userId) {
+    if (!timer.userId) {
       return;
     }
+
+    const organizationId = timer.organizationId;
 
     const project = await ctx.db.get(timer.projectId);
     const client = project?.clientId ? await ctx.db.get(project.clientId) : null;
@@ -501,12 +576,25 @@ export const processPomodoroTransition = internalMutation({
       const activeEntry = await ctx.db
         .query("timeEntries")
         .withIndex("byProject", (q) => q.eq("projectId", timer.projectId))
-        .filter((q) => q.and(
-          q.eq(q.field("organizationId"), timer.organizationId),
-          q.eq(q.field("userId"), timer.userId),
-          q.eq(q.field("stoppedAt"), undefined),
-          q.eq(q.field("isOverrun"), false)
-        ))
+        .filter((q) => {
+          if (organizationId) {
+            // Team workspace
+            return q.and(
+              q.eq(q.field("organizationId"), organizationId),
+              q.eq(q.field("userId"), timer.userId),
+              q.eq(q.field("stoppedAt"), undefined),
+              q.eq(q.field("isOverrun"), false)
+            );
+          } else {
+            // Personal workspace
+            return q.and(
+              q.eq(q.field("userId"), timer.userId),
+              q.eq(q.field("organizationId"), undefined),
+              q.eq(q.field("stoppedAt"), undefined),
+              q.eq(q.field("isOverrun"), false)
+            );
+          }
+        })
         .first();
 
       if (activeEntry) {
@@ -575,12 +663,33 @@ export const createManualEntry = mutation({
     category: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const membership = await ensureMembership(ctx);
-    const { organizationId, userId } = membership;
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
 
     const project = await ctx.db.get(args.projectId);
-    if (!project || project.organizationId !== organizationId) {
+    if (!project) {
       throw new Error("Project not found");
+    }
+
+    // Detect workspace type
+    const isPersonal = isPersonalProject(project);
+    let organizationId: Id<"organizations"> | undefined;
+
+    if (isPersonal) {
+      // Personal workspace - verify user owns the project
+      if (project.ownerId !== userId) {
+        throw new Error("Personal project not found");
+      }
+      organizationId = undefined;
+    } else {
+      // Team workspace - verify organization membership
+      const membership = await ensureMembership(ctx);
+      if (project.organizationId !== membership.organizationId) {
+        throw new Error("Project not found");
+      }
+      organizationId = membership.organizationId;
     }
 
     // Validate time range
@@ -594,6 +703,7 @@ export const createManualEntry = mutation({
     const entryId = await ctx.db.insert("timeEntries", {
       organizationId,
       userId,
+      ownerId: isPersonal ? userId : undefined,
       projectId: args.projectId,
       startedAt: args.startedAt,
       stoppedAt: args.stoppedAt,
@@ -612,13 +722,22 @@ const BUDGET_WARNING_RESEND_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
 const BUDGET_OVERRUN_RESEND_INTERVAL_MS = 60 * 60 * 1000; // 60 minutes
 
 async function maybeSendBudgetAlerts(ctx: MutationCtx, timer: Doc<"runningTimers">) {
-  if (!timer.organizationId || !timer.userId) {
+  if (!timer.userId) {
     return;
   }
 
   const project = await ctx.db.get(timer.projectId);
-  if (!project || project.organizationId !== timer.organizationId) {
+  if (!project) {
     return;
+  }
+
+  // Verify workspace type matches
+  const isPersonal = isPersonalProject(project);
+  if (isPersonal && timer.organizationId !== undefined) {
+    return; // Mismatch: personal project but team timer
+  }
+  if (!isPersonal && project.organizationId !== timer.organizationId) {
+    return; // Mismatch: team project but wrong organization
   }
 
   const userSettings = await ctx.db

@@ -80,6 +80,8 @@ function AuthenticatedApp() {
   const [currentPage, setCurrentPage] = useState<AppPage>("dashboard");
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [pushSwitchRequest, setPushSwitchRequest] = useState<any | null>(null);
+  const [currentWorkspace, setCurrentWorkspace] = useState<"personal" | "team">("personal");
+  const [clientFilter, setClientFilter] = useState<string | null>(null);
 
   const loggedInUser = useQuery(api.auth.loggedInUser);
   const { signOut } = useAuthActions();
@@ -198,8 +200,12 @@ function AuthenticatedApp() {
               />
               <h2 className="text-lg sm:text-xl font-semibold text-[#F85E00]">iTimedIT</h2>
             </div>
-            <div className="hidden sm:block">
-              <OrganizationSwitcher />
+            <div className="hidden sm:flex sm:items-center sm:gap-4">
+              <WorkspaceIndicator
+                currentWorkspace={currentWorkspace}
+                onWorkspaceChange={setCurrentWorkspace}
+              />
+              {currentWorkspace === "team" && <OrganizationSwitcher />}
             </div>
             {/* Desktop Navigation */}
             <nav className="hidden md:flex gap-4">
@@ -228,9 +234,20 @@ function AuthenticatedApp() {
               <ModernDashboard
                 pushSwitchRequest={pushSwitchRequest}
                 onPushSwitchHandled={() => setPushSwitchRequest(null)}
+                workspaceType={currentWorkspace}
+                onWorkspaceChange={setCurrentWorkspace}
               />
             )}
-            {currentPage === "clients" && <ClientsPage />}
+            {currentPage === "clients" && (
+              <ClientsPage
+                workspaceType={currentWorkspace}
+                onWorkspaceChange={setCurrentWorkspace}
+                onViewProjects={(clientId) => {
+                  setClientFilter(clientId);
+                  setCurrentPage("projects");
+                }}
+              />
+            )}
             {currentPage === "projects" && (
               selectedProjectId ? (
                 <ProjectDetailPage
@@ -241,6 +258,10 @@ function AuthenticatedApp() {
                 />
               ) : (
                 <ProjectsPage
+                  workspaceType={currentWorkspace}
+                  onWorkspaceChange={setCurrentWorkspace}
+                  clientFilter={clientFilter}
+                  onClearClientFilter={() => setClientFilter(null)}
                   onProjectSelect={(projectId: string) => {
                     setSelectedProjectId(projectId);
                   }}
@@ -714,5 +735,105 @@ function SettingsIcon() {
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
     </svg>
+  );
+}
+
+function ProfileIcon() {
+  return (
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-full h-full">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+    </svg>
+  );
+}
+
+function WorkspaceIndicator({
+  currentWorkspace,
+  onWorkspaceChange,
+}: {
+  currentWorkspace: "personal" | "team";
+  onWorkspaceChange: (workspace: "personal" | "team") => void;
+}) {
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+
+    if (showDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showDropdown]);
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <button
+        onClick={() => setShowDropdown(!showDropdown)}
+        className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+      >
+        <div className={`w-2 h-2 rounded-full ${
+          currentWorkspace === "personal" ? "bg-blue-500" : "bg-purple-500"
+        }`} />
+        <span>{currentWorkspace === "personal" ? "Personal Workspace" : "Team Workspace"}</span>
+        <svg
+          className={`w-4 h-4 transition-transform ${showDropdown ? 'rotate-180' : ''}`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {showDropdown && (
+        <div className="absolute top-full left-0 mt-2 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50">
+          <button
+            onClick={() => {
+              onWorkspaceChange("personal");
+              setShowDropdown(false);
+            }}
+            className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
+              currentWorkspace === "personal"
+                ? "text-blue-600 dark:text-blue-400 font-medium"
+                : "text-gray-700 dark:text-gray-200"
+            }`}
+          >
+            <div className="w-2 h-2 rounded-full bg-blue-500" />
+            <span>Personal Workspace</span>
+            {currentWorkspace === "personal" && (
+              <svg className="w-4 h-4 ml-auto" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+              </svg>
+            )}
+          </button>
+          <button
+            onClick={() => {
+              onWorkspaceChange("team");
+              setShowDropdown(false);
+            }}
+            className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors rounded-b-lg ${
+              currentWorkspace === "team"
+                ? "text-purple-600 dark:text-purple-400 font-medium"
+                : "text-gray-700 dark:text-gray-200"
+            }`}
+          >
+            <div className="w-2 h-2 rounded-full bg-purple-500" />
+            <span>Team Workspace</span>
+            {currentWorkspace === "team" && (
+              <svg className="w-4 h-4 ml-auto" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+              </svg>
+            )}
+          </button>
+        </div>
+      )}
+    </div>
   );
 }

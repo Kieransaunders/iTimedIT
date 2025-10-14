@@ -32,6 +32,7 @@ interface EnhancedClientTableProps {
   onUnarchiveClient?: (clientId: string) => void;
   onCreateProject: (clientId: string) => void;
   onClientSelect?: (clientId: string) => void;
+  onViewProjects?: (clientId: string) => void;
 }
 
 export function EnhancedClientTable({
@@ -42,7 +43,8 @@ export function EnhancedClientTable({
   onArchiveClient,
   onUnarchiveClient,
   onCreateProject,
-  onClientSelect
+  onClientSelect,
+  onViewProjects
 }: EnhancedClientTableProps) {
   const { formatCurrency } = useCurrency();
   const formatHours = (seconds: number) => {
@@ -218,7 +220,12 @@ export function EnhancedClientTable({
                 </td>
                 
                 <td className="px-6 py-4">
-                  <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => onViewProjects?.(client._id)}
+                    className={`flex items-center gap-2 ${onViewProjects ? 'hover:bg-gray-100 dark:hover:bg-gray-700 px-2 py-1 rounded transition-colors cursor-pointer' : ''}`}
+                    disabled={!onViewProjects}
+                    title={onViewProjects ? "View projects for this client" : undefined}
+                  >
                     <span className="text-sm font-medium text-blue-600 dark:text-blue-400">
                       {client.activeProjectsCount}
                     </span>
@@ -226,7 +233,7 @@ export function EnhancedClientTable({
                     <span className="text-sm text-gray-500 dark:text-gray-400">
                       {client.completedProjectsCount}
                     </span>
-                  </div>
+                  </button>
                 </td>
                 
                 <td className="px-6 py-4">
