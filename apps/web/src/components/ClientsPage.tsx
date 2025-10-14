@@ -26,6 +26,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "./ui/popover";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "./ui/dialog";
+import { Input } from "./ui/input";
 import { cn } from "../lib/utils";
 
 // Default color palette for clients
@@ -83,7 +90,17 @@ interface SortConfig {
   direction: 'asc' | 'desc';
 }
 
-export function ClientsPage() {
+interface ClientsPageProps {
+  workspaceType?: WorkspaceType;
+  onWorkspaceChange?: (workspace: WorkspaceType) => void;
+  onViewProjects?: (clientId: string) => void;
+}
+
+export function ClientsPage({
+  workspaceType = "team",
+  onWorkspaceChange,
+  onViewProjects,
+}: ClientsPageProps) {
   const [showForm, setShowForm] = useState(false);
   const [editingClient, setEditingClient] = useState<any>(null);
   const [selectedClientId, setSelectedClientId] = useState<Id<"clients"> | null>(null);
@@ -94,11 +111,20 @@ export function ClientsPage() {
   const [country, setCountry] = useState("");
   const [postCode, setPostCode] = useState("");
   const [color, setColor] = useState("#8b5cf6");
-  const [currentWorkspace, setCurrentWorkspace] = useState<WorkspaceType>("team");
+  const currentWorkspace = workspaceType; // Use prop instead of internal state
   const [viewMode, setViewMode] = useState<ViewMode>('table');
   const [filters, setFilters] = useState(defaultFilters);
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: null, direction: 'asc' });
   const [countryOpen, setCountryOpen] = useState(false);
+
+  // Project creation modal state
+  const [showProjectModal, setShowProjectModal] = useState(false);
+  const [projectClientId, setProjectClientId] = useState<Id<"clients"> | null>(null);
+  const [projectName, setProjectName] = useState("");
+  const [projectHourlyRate, setProjectHourlyRate] = useState(100);
+  const [projectBudgetType, setProjectBudgetType] = useState<"hours" | "amount">("hours");
+  const [projectBudgetHours, setProjectBudgetHours] = useState<number | undefined>(undefined);
+  const [projectBudgetAmount, setProjectBudgetAmount] = useState<number | undefined>(undefined);
 
   const { isReady } = useOrganization();
 
@@ -116,9 +142,14 @@ export function ClientsPage() {
       : api.clients.create
   );
   const updateClient = useMutation(
-    currentWorkspace === "personal" 
+    currentWorkspace === "personal"
       ? api.personalClients.updatePersonal
       : api.clients.update
+  );
+  const createProject = useMutation(
+    currentWorkspace === "personal"
+      ? api.personalProjects.createPersonal
+      : api.projects.create
   );
 
   // Filter and sort clients
@@ -183,8 +214,40 @@ export function ClientsPage() {
   };
 
   const handleCreateProject = (clientId: string) => {
-    // TODO: Navigate to project creation with client pre-selected
-    console.log('Create project for client:', clientId);
+    setProjectClientId(clientId as Id<"clients">);
+    setShowProjectModal(true);
+  };
+
+  const handleProjectSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!projectClientId) return;
+
+    try {
+      await createProject({
+        name: projectName,
+        clientId: projectClientId,
+        hourlyRate: projectHourlyRate,
+        budgetType: projectBudgetType,
+        budgetHours: projectBudgetType === "hours" ? projectBudgetHours : undefined,
+        budgetAmount: projectBudgetType === "amount" ? projectBudgetAmount : undefined,
+        ...(currentWorkspace === "team" && { workspaceType: "team" })
+      });
+
+      // Reset form
+      setProjectName("");
+      setProjectHourlyRate(100);
+      setProjectBudgetType("hours");
+      setProjectBudgetHours(undefined);
+      setProjectBudgetAmount(undefined);
+      setShowProjectModal(false);
+      setProjectClientId(null);
+    } catch (error) {
+      notifyMutationError(error, {
+        fallbackMessage: "Unable to create project. Please try again.",
+        unauthorizedMessage: "You need owner or admin access to create projects.",
+      });
+    }
   };
 
   const handleClientSelect = (clientId: string) => {
@@ -299,11 +362,17 @@ export function ClientsPage() {
 
   return (
     <div className="max-w-7xl mx-auto">
-      <WorkspaceHeader 
-        currentWorkspace={currentWorkspace}
-        onWorkspaceChange={setCurrentWorkspace}
-      />
-      
+      {/* Workspace Header - Only show if onWorkspaceChange prop is not provided (for backwards compatibility) */}
+      {!onWorkspaceChange && (
+        <WorkspaceHeader
+          currentWorkspace={currentWorkspace}
+          onWorkspaceChange={(workspace) => {
+            // This shouldn't happen since we're hiding the switcher
+            console.warn("Workspace change requested but no handler provided");
+          }}
+        />
+      )}
+
       {/* Header with controls */}
       <div className="flex flex-col gap-4 mb-6">
         <div className="flex flex-col sm:flex-row sm:items-center gap-3">
@@ -568,6 +637,7 @@ export function ClientsPage() {
           onUnarchiveClient={handleUnarchive}
           onCreateProject={handleCreateProject}
           onClientSelect={handleClientSelect}
+          onViewProjects={onViewProjects}
         />
       ) : (
         <ClientMetricsCards
@@ -588,6 +658,123 @@ export function ClientsPage() {
           />
         </div>
       )}
+
+      {/* Project Creation Modal */}
+      <Dialog open={showProjectModal} onOpenChange={setShowProjectModal}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Create New Project</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleProjectSubmit} className="space-y-4 py-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Project Name *
+              </label>
+              <Input
+                value={projectName}
+                onChange={(e) => setProjectName(e.target.value)}
+                placeholder="Enter project name"
+                required
+                autoFocus
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Client
+              </label>
+              <Input
+                value={clients?.find(c => c._id === projectClientId)?.name || ""}
+                disabled
+                className="bg-gray-100 dark:bg-gray-800"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Hourly Rate *
+              </label>
+              <Input
+                type="number"
+                value={projectHourlyRate}
+                onChange={(e) => setProjectHourlyRate(Number(e.target.value))}
+                placeholder="100"
+                min="0"
+                step="0.01"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Budget Type
+              </label>
+              <select
+                value={projectBudgetType}
+                onChange={(e) => setProjectBudgetType(e.target.value as "hours" | "amount")}
+                className="w-full h-10 px-3 py-2 border border-input bg-background text-foreground rounded-md shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                <option value="hours">Hours</option>
+                <option value="amount">Amount</option>
+              </select>
+            </div>
+
+            {projectBudgetType === "hours" && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Budget Hours
+                </label>
+                <Input
+                  type="number"
+                  value={projectBudgetHours || ""}
+                  onChange={(e) => setProjectBudgetHours(e.target.value ? Number(e.target.value) : undefined)}
+                  placeholder="40"
+                  min="0"
+                  step="0.5"
+                />
+              </div>
+            )}
+
+            {projectBudgetType === "amount" && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Budget Amount
+                </label>
+                <Input
+                  type="number"
+                  value={projectBudgetAmount || ""}
+                  onChange={(e) => setProjectBudgetAmount(e.target.value ? Number(e.target.value) : undefined)}
+                  placeholder="4000"
+                  min="0"
+                  step="0.01"
+                />
+              </div>
+            )}
+
+            <div className="flex gap-2 pt-4">
+              <Button type="submit" className="flex-1">
+                Create Project
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setShowProjectModal(false);
+                  setProjectName("");
+                  setProjectHourlyRate(100);
+                  setProjectBudgetType("hours");
+                  setProjectBudgetHours(undefined);
+                  setProjectBudgetAmount(undefined);
+                  setProjectClientId(null);
+                }}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

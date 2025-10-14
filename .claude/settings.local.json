@@ -13,7 +13,14 @@
       "Bash(cat:*)",
       "Bash(test:*)",
       "Bash(readlink:*)",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "Bash(command -v:*)",
+      "Bash(netlify:*)",
+      "Bash(git push:*)",
+      "Bash(npx convex dev:*)",
+      "Bash(git add:*)",
+      "Bash(git cherry-pick:*)",
+      "Bash(git rm:*)"
     ],
     "deny": [],
     "ask": []

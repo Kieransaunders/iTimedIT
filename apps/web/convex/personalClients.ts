@@ -18,8 +18,10 @@ export const listPersonal = query({
       .filter((q) => q.eq(q.field("archived"), false))
       .collect();
 
-    const clientsWithTotals = await Promise.all(
+    // Calculate comprehensive analytics for each client
+    const clientsWithAnalytics = await Promise.all(
       clients.map(async (client) => {
+        // Get all projects for this client
         const projects = await ctx.db
           .query("projects")
           .withIndex("byClient", (q) => q.eq("clientId", client._id))
@@ -30,34 +32,140 @@ export const listPersonal = query({
           ))
           .collect();
 
+        const archivedProjects = await ctx.db
+          .query("projects")
+          .withIndex("byClient", (q) => q.eq("clientId", client._id))
+          .filter((q) => q.and(
+            q.eq(q.field("archived"), true),
+            q.eq(q.field("workspaceType"), "personal"),
+            q.eq(q.field("ownerId"), userId)
+          ))
+          .collect();
+
+        // Calculate comprehensive stats
         let totalAmount = 0;
-        
+        let totalSeconds = 0;
+        let lastActivity = 0;
+        const monthlyData: { [key: string]: { amount: number; seconds: number } } = {};
+        const categoryData: { [key: string]: { amount: number; seconds: number } } = {};
+        let completedProjectsCount = 0;
+        let totalBudgetHours = 0;
+        let totalBudgetAmount = 0;
+
         for (const project of projects) {
+          // Track budget allocations
+          if (project.budgetType === "hours" && project.budgetHours) {
+            totalBudgetHours += project.budgetHours;
+          }
+          if (project.budgetType === "amount" && project.budgetAmount) {
+            totalBudgetAmount += project.budgetAmount;
+          }
+
+          // Get all completed time entries for this project
           const timeEntries = await ctx.db
             .query("timeEntries")
             .withIndex("byProject", (q) => q.eq("projectId", project._id))
             .filter((q) => q.neq(q.field("stoppedAt"), undefined))
             .collect();
 
-          const projectTotal = timeEntries.reduce((sum, entry) => {
+          // Process each time entry
+          for (const entry of timeEntries) {
             if (entry.seconds && entry.stoppedAt) {
               const hours = entry.seconds / 3600;
-              return sum + (hours * project.hourlyRate);
-            }
-            return sum;
-          }, 0);
+              const amount = hours * project.hourlyRate;
 
-          totalAmount += projectTotal;
+              totalAmount += amount;
+              totalSeconds += entry.seconds;
+              lastActivity = Math.max(lastActivity, entry.stoppedAt);
+
+              // Monthly breakdown
+              const monthKey = new Date(entry.stoppedAt).toISOString().substring(0, 7); // YYYY-MM
+              if (!monthlyData[monthKey]) {
+                monthlyData[monthKey] = { amount: 0, seconds: 0 };
+              }
+              monthlyData[monthKey].amount += amount;
+              monthlyData[monthKey].seconds += entry.seconds;
+
+              // Category breakdown
+              const category = entry.category || 'Uncategorized';
+              if (!categoryData[category]) {
+                categoryData[category] = { amount: 0, seconds: 0 };
+              }
+              categoryData[category].amount += amount;
+              categoryData[category].seconds += entry.seconds;
+            }
+          }
+
+          // Check if project is completed (has time entries and is not active)
+          if (timeEntries.length > 0) {
+            completedProjectsCount++;
+          }
         }
+
+        // Calculate health metrics
+        const daysSinceLastActivity = lastActivity ? (Date.now() - lastActivity) / (1000 * 60 * 60 * 24) : Infinity;
+        const averageProjectValue = projects.length > 0 ? totalAmount / projects.length : 0;
+        const utilizationRate = totalBudgetHours > 0 ? (totalSeconds / 3600) / totalBudgetHours : 1;
+
+        // Determine client status
+        let status: 'active' | 'inactive' | 'at-risk' = 'inactive';
+        if (daysSinceLastActivity < 7) status = 'active';
+        else if (daysSinceLastActivity < 30) status = 'at-risk';
 
         return {
           ...client,
+          // Basic totals
           totalAmountSpent: totalAmount,
+          totalTimeSpent: totalSeconds,
+
+          // Project metrics
+          activeProjectsCount: projects.length,
+          completedProjectsCount,
+          archivedProjectsCount: archivedProjects.length,
+          totalProjectsCount: projects.length + archivedProjects.length,
+
+          // Activity metrics
+          lastActivityAt: lastActivity || null,
+          daysSinceLastActivity: lastActivity ? daysSinceLastActivity : null,
+          status,
+
+          // Performance metrics
+          averageProjectValue,
+          utilizationRate,
+          averageHourlyEarning: totalSeconds > 0 ? totalAmount / (totalSeconds / 3600) : 0,
+
+          // Trend data
+          monthlyBreakdown: Object.entries(monthlyData)
+            .sort(([a], [b]) => a.localeCompare(b))
+            .slice(-12) // Last 12 months
+            .map(([month, data]) => ({
+              month,
+              amount: data.amount,
+              hours: data.seconds / 3600
+            })),
+
+          // Category breakdown
+          categoryBreakdown: Object.entries(categoryData)
+            .map(([category, data]) => ({
+              category,
+              amount: data.amount,
+              hours: data.seconds / 3600,
+              percentage: totalAmount > 0 ? (data.amount / totalAmount) * 100 : 0
+            }))
+            .sort((a, b) => b.amount - a.amount),
+
+          // Health score (0-100)
+          healthScore: Math.min(100, Math.max(0,
+            (daysSinceLastActivity < 7 ? 40 : 0) +
+            (projects.length > 0 ? 30 : 0) +
+            (totalAmount > 1000 ? 20 : totalAmount > 100 ? 10 : 0) +
+            (utilizationRate > 0.8 ? 10 : utilizationRate > 0.5 ? 5 : 0)
+          ))
         };
       })
     );
 
-    return clientsWithTotals;
+    return clientsWithAnalytics;
   },
 });
 
