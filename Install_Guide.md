@@ -28,6 +28,7 @@ Check Task.MD for any tasks to work on or test the recent ones developed.
 
 
 To deploy to:http://itimedit.com/
+   Make sure you are in the /apps/web folder
 npx convex deploy
 
 Also npx convex dev for syncing the database

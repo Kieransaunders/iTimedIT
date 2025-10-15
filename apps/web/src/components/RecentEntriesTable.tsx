@@ -12,7 +12,7 @@ interface RecentEntriesTableProps {
   pageSize?: number;
   emptyStateMessage?: string;
   filters?: RecentEntriesFilters;
-  workspaceType?: "personal" | "team";
+  workspaceType?: "personal" | "work";
 }
 
 export interface RecentEntriesFilters {
@@ -31,7 +31,7 @@ export function RecentEntriesTable({
   pageSize = 20,
   emptyStateMessage = "No time entries yet. Start a timer to begin tracking!",
   filters,
-  workspaceType = "team",
+  workspaceType = "work",
 }: RecentEntriesTableProps) {
   const [editingEntry, setEditingEntry] = useState<string | null>(null);
   const [editNote, setEditNote] = useState("");
@@ -160,7 +160,7 @@ export function RecentEntriesTable({
     });
   }, [entries, filters]);
 
-  if ((workspaceType === "team" && !isReady) || !entries) {
+  if ((workspaceType === "work" && !isReady) || !entries) {
     return <div className="animate-pulse bg-gray-200 dark:bg-gray-700 h-64 rounded-lg"></div>;
   }
 

@@ -20,7 +20,7 @@ interface ProjectsPageProps {
 export function ProjectsPage({
   onProjectSelect,
   onStartTimer,
-  workspaceType = "team",
+  workspaceType = "work",
   onWorkspaceChange,
   clientFilter,
   onClearClientFilter,
@@ -39,19 +39,19 @@ export function ProjectsPage({
   const { isReady } = useOrganization();
 
   const clients = useQuery(
-    currentWorkspace === "personal" 
+    currentWorkspace === "personal"
       ? api.personalClients.listPersonal
       : api.clients.list,
-    isReady 
-      ? (currentWorkspace === "personal" ? {} : { workspaceType: "team" })
+    isReady
+      ? (currentWorkspace === "personal" ? {} : { workspaceType: "work" })
       : "skip"
   );
   const projects = useQuery(
-    currentWorkspace === "personal" 
+    currentWorkspace === "personal"
       ? api.personalProjects.listPersonal
       : api.projects.listAll,
-    isReady 
-      ? (currentWorkspace === "personal" ? { includeArchived: showArchived } : { workspaceType: "team", includeArchived: showArchived })
+    isReady
+      ? (currentWorkspace === "personal" ? { includeArchived: showArchived } : { workspaceType: "work", includeArchived: showArchived })
       : "skip"
   );
   const createProject = useMutation(

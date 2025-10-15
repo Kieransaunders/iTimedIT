@@ -122,53 +122,142 @@ export async function ensureMembership(
     throw new Error("Not authenticated");
   }
 
-  // Check for existing membership
-  const existing = await ctx.db
+  // Check for existing memberships
+  const existingMemberships = await ctx.db
     .query("memberships")
     .withIndex("byUser", (q) => q.eq("userId", userId))
     .filter((q) => q.eq(q.field("inactiveAt"), undefined))
-    .first();
+    .collect();
 
-  if (existing) {
-    await ensureActiveOrganizationSetting(ctx, userId, existing.organizationId);
+  if (existingMemberships.length > 0) {
+    // User has existing memberships (invited or returning user)
+    // Ensure they have a Personal workspace
+    await ensurePersonalWorkspaceExists(ctx, userId);
+
+    // Return their active membership based on userSettings
+    const settings = await ctx.db
+      .query("userSettings")
+      .withIndex("byUser", (q) => q.eq("userId", userId))
+      .unique();
+
+    let membership = existingMemberships[0];
+    if (settings?.organizationId) {
+      const match = existingMemberships.find((m) => m.organizationId === settings.organizationId);
+      if (match) {
+        membership = match;
+      }
+    }
+
+    await ensureActiveOrganizationSetting(ctx, userId, membership.organizationId);
     return {
-      membershipId: existing._id,
-      organizationId: existing.organizationId,
+      membershipId: membership._id,
+      organizationId: membership.organizationId,
       userId,
-      role: existing.role,
+      role: membership.role,
     };
   }
 
-  // Auto-create default workspace for new users (including anonymous)
-  // Use user's name to create a personalized workspace name
+  // New user with no memberships - organic signup
+  // Create both Personal and Work workspaces
   const user = await ctx.db.get(userId);
   const userName = user?.name || user?.email?.split('@')[0] || 'My';
-  const workspaceName = `${userName}'s Workspace`;
-
   const now = Date.now();
-  const organizationId = await ctx.db.insert("organizations", {
-    name: workspaceName,
+
+  // Create Personal workspace
+  const personalOrgId = await ctx.db.insert("organizations", {
+    name: `${userName}'s Personal`,
     createdBy: userId,
     createdAt: now,
-    isPersonalWorkspace: true, // Keep flag for backward compatibility
+    isPersonalWorkspace: true, // Backward compatibility
+    workspaceType: "personal",
   });
 
-  const membershipId = await ctx.db.insert("memberships", {
-    organizationId,
+  await ctx.db.insert("memberships", {
+    organizationId: personalOrgId,
     userId,
     role: "owner",
     invitedBy: undefined,
     createdAt: now,
   });
 
-  await ensureActiveOrganizationSetting(ctx, userId, organizationId);
+  // Create default Work workspace
+  const workOrgId = await ctx.db.insert("organizations", {
+    name: "Work",
+    createdBy: userId,
+    createdAt: now,
+    isPersonalWorkspace: false, // Backward compatibility
+    workspaceType: "work",
+  });
+
+  const workMembershipId = await ctx.db.insert("memberships", {
+    organizationId: workOrgId,
+    userId,
+    role: "owner",
+    invitedBy: undefined,
+    createdAt: now,
+  });
+
+  // Set Work workspace as active by default
+  await ensureActiveOrganizationSetting(ctx, userId, workOrgId);
 
   return {
-    membershipId,
-    organizationId,
+    membershipId: workMembershipId,
+    organizationId: workOrgId,
     userId,
     role: "owner",
   };
+}
+
+// Helper function to ensure user has a Personal workspace
+async function ensurePersonalWorkspaceExists(
+  ctx: MutationCtx,
+  userId: Id<"users">
+): Promise<Id<"organizations">> {
+  // Check if user already has a Personal workspace
+  const personalOrg = await ctx.db
+    .query("organizations")
+    .withIndex("byUserType", (q) => q.eq("createdBy", userId).eq("workspaceType", "personal"))
+    .first();
+
+  if (personalOrg) {
+    return personalOrg._id;
+  }
+
+  // Also check using legacy flag for backward compatibility
+  const legacyPersonalOrg = await ctx.db
+    .query("organizations")
+    .withIndex("byCreator", (q) => q.eq("createdBy", userId))
+    .filter((q) => q.eq(q.field("isPersonalWorkspace"), true))
+    .first();
+
+  if (legacyPersonalOrg) {
+    // Update it with new workspaceType field
+    await ctx.db.patch(legacyPersonalOrg._id, { workspaceType: "personal" });
+    return legacyPersonalOrg._id;
+  }
+
+  // Create Personal workspace
+  const user = await ctx.db.get(userId);
+  const userName = user?.name || user?.email?.split('@')[0] || 'My';
+  const now = Date.now();
+
+  const personalOrgId = await ctx.db.insert("organizations", {
+    name: `${userName}'s Personal`,
+    createdBy: userId,
+    createdAt: now,
+    isPersonalWorkspace: true,
+    workspaceType: "personal",
+  });
+
+  await ctx.db.insert("memberships", {
+    organizationId: personalOrgId,
+    userId,
+    role: "owner",
+    invitedBy: undefined,
+    createdAt: now,
+  });
+
+  return personalOrgId;
 }
 
 export async function ensureActiveOrganizationSetting(

@@ -4,10 +4,10 @@ import { Id } from "../../convex/_generated/dataModel";
 
 interface ProjectSummaryGridProps {
   projectId: Id<"projects">;
-  workspaceType?: "personal" | "team";
+  workspaceType?: "personal" | "work";
 }
 
-export function ProjectSummaryGrid({ projectId, workspaceType = "team" }: ProjectSummaryGridProps) {
+export function ProjectSummaryGrid({ projectId, workspaceType = "work" }: ProjectSummaryGridProps) {
   const project = useQuery(
     workspaceType === "personal" ? api.personalProjects.getPersonal : api.projects.get,
     { id: projectId }

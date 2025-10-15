@@ -47,7 +47,7 @@ Unified commands - run scripts across all workspaces from root
    ```
 3. Log in to Convex and sync schema/data:
 
-   ```bash
+   Make sure you are in the /apps/web folder
    npx convex dev
    ```
 

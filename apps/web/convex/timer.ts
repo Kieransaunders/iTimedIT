@@ -10,14 +10,14 @@ function isPersonalProject(project: Doc<"projects"> | null): boolean {
   return project?.workspaceType === "personal" || project?.organizationId === undefined;
 }
 
-// Helper to get running timer for both personal and team workspaces
+// Helper to get running timer for both personal and work workspaces
 async function getRunningTimerForUser(
   ctx: { db: any },
   userId: Id<"users">,
   organizationId?: Id<"organizations">
 ): Promise<Doc<"runningTimers"> | null> {
   if (organizationId) {
-    // Team workspace - use byOrgUser index
+    // Work workspace - use byOrgUser index
     return await ctx.db
       .query("runningTimers")
       .withIndex("byOrgUser", (q: any) =>
@@ -37,7 +37,7 @@ async function getRunningTimerForUser(
 
 export const getRunningTimer = query({
   args: {
-    workspaceType: v.optional(v.union(v.literal("personal"), v.literal("team"))),
+    workspaceType: v.optional(v.union(v.literal("personal"), v.literal("work"))),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -52,7 +52,7 @@ export const getRunningTimer = query({
       // Force personal workspace (no organization)
       organizationId = undefined;
     } else {
-      // Default to team workspace if available
+      // Default to work workspace if available
       const membership = await maybeMembership(ctx);
       organizationId = membership?.organizationId;
     }
@@ -103,7 +103,7 @@ export const start = mutation({
       }
       organizationId = undefined;
     } else {
-      // Team workspace - verify organization membership
+      // Work workspace - verify organization membership
       const membership = await ensureMembership(ctx);
       if (project.organizationId !== membership.organizationId) {
         throw new Error("Project not found");
@@ -123,7 +123,7 @@ export const start = mutation({
     const pomodoroWorkMinutes = settings?.pomodoroWorkMinutes ?? 25;
     const pomodoroBreakMinutes = settings?.pomodoroBreakMinutes ?? 5;
 
-    // Stop ALL existing timers for this user (both personal and team workspaces)
+    // Stop ALL existing timers for this user (both personal and work workspaces)
     // This ensures only one timer runs globally
     const existingTimer = await getRunningTimerForUser(ctx, userId, organizationId);
     if (existingTimer) {
@@ -213,12 +213,12 @@ export const stop = mutation({
       throw new Error("Not authenticated");
     }
 
-    // Try to find any running timer for this user (team or personal workspace)
+    // Try to find any running timer for this user (work or personal workspace)
     const membership = await maybeMembership(ctx);
     let organizationId = membership?.organizationId;
     let timer = await getRunningTimerForUser(ctx, userId, organizationId);
 
-    // If no timer found in team workspace, try personal workspace
+    // If no timer found in work workspace, try personal workspace
     if (!timer && organizationId !== undefined) {
       timer = await getRunningTimerForUser(ctx, userId, undefined);
       if (timer) {
@@ -247,12 +247,12 @@ export const reset = mutation({
       throw new Error("Not authenticated");
     }
 
-    // Try to find any running timer for this user (team or personal workspace)
+    // Try to find any running timer for this user (work or personal workspace)
     const membership = await maybeMembership(ctx);
     let organizationId = membership?.organizationId;
     let timer = await getRunningTimerForUser(ctx, userId, organizationId);
 
-    // If no timer found in team workspace, try personal workspace
+    // If no timer found in work workspace, try personal workspace
     if (!timer && organizationId !== undefined) {
       timer = await getRunningTimerForUser(ctx, userId, undefined);
       if (timer) {
@@ -264,13 +264,13 @@ export const reset = mutation({
       return { success: false, message: "No running timer" };
     }
 
-    // Find the active time entry - need to handle both personal and team workspaces
+    // Find the active time entry - need to handle both personal and work workspaces
     const activeEntry = await ctx.db
       .query("timeEntries")
       .withIndex("byProject", (q) => q.eq("projectId", timer.projectId))
       .filter((q) => {
         if (organizationId) {
-          // Team workspace
+          // Work workspace
           return q.and(
             q.eq(q.field("organizationId"), organizationId),
             q.eq(q.field("userId"), userId),
@@ -315,13 +315,13 @@ async function stopInternal(
 
   const now = Date.now();
 
-  // Find the active time entry - need to handle both personal and team workspaces
+  // Find the active time entry - need to handle both personal and work workspaces
   const activeEntry = await ctx.db
     .query("timeEntries")
     .withIndex("byProject", (q) => q.eq("projectId", timer.projectId))
     .filter((q) => {
       if (organizationId) {
-        // Team workspace
+        // Work workspace
         return q.and(
           q.eq(q.field("organizationId"), organizationId),
           q.eq(q.field("userId"), userId),
@@ -366,12 +366,12 @@ export const heartbeat = mutation({
       throw new Error("Not authenticated");
     }
 
-    // Try to find any running timer for this user (team or personal workspace)
+    // Try to find any running timer for this user (work or personal workspace)
     const membership = await maybeMembership(ctx);
     let organizationId = membership?.organizationId;
     let timer = await getRunningTimerForUser(ctx, userId, organizationId);
 
-    // If no timer found in team workspace, try personal workspace
+    // If no timer found in work workspace, try personal workspace
     if (!timer && organizationId !== undefined) {
       timer = await getRunningTimerForUser(ctx, userId, undefined);
       if (timer) {
@@ -398,12 +398,12 @@ export const requestInterrupt = mutation({
       throw new Error("Not authenticated");
     }
 
-    // Try to find any running timer for this user (team or personal workspace)
+    // Try to find any running timer for this user (work or personal workspace)
     const membership = await maybeMembership(ctx);
     let organizationId = membership?.organizationId;
     let timer = await getRunningTimerForUser(ctx, userId, organizationId);
 
-    // If no timer found in team workspace, try personal workspace
+    // If no timer found in work workspace, try personal workspace
     if (!timer && organizationId !== undefined) {
       timer = await getRunningTimerForUser(ctx, userId, undefined);
       if (timer) {
@@ -440,7 +440,7 @@ export const ackInterrupt = mutation({
       throw new Error("Not authenticated");
     }
 
-    // Try to find timer in team workspace first
+    // Try to find timer in work workspace first
     const membership = await maybeMembership(ctx);
     let organizationId = membership?.organizationId;
     let timer = await getRunningTimerForUser(ctx, userId, organizationId);
@@ -687,7 +687,7 @@ export const processPomodoroTransition = internalMutation({
         .withIndex("byProject", (q) => q.eq("projectId", timer.projectId))
         .filter((q) => {
           if (organizationId) {
-            // Team workspace
+            // Work workspace
             return q.and(
               q.eq(q.field("organizationId"), organizationId),
               q.eq(q.field("userId"), timer.userId),
@@ -793,7 +793,7 @@ export const createManualEntry = mutation({
       }
       organizationId = undefined;
     } else {
-      // Team workspace - verify organization membership
+      // Work workspace - verify organization membership
       const membership = await ensureMembership(ctx);
       if (project.organizationId !== membership.organizationId) {
         throw new Error("Project not found");
@@ -843,10 +843,10 @@ async function maybeSendBudgetAlerts(ctx: MutationCtx, timer: Doc<"runningTimers
   // Verify workspace type matches
   const isPersonal = isPersonalProject(project);
   if (isPersonal && timer.organizationId !== undefined) {
-    return; // Mismatch: personal project but team timer
+    return; // Mismatch: personal project but work timer
   }
   if (!isPersonal && project.organizationId !== timer.organizationId) {
-    return; // Mismatch: team project but wrong organization
+    return; // Mismatch: work project but wrong organization
   }
 
   const userSettings = await ctx.db

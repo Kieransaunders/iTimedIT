@@ -80,7 +80,7 @@ function AuthenticatedApp() {
   const [currentPage, setCurrentPage] = useState<AppPage>("dashboard");
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [pushSwitchRequest, setPushSwitchRequest] = useState<any | null>(null);
-  const [currentWorkspace, setCurrentWorkspace] = useState<"personal" | "team">("team");
+  const [currentWorkspace, setCurrentWorkspace] = useState<"personal" | "work">("work");
   const [clientFilter, setClientFilter] = useState<string | null>(null);
 
   const loggedInUser = useQuery(api.auth.loggedInUser);
@@ -204,8 +204,8 @@ function AuthenticatedApp() {
               <WorkspaceIndicator
                 currentWorkspace={currentWorkspace}
                 onWorkspaceChange={setCurrentWorkspace}
+                onManageWorkspaces={() => setCurrentPage("profile")}
               />
-              {currentWorkspace === "team" && <OrganizationSwitcher />}
             </div>
             {/* Desktop Navigation */}
             <nav className="hidden md:flex gap-4">
@@ -662,44 +662,6 @@ function getInviteTokenFromLocation(): string | null {
   return params.get("token");
 }
 
-function OrganizationSwitcher() {
-  const { memberships, activeMembershipId, activeOrganization, switchOrganization, isReady } =
-    useOrganization();
-
-  // Filter out personal workspaces - only show team workspaces
-  const teamMemberships = memberships.filter(
-    (item) => item.organization?.isPersonalWorkspace !== true
-  );
-
-  if (!isReady || teamMemberships.length <= 1) {
-    return activeOrganization && !activeOrganization.isPersonalWorkspace ? (
-      <span className="text-sm text-gray-600 dark:text-gray-300">
-        {activeOrganization.name}
-      </span>
-    ) : null;
-  }
-
-  return (
-    <select
-      className="text-sm px-2 py-1 rounded border border-gray-300 dark:border-gray-700 bg-white/70 dark:bg-gray-900/70 text-gray-700 dark:text-gray-200"
-      value={activeMembershipId ?? ""}
-      onChange={(event) => {
-        const membershipId = event.target.value;
-        const match = teamMemberships.find((item) => item.membership._id === membershipId);
-        if (match?.organization?._id) {
-          void switchOrganization(match.organization._id);
-        }
-      }}
-    >
-      {teamMemberships.map(({ membership, organization }) => (
-        <option key={membership._id} value={membership._id}>
-          {organization?.name ?? "Workspace"}
-        </option>
-      ))}
-    </select>
-  );
-}
-
 // Icon components
 function DashboardIcon() {
   return (
@@ -754,13 +716,23 @@ function ProfileIcon() {
 function WorkspaceIndicator({
   currentWorkspace,
   onWorkspaceChange,
+  onManageWorkspaces,
 }: {
-  currentWorkspace: "personal" | "team";
-  onWorkspaceChange: (workspace: "personal" | "team") => void;
+  currentWorkspace: "personal" | "work";
+  onWorkspaceChange: (workspace: "personal" | "work") => void;
+  onManageWorkspaces?: () => void;
 }) {
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const { memberships, switchOrganization, isReady } = useOrganization();
+  const { memberships, activeOrganization, switchOrganization, isReady } = useOrganization();
+
+  // Filter memberships into personal and work
+  const personalMembership = memberships.find(
+    (item) => item.organization?.isPersonalWorkspace === true
+  );
+  const workMemberships = memberships.filter(
+    (item) => item.organization?.isPersonalWorkspace !== true
+  );
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -778,31 +750,21 @@ function WorkspaceIndicator({
     };
   }, [showDropdown]);
 
-  const handleWorkspaceSwitch = async (targetWorkspace: "personal" | "team") => {
+  const handleWorkspaceSwitch = async (organizationId: Id<"organizations">, isPersonal: boolean) => {
     if (!isReady) return;
 
-    // Find the appropriate organization to switch to
-    if (targetWorkspace === "personal") {
-      // Find the Personal Workspace
-      const personalMembership = memberships.find(
-        (item) => item.organization?.isPersonalWorkspace === true
-      );
-      if (personalMembership?.organization) {
-        await switchOrganization(personalMembership.organization._id);
-      }
-    } else {
-      // Find the first team workspace (non-personal)
-      const teamMembership = memberships.find(
-        (item) => item.organization?.isPersonalWorkspace !== true
-      );
-      if (teamMembership?.organization) {
-        await switchOrganization(teamMembership.organization._id);
-      }
-    }
-
-    onWorkspaceChange(targetWorkspace);
+    await switchOrganization(organizationId);
+    onWorkspaceChange(isPersonal ? "personal" : "work");
     setShowDropdown(false);
   };
+
+  // Display name and color for the button
+  const displayName = currentWorkspace === "personal"
+    ? "Personal"
+    : (activeOrganization?.name || "Work");
+  const displayColor = currentWorkspace === "personal"
+    ? "#3b82f6" // Blue for personal
+    : (activeOrganization?.color || "#8b5cf6"); // Purple default for work
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -810,10 +772,11 @@ function WorkspaceIndicator({
         onClick={() => setShowDropdown(!showDropdown)}
         className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
       >
-        <div className={`w-2 h-2 rounded-full ${
-          currentWorkspace === "personal" ? "bg-blue-500" : "bg-purple-500"
-        }`} />
-        <span>{currentWorkspace === "personal" ? "Personal" : "Team"}</span>
+        <div
+          className="w-2 h-2 rounded-full"
+          style={{ backgroundColor: displayColor }}
+        />
+        <span>{displayName}</span>
         <svg
           className={`w-4 h-4 transition-transform ${showDropdown ? 'rotate-180' : ''}`}
           fill="none"
@@ -825,39 +788,82 @@ function WorkspaceIndicator({
       </button>
 
       {showDropdown && (
-        <div className="absolute top-full left-0 mt-2 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50">
-          <button
-            onClick={() => handleWorkspaceSwitch("personal")}
-            className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
-              currentWorkspace === "personal"
-                ? "text-blue-600 dark:text-blue-400 font-medium"
-                : "text-gray-700 dark:text-gray-200"
-            }`}
-          >
-            <div className="w-2 h-2 rounded-full bg-blue-500" />
-            <span>Personal</span>
-            {currentWorkspace === "personal" && (
-              <svg className="w-4 h-4 ml-auto" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-              </svg>
-            )}
-          </button>
-          <button
-            onClick={() => handleWorkspaceSwitch("team")}
-            className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors rounded-b-lg ${
-              currentWorkspace === "team"
-                ? "text-purple-600 dark:text-purple-400 font-medium"
-                : "text-gray-700 dark:text-gray-200"
-            }`}
-          >
-            <div className="w-2 h-2 rounded-full bg-purple-500" />
-            <span>Team</span>
-            {currentWorkspace === "team" && (
-              <svg className="w-4 h-4 ml-auto" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-              </svg>
-            )}
-          </button>
+        <div className="absolute top-full left-0 mt-2 w-56 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 overflow-hidden">
+          {/* Personal Workspace */}
+          {personalMembership?.organization && (
+            <button
+              onClick={() => handleWorkspaceSwitch(personalMembership.organization!._id, true)}
+              className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
+                currentWorkspace === "personal"
+                  ? "text-blue-600 dark:text-blue-400 font-medium bg-blue-50 dark:bg-blue-900/20"
+                  : "text-gray-700 dark:text-gray-200"
+              }`}
+            >
+              <div
+                className="w-2 h-2 rounded-full"
+                style={{ backgroundColor: "#3b82f6" }}
+              />
+              <span>Personal</span>
+              {currentWorkspace === "personal" && (
+                <svg className="w-4 h-4 ml-auto" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+              )}
+            </button>
+          )}
+
+          {/* Divider if there are work memberships */}
+          {workMemberships.length > 0 && personalMembership && (
+            <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
+          )}
+
+          {/* Work Organizations */}
+          {workMemberships.map(({ membership, organization }) => {
+            const isActive = currentWorkspace === "work" && activeOrganization?._id === organization?._id;
+            const orgColor = organization?.color || "#8b5cf6";
+            return (
+              <button
+                key={membership._id}
+                onClick={() => organization && handleWorkspaceSwitch(organization._id, false)}
+                className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
+                  isActive
+                    ? "font-medium bg-gray-100 dark:bg-gray-700/50"
+                    : "text-gray-700 dark:text-gray-200"
+                }`}
+              >
+                <div
+                  className="w-2 h-2 rounded-full"
+                  style={{ backgroundColor: orgColor }}
+                />
+                <span className="truncate">{organization?.name || "Workspace"}</span>
+                {isActive && (
+                  <svg className="w-4 h-4 ml-auto flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                )}
+              </button>
+            );
+          })}
+
+          {/* Manage Workspaces Option */}
+          {onManageWorkspaces && (
+            <>
+              <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
+              <button
+                onClick={() => {
+                  onManageWorkspaces();
+                  setShowDropdown(false);
+                }}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <span className="font-medium">Manage Workspaces</span>
+              </button>
+            </>
+          )}
         </div>
       )}
     </div>

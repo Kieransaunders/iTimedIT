@@ -1,4 +1,4 @@
-import { mutation, query, MutationCtx, QueryCtx } from "./_generated/server";
+import { mutation, query, internalMutation, internalQuery, MutationCtx, QueryCtx } from "./_generated/server";
 import {
   ensureMembership,
   MembershipContext,
@@ -207,6 +207,303 @@ export const renameOrganization = mutation({
     await ctx.db.patch(organizationId, { name: trimmedName });
 
     return { success: true };
+  },
+});
+
+export const updateWorkspaceColor = mutation({
+  args: {
+    color: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const { organizationId } = await requireMembershipWithRole(ctx, ["owner", "admin"]);
+
+    // Validate hex color format
+    if (!/^#[0-9A-Fa-f]{6}$/.test(args.color)) {
+      throw new Error("Invalid color format. Please provide a valid hex color (e.g., #8b5cf6)");
+    }
+
+    await ctx.db.patch(organizationId, { color: args.color });
+
+    return { success: true };
+  },
+});
+
+export const updateWorkspaceSettings = mutation({
+  args: {
+    name: v.optional(v.string()),
+    color: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { organizationId } = await requireMembershipWithRole(ctx, ["owner", "admin"]);
+
+    const updates: Partial<Doc<"organizations">> = {};
+
+    if (args.name !== undefined) {
+      const trimmedName = args.name.trim();
+      if (!trimmedName) {
+        throw new Error("Organization name cannot be empty");
+      }
+      if (trimmedName.length > 100) {
+        throw new Error("Organization name must be 100 characters or less");
+      }
+      updates.name = trimmedName;
+    }
+
+    if (args.color !== undefined) {
+      if (!/^#[0-9A-Fa-f]{6}$/.test(args.color)) {
+        throw new Error("Invalid color format. Please provide a valid hex color (e.g., #8b5cf6)");
+      }
+      updates.color = args.color;
+    }
+
+    if (Object.keys(updates).length > 0) {
+      await ctx.db.patch(organizationId, updates);
+    }
+
+    return { success: true };
+  },
+});
+
+export const createWorkspace = mutation({
+  args: {
+    name: v.string(),
+    color: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
+
+    const trimmedName = args.name.trim();
+    if (!trimmedName) {
+      throw new Error("Workspace name cannot be empty");
+    }
+
+    if (trimmedName.length > 100) {
+      throw new Error("Workspace name must be 100 characters or less");
+    }
+
+    // Create new Work workspace
+    const now = Date.now();
+    const organizationId = await ctx.db.insert("organizations", {
+      name: trimmedName,
+      createdBy: userId,
+      createdAt: now,
+      isPersonalWorkspace: false,
+      workspaceType: "work",
+      color: args.color || "#8b5cf6", // Default to purple
+    });
+
+    // Create membership for creator
+    const membershipId = await ctx.db.insert("memberships", {
+      organizationId,
+      userId,
+      role: "owner",
+      invitedBy: undefined,
+      createdAt: now,
+    });
+
+    // Set as active workspace
+    const settings = await ctx.db
+      .query("userSettings")
+      .withIndex("byUser", (q) => q.eq("userId", userId))
+      .unique();
+
+    if (settings) {
+      await ctx.db.patch(settings._id, { organizationId });
+    } else {
+      await ctx.db.insert("userSettings", {
+        userId,
+        organizationId,
+        interruptEnabled: true,
+        interruptInterval: 0.0833 as const,
+        gracePeriod: 5 as const,
+        budgetWarningEnabled: true,
+        budgetWarningThresholdHours: 1.0,
+        budgetWarningThresholdAmount: 50.0,
+      });
+    }
+
+    return {
+      organizationId,
+      membershipId,
+      success: true,
+    };
+  },
+});
+
+export const getPersonalWorkspace = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      return null;
+    }
+
+    // Try to find Personal workspace by workspaceType
+    const personalOrg = await ctx.db
+      .query("organizations")
+      .withIndex("byUserType", (q) => q.eq("createdBy", userId).eq("workspaceType", "personal"))
+      .first();
+
+    if (personalOrg) {
+      return personalOrg;
+    }
+
+    // Fallback to legacy flag
+    const legacyPersonalOrg = await ctx.db
+      .query("organizations")
+      .withIndex("byCreator", (q) => q.eq("createdBy", userId))
+      .filter((q) => q.eq(q.field("isPersonalWorkspace"), true))
+      .first();
+
+    return legacyPersonalOrg ?? null;
+  },
+});
+
+export const getWorkWorkspaces = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      return [];
+    }
+
+    // Get all user memberships
+    const memberships = await ctx.db
+      .query("memberships")
+      .withIndex("byUser", (q) => q.eq("userId", userId))
+      .filter((q) => q.eq(q.field("inactiveAt"), undefined))
+      .collect();
+
+    // Get all organizations
+    const organizations = await Promise.all(
+      memberships.map((m) => ctx.db.get(m.organizationId))
+    );
+
+    // Filter for Work workspaces
+    const workWorkspaces = organizations
+      .map((org, index) => ({
+        organization: org,
+        membership: memberships[index],
+      }))
+      .filter((item) => {
+        if (!item.organization) return false;
+        // Check new workspaceType field
+        if (item.organization.workspaceType === "work") return true;
+        // Fallback: if no workspaceType, check legacy flag (not Personal = Work)
+        if (item.organization.workspaceType === undefined && !item.organization.isPersonalWorkspace) {
+          return true;
+        }
+        return false;
+      });
+
+    return workWorkspaces;
+  },
+});
+
+export const findTeamDocuments = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    const allClients = await ctx.db.query("clients").collect();
+    const allProjects = await ctx.db.query("projects").collect();
+
+    const teamClients = allClients.filter(c => (c.workspaceType as any) === "team");
+    const teamProjects = allProjects.filter(p => (p.workspaceType as any) === "team");
+
+    return {
+      teamClients: teamClients.map(c => ({
+        _id: c._id,
+        name: c.name,
+        workspaceType: c.workspaceType,
+        organizationId: c.organizationId
+      })),
+      teamProjects: teamProjects.map(p => ({
+        _id: p._id,
+        name: p.name,
+        workspaceType: p.workspaceType,
+        organizationId: p.organizationId
+      })),
+      totalTeamClients: teamClients.length,
+      totalTeamProjects: teamProjects.length,
+    };
+  },
+});
+
+export const migrateWorkspaceTypes = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    let migratedOrgs = 0;
+    let migratedClients = 0;
+    let migratedProjects = 0;
+    let skippedClients = 0;
+    let skippedProjects = 0;
+
+    // Migrate organizations
+    const allOrgs = await ctx.db.query("organizations").collect();
+    for (const org of allOrgs) {
+      if (org.workspaceType === undefined) {
+        const workspaceType = org.isPersonalWorkspace ? "personal" : "work";
+        await ctx.db.patch(org._id, { workspaceType });
+        migratedOrgs++;
+      }
+    }
+
+    // Migrate clients: "team" -> "work", undefined -> infer from organization
+    const allClients = await ctx.db.query("clients").collect();
+    for (const client of allClients) {
+      const workspaceType = client.workspaceType as any;
+      if (workspaceType === "team") {
+        await ctx.db.patch(client._id, { workspaceType: "work" });
+        migratedClients++;
+      } else if (workspaceType === undefined || workspaceType === null) {
+        // Infer from organization if possible
+        if (client.organizationId) {
+          const org = await ctx.db.get(client.organizationId);
+          if (org?.workspaceType) {
+            await ctx.db.patch(client._id, { workspaceType: org.workspaceType });
+            migratedClients++;
+          } else {
+            skippedClients++;
+          }
+        } else {
+          skippedClients++;
+        }
+      }
+    }
+
+    // Migrate projects: "team" -> "work", undefined -> infer from organization
+    const allProjects = await ctx.db.query("projects").collect();
+    for (const project of allProjects) {
+      const workspaceType = project.workspaceType as any;
+      if (workspaceType === "team") {
+        await ctx.db.patch(project._id, { workspaceType: "work" });
+        migratedProjects++;
+      } else if (workspaceType === undefined || workspaceType === null) {
+        // Infer from organization if possible
+        if (project.organizationId) {
+          const org = await ctx.db.get(project.organizationId);
+          if (org?.workspaceType) {
+            await ctx.db.patch(project._id, { workspaceType: org.workspaceType });
+            migratedProjects++;
+          } else {
+            skippedProjects++;
+          }
+        } else {
+          skippedProjects++;
+        }
+      }
+    }
+
+    return {
+      success: true,
+      migratedOrgs,
+      migratedClients,
+      migratedProjects,
+      skippedClients,
+      skippedProjects,
+    };
   },
 });
 

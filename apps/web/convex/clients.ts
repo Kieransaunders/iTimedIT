@@ -4,7 +4,7 @@ import { requireMembership, maybeMembership, ensureMembershipWithRole, requireMe
 
 export const list = query({
   args: {
-    workspaceType: v.optional(v.union(v.literal("personal"), v.literal("team"))),
+    workspaceType: v.optional(v.union(v.literal("personal"), v.literal("work"))),
   },
   handler: async (ctx, args) => {
     const membership = await maybeMembership(ctx);
@@ -19,15 +19,15 @@ export const list = query({
       .withIndex("byOrganization", (q) => q.eq("organizationId", organizationId))
       .filter((q) => q.eq(q.field("archived"), false));
 
-    // Apply workspace filter - default to team clients for backward compatibility
-    if (args.workspaceType === "team" || !args.workspaceType) {
+    // Apply workspace filter - default to work clients for backward compatibility
+    if (args.workspaceType === "work" || !args.workspaceType) {
       clientsQuery = clientsQuery.filter((q) => q.or(
         q.eq(q.field("workspaceType"), undefined),
-        q.eq(q.field("workspaceType"), "team")
+        q.eq(q.field("workspaceType"), "work")
       ));
     } else if (args.workspaceType === "personal") {
-      // For personal clients, we shouldn't see them in team context
-      clientsQuery = clientsQuery.filter((q) => 
+      // For personal clients, we shouldn't see them in work context
+      clientsQuery = clientsQuery.filter((q) =>
         q.eq(q.field("workspaceType"), "personal")
       );
     }
@@ -336,7 +336,7 @@ export const create = mutation({
       postCode: v.optional(v.string()),
     })),
     color: v.optional(v.string()),
-    workspaceType: v.optional(v.union(v.literal("personal"), v.literal("team"))),
+    workspaceType: v.optional(v.union(v.literal("personal"), v.literal("work"))),
   },
   handler: async (ctx, args) => {
     const { organizationId, userId } = await ensureMembershipWithRole(ctx, [
@@ -352,7 +352,7 @@ export const create = mutation({
       address: args.address,
       color: args.color,
       archived: false,
-      workspaceType: args.workspaceType || "team",
+      workspaceType: args.workspaceType || "work",
     });
   },
 });
@@ -370,7 +370,7 @@ export const update = mutation({
     })),
     color: v.optional(v.string()),
     archived: v.optional(v.boolean()),
-    workspaceType: v.optional(v.union(v.literal("personal"), v.literal("team"))),
+    workspaceType: v.optional(v.union(v.literal("personal"), v.literal("work"))),
   },
   handler: async (ctx, args) => {
     const { organizationId } = await requireMembershipWithRole(ctx, ["owner", "admin"]);

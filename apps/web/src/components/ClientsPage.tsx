@@ -97,7 +97,7 @@ interface ClientsPageProps {
 }
 
 export function ClientsPage({
-  workspaceType = "team",
+  workspaceType = "work",
   onWorkspaceChange,
   onViewProjects,
 }: ClientsPageProps) {
@@ -129,11 +129,11 @@ export function ClientsPage({
   const { isReady } = useOrganization();
 
   const clients = useQuery(
-    currentWorkspace === "personal" 
+    currentWorkspace === "personal"
       ? api.personalClients.listPersonal
       : api.clients.list,
-    isReady 
-      ? (currentWorkspace === "personal" ? {} : { workspaceType: "team" })
+    isReady
+      ? (currentWorkspace === "personal" ? {} : { workspaceType: "work" })
       : "skip"
   );
   const createClient = useMutation(
@@ -225,7 +225,7 @@ export function ClientsPage({
         budgetType: projectBudgetType,
         budgetHours: projectBudgetType === "hours" ? projectBudgetHours : undefined,
         budgetAmount: projectBudgetType === "amount" ? projectBudgetAmount : undefined,
-        ...(currentWorkspace === "team" && { workspaceType: "team" })
+        ...(currentWorkspace === "work" && { workspaceType: "work" })
       });
 
       // Reset form

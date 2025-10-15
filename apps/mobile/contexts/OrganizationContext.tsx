@@ -24,9 +24,9 @@ export type OrganizationContextValue = {
   activeOrganization: Doc<"organizations"> | null;
   activeRole: Doc<"memberships">["role"] | null;
   memberships: MembershipWithOrganization[];
-  currentWorkspace: "personal" | "team";
+  currentWorkspace: "personal" | "work";
   switchOrganization: (organizationId: Id<"organizations">) => Promise<void>;
-  switchWorkspace: (workspace: "personal" | "team") => void;
+  switchWorkspace: (workspace: "personal" | "work") => void;
   isReady: boolean;
   error: string | null;
   hasPermissionError: boolean;
@@ -51,23 +51,27 @@ export function OrganizationProvider({
   const setActiveOrganization = useMutation(api.organizations.setActiveOrganization);
 
   const [ensuredForUser, setEnsuredForUser] = useState<Id<"users"> | null>(null);
-  const [currentWorkspace, setCurrentWorkspace] = useState<"personal" | "team">("team");
+  const [currentWorkspace, setCurrentWorkspace] = useState<"personal" | "work">("work");
   const [error, setError] = useState<string | null>(null);
   const [hasPermissionError, setHasPermissionError] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const [isSwitchingOrganization, setIsSwitchingOrganization] = useState(false);
   const [isSwitchingWorkspace, setIsSwitchingWorkspace] = useState(false);
-  const [optimisticWorkspace, setOptimisticWorkspace] = useState<"personal" | "team" | null>(null);
+  const [optimisticWorkspace, setOptimisticWorkspace] = useState<"personal" | "work" | null>(null);
   const [optimisticOrganization, setOptimisticOrganization] = useState<Doc<"organizations"> | null>(null);
   const ensuringRef = useRef(false);
 
-  // Load workspace preference from storage on mount
+  // Load workspace preference from storage on mount (with migration from "team" to "work")
   useEffect(() => {
     const loadWorkspacePreference = async () => {
       try {
         const savedWorkspace = await storage.getItem(WORKSPACE_TYPE_KEY);
-        if (savedWorkspace === "personal" || savedWorkspace === "team") {
+        if (savedWorkspace === "personal" || savedWorkspace === "work") {
           setCurrentWorkspace(savedWorkspace);
+        } else if (savedWorkspace === "team") {
+          // Migrate legacy "team" to "work"
+          setCurrentWorkspace("work");
+          await storage.setItem(WORKSPACE_TYPE_KEY, "work");
         }
       } catch (error) {
         console.error("Failed to load workspace preference:", error);
@@ -126,23 +130,23 @@ export function OrganizationProvider({
     currentMembership === undefined || memberships === undefined || ensuringRef.current;
 
   // Switch workspace function with optimistic updates
-  const switchWorkspace = async (workspace: "personal" | "team") => {
+  const switchWorkspace = async (workspace: "personal" | "work") => {
     setIsSwitchingWorkspace(true);
     setOptimisticWorkspace(workspace); // Optimistic update
-    
+
     try {
       setCurrentWorkspace(workspace);
       await storage.setItem(WORKSPACE_TYPE_KEY, workspace);
       setError(null);
       setHasPermissionError(false);
-      
+
       // Show success toast
       ToastManager.workspaceSuccess(workspace, "Data will refresh automatically.");
     } catch (error) {
       console.error("Failed to save workspace preference:", error);
       setError("Failed to save workspace preference");
       ToastManager.workspaceError(workspace, "Failed to save preference");
-      
+
       // Revert optimistic update on error
       setOptimisticWorkspace(null);
     } finally {

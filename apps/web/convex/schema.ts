@@ -8,10 +8,13 @@ const applicationTables = {
     slug: v.optional(v.string()),
     createdBy: v.id("users"),
     createdAt: v.number(),
-    isPersonalWorkspace: v.optional(v.boolean()),
+    isPersonalWorkspace: v.optional(v.boolean()), // Deprecated: use workspaceType
+    workspaceType: v.optional(v.union(v.literal("personal"), v.literal("work"))),
+    color: v.optional(v.string()),
   })
     .index("byCreator", ["createdBy"])
-    .index("bySlug", ["slug"]),
+    .index("bySlug", ["slug"])
+    .index("byUserType", ["createdBy", "workspaceType"]),
 
   memberships: defineTable({
     organizationId: v.id("organizations"),
@@ -68,7 +71,7 @@ const applicationTables = {
     })),
     color: v.optional(v.string()),
     archived: v.boolean(),
-    workspaceType: v.optional(v.union(v.literal("personal"), v.literal("team"))),
+    workspaceType: v.optional(v.union(v.literal("personal"), v.literal("work"))),
   })
     .index("byOrganization", ["organizationId"])
     .index("byOrgName", ["organizationId", "name"])
@@ -86,7 +89,7 @@ const applicationTables = {
     budgetHours: v.optional(v.number()),
     budgetAmount: v.optional(v.number()),
     archived: v.boolean(),
-    workspaceType: v.optional(v.union(v.literal("personal"), v.literal("team"))),
+    workspaceType: v.optional(v.union(v.literal("personal"), v.literal("work"))),
   })
     .index("byClient", ["clientId"])
     .index("byOrganization", ["organizationId"])

@@ -105,7 +105,7 @@ function formatBudgetTime(seconds: number): string {
 export function ModernDashboard({
   pushSwitchRequest,
   onPushSwitchHandled,
-  workspaceType = "team",
+  workspaceType = "work",
   onWorkspaceChange,
 }: ModernDashboardProps) {
   const [currentProjectId, setCurrentProjectId] = useState<Id<"projects"> | null>(null);
@@ -217,10 +217,10 @@ export function ModernDashboard({
   }, [projects]);
 
   // Filter projects based on search term and separate by workspace type
-  const { personalProjects, teamProjects, filteredProjects } = useMemo(() => {
+  const { personalProjects, workProjects, filteredProjects } = useMemo(() => {
     // Separate projects by workspace type
     const personal = projectsWithColors.filter(p => p.workspaceType === "personal");
-    const team = projectsWithColors.filter(p => !p.workspaceType || p.workspaceType === "team");
+    const work = projectsWithColors.filter(p => !p.workspaceType || p.workspaceType === "work");
 
     // Apply search filter
     let filtered = projectsWithColors;
@@ -234,7 +234,7 @@ export function ModernDashboard({
 
     return {
       personalProjects: personal,
-      teamProjects: team,
+      workProjects: work,
       filteredProjects: filtered
     };
   }, [projectsWithColors, searchTerm]);
@@ -701,7 +701,7 @@ export function ModernDashboard({
       const clientId = await createClient({
         name: newClientForm.name.trim(),
         color: newClientForm.color || undefined,
-        ...(currentWorkspace === "team" && { workspaceType: "team" })
+        ...(currentWorkspace === "work" && { workspaceType: "work" })
       });
       
       setNewProjectForm(prev => ({ ...prev, clientId }));
@@ -731,7 +731,7 @@ export function ModernDashboard({
         budgetType: newProjectForm.budgetType,
         budgetHours: newProjectForm.budgetType === "hours" ? newProjectForm.budgetHours : undefined,
         budgetAmount: newProjectForm.budgetType === "amount" ? newProjectForm.budgetAmount : undefined,
-        ...(currentWorkspace === "team" && { workspaceType: "team" })
+        ...(currentWorkspace === "work" && { workspaceType: "work" })
       });
       
       setCurrentProjectId(projectId);
@@ -1104,7 +1104,7 @@ export function ModernDashboard({
                           </div>
                         )
                       ) : (
-                        // Show separated personal and team projects when not searching
+                        // Show separated personal and work projects when not searching
                         <>
                           {/* Personal Projects Section */}
                           {personalProjects.length > 0 && (
@@ -1139,15 +1139,15 @@ export function ModernDashboard({
                             </>
                           )}
 
-                          {/* Team Projects Section */}
-                          {teamProjects.length > 0 && (
+                          {/* Work Projects Section */}
+                          {workProjects.length > 0 && (
                             <>
                               <div className="px-3 py-2 bg-gray-100/50 dark:bg-gray-700/30 border-b border-gray-200/50 dark:border-gray-700/50">
                                 <div className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
-                                  Team Projects
+                                  Work Projects
                                 </div>
                               </div>
-                              {teamProjects.map((project) => (
+                              {workProjects.map((project) => (
                                 <div
                                   key={project._id}
                                   className={cn(
@@ -1173,7 +1173,7 @@ export function ModernDashboard({
                           )}
 
                           {/* No Projects Message */}
-                          {personalProjects.length === 0 && teamProjects.length === 0 && (
+                          {personalProjects.length === 0 && workProjects.length === 0 && (
                             <div className="p-3 text-center text-gray-500 dark:text-gray-400 text-sm">
                               No projects found
                             </div>
@@ -1752,23 +1752,23 @@ export function ModernDashboard({
             </div>
           )}
 
-          {/* Team Projects */}
-          {teamProjects.length > 0 && (
+          {/* Work Projects */}
+          {workProjects.length > 0 && (
             <div>
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  Team Projects
+                  Work Projects
                 </h2>
-                {teamProjects.length > 4 && (
+                {workProjects.length > 4 && (
                   <span className="text-sm text-gray-500 dark:text-gray-400">
-                    {teamProjects.length} projects • Scroll to see more →
+                    {workProjects.length} projects • Scroll to see more →
                   </span>
                 )}
               </div>
               <div className="relative">
                 {/* Scroll fade indicators */}
-                <div className="absolute left-0 top-0 bottom-0 w-6 bg-gradient-to-r from-gray-50 dark:from-gray-900 to-transparent pointer-events-none z-10 opacity-0 transition-opacity duration-200" id="scroll-fade-left-team"></div>
-                <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-gray-50 dark:from-gray-900 to-transparent pointer-events-none z-10 opacity-0 transition-opacity duration-200" id="scroll-fade-right-team"></div>
+                <div className="absolute left-0 top-0 bottom-0 w-6 bg-gradient-to-r from-gray-50 dark:from-gray-900 to-transparent pointer-events-none z-10 opacity-0 transition-opacity duration-200" id="scroll-fade-left-work"></div>
+                <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-gray-50 dark:from-gray-900 to-transparent pointer-events-none z-10 opacity-0 transition-opacity duration-200" id="scroll-fade-right-work"></div>
 
                 <div
                   ref={projectScrollRef}
@@ -1777,7 +1777,7 @@ export function ModernDashboard({
                     WebkitOverflowScrolling: 'touch'
                   }}
                 >
-                  {teamProjects.map((project) => (
+                  {workProjects.map((project) => (
                     <div
                       key={project._id}
                       className={cn(

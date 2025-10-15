@@ -13,20 +13,20 @@ import { WorkspaceTransitionOverlay } from "./common/WorkspaceTransitionOverlay"
 
 export interface WorkspaceSwitcherProps {
   style?: StyleProp<ViewStyle>;
-  onWorkspaceChange?: (workspace: "personal" | "team") => void;
+  onWorkspaceChange?: (workspace: "personal" | "work") => void;
 }
 
 export function WorkspaceSwitcher({ style, onWorkspaceChange }: WorkspaceSwitcherProps) {
-  const { 
-    currentWorkspace, 
-    switchWorkspace, 
-    isReady, 
-    activeOrganization, 
-    isSwitchingWorkspace 
+  const {
+    currentWorkspace,
+    switchWorkspace,
+    isReady,
+    activeOrganization,
+    isSwitchingWorkspace
   } = useOrganization();
   const { styles, theme } = useStyles(stylesheet);
 
-  const handleWorkspaceSwitch = async (workspace: "personal" | "team") => {
+  const handleWorkspaceSwitch = async (workspace: "personal" | "work") => {
     if (workspace === currentWorkspace || isSwitchingWorkspace) return;
 
     try {
@@ -79,39 +79,39 @@ export function WorkspaceSwitcher({ style, onWorkspaceChange }: WorkspaceSwitche
           style={[
             styles.option,
             styles.rightOption,
-            currentWorkspace === "team" && styles.activeOption,
+            currentWorkspace === "work" && styles.activeOption,
           ]}
-          onPress={() => handleWorkspaceSwitch("team")}
+          onPress={() => handleWorkspaceSwitch("work")}
           disabled={isSwitchingWorkspace || !activeOrganization}
           accessible={true}
           accessibilityLabel={
             activeOrganization
-              ? `Switch to team workspace for ${activeOrganization.name}`
-              : "Team workspace not available"
+              ? `Switch to work workspace for ${activeOrganization.name}`
+              : "Work workspace not available"
           }
           accessibilityRole="button"
-          accessibilityState={{ 
-            selected: currentWorkspace === "team",
-            disabled: !activeOrganization 
+          accessibilityState={{
+            selected: currentWorkspace === "work",
+            disabled: !activeOrganization
           }}
         >
-          {isSwitchingWorkspace && currentWorkspace === "team" ? (
+          {isSwitchingWorkspace && currentWorkspace === "work" ? (
             <ActivityIndicator size="small" color={theme.colors.textPrimary} />
           ) : (
             <Text
               style={[
                 styles.optionText,
-                currentWorkspace === "team" && styles.activeOptionText,
+                currentWorkspace === "work" && styles.activeOptionText,
                 !activeOrganization && styles.disabledOptionText,
               ]}
             >
-              Team
+              Work
             </Text>
           )}
         </TouchableOpacity>
       </View>
 
-      {currentWorkspace === "team" && activeOrganization && (
+      {currentWorkspace === "work" && activeOrganization && (
         <Text style={styles.organizationLabel} numberOfLines={1}>
           {activeOrganization.name}
         </Text>
@@ -120,7 +120,7 @@ export function WorkspaceSwitcher({ style, onWorkspaceChange }: WorkspaceSwitche
       <WorkspaceTransitionOverlay
         visible={isSwitchingWorkspace}
         type="workspace"
-        targetName={currentWorkspace === "personal" ? "Personal" : "Team"}
+        targetName={currentWorkspace === "personal" ? "Personal" : "Work"}
       />
     </View>
   );
