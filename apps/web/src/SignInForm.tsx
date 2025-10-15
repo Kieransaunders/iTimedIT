@@ -106,7 +106,7 @@ export function SignInForm({ defaultFlow = "signIn" }: { defaultFlow?: AuthFlow 
         <button
           type="button"
           className="w-full px-6 py-3 rounded-xl font-semibold transition-all duration-200 bg-white hover:bg-slate-100 text-slate-800 border border-slate-200"
-          onClick={() => void signIn("google")}
+          onClick={() => void signIn("google", { redirectTo: window.location.origin })}
         >
           Sign in with Google
         </button>
