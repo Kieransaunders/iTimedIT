@@ -14,7 +14,6 @@ interface ClientData {
   lastActivityAt: number | null;
   daysSinceLastActivity: number | null;
   status: 'active' | 'inactive' | 'at-risk';
-  healthScore: number;
   averageHourlyEarning: number;
 }
 
@@ -58,13 +57,6 @@ export function EnhancedClientTable({
       case 'at-risk': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
       default: return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
     }
-  };
-
-  const getHealthScoreColor = (score: number) => {
-    if (score >= 80) return 'text-green-600 dark:text-green-400';
-    if (score >= 60) return 'text-yellow-600 dark:text-yellow-400';
-    if (score >= 40) return 'text-orange-600 dark:text-orange-400';
-    return 'text-red-600 dark:text-red-400';
   };
 
   const formatLastActivity = (daysSince: number | null) => {
@@ -141,7 +133,6 @@ export function EnhancedClientTable({
                 </div>
               </th>
               <SortableHeader sortKey="activeProjectsCount">Projects</SortableHeader>
-              <SortableHeader sortKey="healthScore">Health</SortableHeader>
               <th className="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors" onClick={() => onSort("daysSinceLastActivity")}>
                 <div className="flex items-center gap-1.5">
                   Last Activity
@@ -239,13 +230,7 @@ export function EnhancedClientTable({
                     </span>
                   </button>
                 </td>
-                
-                <td className="px-6 py-4">
-                  <div className={`text-sm font-semibold ${getHealthScoreColor(client.healthScore)}`}>
-                    {client.healthScore}/100
-                  </div>
-                </td>
-                
+
                 <td className="px-6 py-4">
                   <div className="text-sm text-gray-900 dark:text-gray-300">
                     {formatLastActivity(client.daysSinceLastActivity)}

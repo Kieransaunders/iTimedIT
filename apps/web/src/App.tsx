@@ -666,8 +666,17 @@ function OrganizationSwitcher() {
   const { memberships, activeMembershipId, activeOrganization, switchOrganization, isReady } =
     useOrganization();
 
-  if (!isReady || memberships.length <= 1) {
-    return null;
+  // Filter out personal workspaces - only show team workspaces
+  const teamMemberships = memberships.filter(
+    (item) => item.organization?.isPersonalWorkspace !== true
+  );
+
+  if (!isReady || teamMemberships.length <= 1) {
+    return activeOrganization && !activeOrganization.isPersonalWorkspace ? (
+      <span className="text-sm text-gray-600 dark:text-gray-300">
+        {activeOrganization.name}
+      </span>
+    ) : null;
   }
 
   return (
@@ -676,13 +685,13 @@ function OrganizationSwitcher() {
       value={activeMembershipId ?? ""}
       onChange={(event) => {
         const membershipId = event.target.value;
-        const match = memberships.find((item) => item.membership._id === membershipId);
+        const match = teamMemberships.find((item) => item.membership._id === membershipId);
         if (match?.organization?._id) {
           void switchOrganization(match.organization._id);
         }
       }}
     >
-      {memberships.map(({ membership, organization }) => (
+      {teamMemberships.map(({ membership, organization }) => (
         <option key={membership._id} value={membership._id}>
           {organization?.name ?? "Workspace"}
         </option>

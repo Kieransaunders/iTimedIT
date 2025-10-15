@@ -10,10 +10,6 @@ interface FilterState {
     min: number;
     max: number;
   };
-  healthScore: {
-    min: number;
-    max: number;
-  };
   activityDays: number | null; // null = all, number = days since last activity
 }
 
@@ -43,8 +39,6 @@ export function ClientFilters({
 
   const hasAdvancedFilters = filters.revenueRange.min > 0 ||
                              filters.revenueRange.max < 100000 ||
-                             filters.healthScore.min > 0 ||
-                             filters.healthScore.max < 100 ||
                              filters.activityDays !== null;
 
   const hasActiveFilters = Boolean(filters.search) || hasAdvancedFilters;
@@ -91,7 +85,7 @@ export function ClientFilters({
       </div>
 
       {showAdvanced && (
-        <div className="grid gap-4 sm:grid-cols-3 bg-white dark:bg-gray-800/60 dark:backdrop-blur-sm border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+        <div className="grid gap-4 sm:grid-cols-2 bg-white dark:bg-gray-800/60 dark:backdrop-blur-sm border border-gray-200 dark:border-gray-700 rounded-lg p-4">
           <div className="space-y-2">
             <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
               Revenue ($)
@@ -117,39 +111,6 @@ export function ClientFilters({
                   max: parseFloat(e.target.value) || 100000
                 })}
                 className="w-24"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
-              Health Score
-            </span>
-            <div className="flex gap-2 items-center">
-              <Input
-                type="number"
-                placeholder="Min"
-                min="0"
-                max="100"
-                value={filters.healthScore.min || ''}
-                onChange={(e) => updateFilter('healthScore', {
-                  ...filters.healthScore,
-                  min: parseInt(e.target.value) || 0
-                })}
-                className="w-20"
-              />
-              <span className="text-gray-400">to</span>
-              <Input
-                type="number"
-                placeholder="Max"
-                min="0"
-                max="100"
-                value={filters.healthScore.max === 100 ? '' : filters.healthScore.max}
-                onChange={(e) => updateFilter('healthScore', {
-                  ...filters.healthScore,
-                  max: parseInt(e.target.value) || 100
-                })}
-                className="w-20"
               />
             </div>
           </div>
@@ -192,11 +153,6 @@ export function ClientFilters({
               Revenue: ${filters.revenueRange.min} - ${filters.revenueRange.max}
             </Badge>
           )}
-          {(filters.healthScore.min > 0 || filters.healthScore.max < 100) && (
-            <Badge variant="secondary" className="text-xs">
-              Health: {filters.healthScore.min} - {filters.healthScore.max}
-            </Badge>
-          )}
           {filters.activityDays !== null && (
             <Badge variant="secondary" className="text-xs">
               Activity: Last {filters.activityDays} days
@@ -214,10 +170,6 @@ export const defaultFilters: FilterState = {
   revenueRange: {
     min: 0,
     max: 100000
-  },
-  healthScore: {
-    min: 0,
-    max: 100
   },
   activityDays: null
 };

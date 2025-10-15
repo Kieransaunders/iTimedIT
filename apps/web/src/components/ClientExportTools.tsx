@@ -13,7 +13,6 @@ interface ClientData {
   lastActivityAt: number | null;
   daysSinceLastActivity: number | null;
   status: 'active' | 'inactive' | 'at-risk';
-  healthScore: number;
   averageHourlyEarning: number;
   categoryBreakdown?: Array<{
     category: string;
@@ -42,7 +41,6 @@ export function ClientExportTools({ clients, filteredClients, onExportData }: Cl
       'Average Hourly Rate',
       'Active Projects',
       'Completed Projects',
-      'Health Score',
       'Days Since Last Activity',
       'Notes'
     ];
@@ -57,7 +55,6 @@ export function ClientExportTools({ clients, filteredClients, onExportData }: Cl
         client.averageHourlyEarning.toFixed(2),
         client.activeProjectsCount,
         client.completedProjectsCount,
-        client.healthScore,
         client.daysSinceLastActivity?.toFixed(0) || 'Never',
         `"${client.note || ''}"`
       ].join(','))
@@ -85,7 +82,6 @@ export function ClientExportTools({ clients, filteredClients, onExportData }: Cl
     const activeClients = data.filter(c => c.status === 'active').length;
     const atRiskClients = data.filter(c => c.status === 'at-risk').length;
     const inactiveClients = data.filter(c => c.status === 'inactive').length;
-    const averageHealthScore = data.reduce((sum, client) => sum + client.healthScore, 0) / data.length;
 
     // Top 5 clients by revenue
     const topClientsByRevenue = [...data]
@@ -99,8 +95,7 @@ export function ClientExportTools({ clients, filteredClients, onExportData }: Cl
         totalHours,
         activeClients,
         atRiskClients,
-        inactiveClients,
-        averageHealthScore
+        inactiveClients
       },
       topClients: topClientsByRevenue
     };
@@ -117,7 +112,6 @@ SUMMARY
 Total Clients: ${report.summary.totalClients}
 Total Revenue: ${formatCurrency(report.summary.totalRevenue)}
 Total Hours: ${report.summary.totalHours.toFixed(1)}h
-Average Health Score: ${report.summary.averageHealthScore.toFixed(1)}/100
 
 CLIENT STATUS BREAKDOWN
 ======================
@@ -138,7 +132,6 @@ ${client.name}
 - Status: ${client.status}
 - Revenue: ${formatCurrency(client.totalAmountSpent)}
 - Time: ${formatHours(client.totalTimeSpent)}
-- Health Score: ${client.healthScore}/100
 - Projects: ${client.activeProjectsCount} active, ${client.completedProjectsCount} completed
 - Last Activity: ${client.daysSinceLastActivity ? `${Math.floor(client.daysSinceLastActivity)} days ago` : 'Never'}
 ${client.note ? `- Notes: ${client.note}` : ''}
@@ -203,9 +196,9 @@ ${client.note ? `- Notes: ${client.note}` : ''}
         </div>
         <div className="text-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
           <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
-            {report.summary.averageHealthScore.toFixed(0)}
+            {report.summary.totalClients}
           </div>
-          <div className="text-xs text-gray-500 dark:text-gray-400">Avg Health Score</div>
+          <div className="text-xs text-gray-500 dark:text-gray-400">Total Clients</div>
         </div>
       </div>
 

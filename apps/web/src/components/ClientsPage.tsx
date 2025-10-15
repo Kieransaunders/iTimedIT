@@ -171,12 +171,6 @@ export function ClientsPage({
         return false;
       }
 
-      // Health score filter
-      if (client.healthScore < filters.healthScore.min || 
-          client.healthScore > filters.healthScore.max) {
-        return false;
-      }
-
       // Activity filter
       if (filters.activityDays !== null) {
         if (client.daysSinceLastActivity === null || 
