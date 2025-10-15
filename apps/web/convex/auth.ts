@@ -120,9 +120,48 @@ if (!googleClientId || !googleClientSecret) {
   console.warn("Google OAuth environment variables are not set; Google sign-in is disabled.");
 }
 
+const WEB_ORIGINS = new Set([
+  "http://localhost:3000",
+  "http://localhost:5173",
+  "https://itimedit.com",
+  "https://itimedit.netlify.app",
+]);
+
+const NATIVE_SCHEMES = new Set([
+  "itimeditapp", // Mobile app custom scheme
+]);
+
 export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
   providers,
   callbacks: {
+    async redirect({ redirectTo }) {
+      // Log for debugging (helpful during development)
+      console.log("Convex redirect check:", redirectTo);
+
+      const u = new URL(redirectTo);
+      const origin = `${u.protocol}//${u.host}`; // e.g., https://itimedit.com or exp://192.168.1.42:8081
+      const scheme = u.protocol.replace(":", ""); // e.g., itimeditapp, http, https, exp, exps
+
+      // 1) Web (dev/prod) by exact origin
+      if (WEB_ORIGINS.has(origin)) {
+        return redirectTo;
+      }
+
+      // 2) Native mobile app by scheme
+      if (NATIVE_SCHEMES.has(scheme)) {
+        return redirectTo;
+      }
+
+      // 3) Expo Go (dev) — allow only in non-production and only exp:// / exps://
+      if (
+        process.env.NODE_ENV !== "production" &&
+        (scheme === "exp" || scheme === "exps")
+      ) {
+        return redirectTo; // origin can vary (phone/LAN IP), that's expected
+      }
+
+      throw new Error(`Invalid redirectTo URI: ${redirectTo}`);
+    },
     createOrUpdateUser: async (ctx, args) => {
       const patch = extractUserPatch(args.provider, args.type, args.profile);
 

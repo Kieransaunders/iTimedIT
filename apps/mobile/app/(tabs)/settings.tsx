@@ -28,6 +28,7 @@ import Toast from "react-native-toast-message";
 import { useAuth } from "@/hooks/useAuth";
 import { getUserDisplayName, getUserInitials, getUserEmail, isAnonymousUser } from "@/utils/userUtils";
 import { useRouter } from "expo-router";
+import { OrganizationSelector } from "@/components";
 
 type SoundType = 'breakStart' | 'breakEnd' | 'interrupt' | 'overrun';
 
@@ -421,6 +422,25 @@ export default function SettingsScreen() {
         )}
 
         <Text style={[styles.title, { color: colors.textPrimary }]}>Settings</Text>
+
+        {/* Organization Settings Section */}
+        <View style={[styles.section, { backgroundColor: colors.surface }]}>
+          <View style={[styles.sectionHeader, { borderBottomColor: colors.border }]}>
+            <Ionicons name="business-outline" size={24} color={colors.primary} />
+            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Organization</Text>
+          </View>
+
+          <View style={[styles.settingItem, { borderBottomColor: colors.border }]}>
+            <View style={styles.settingInfo}>
+              <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>Current Organization</Text>
+              <OrganizationSelector 
+                showLabel={false}
+                compact={true}
+                style={{ marginTop: 8 }}
+              />
+            </View>
+          </View>
+        </View>
 
         {/* Sound Preferences Section */}
         <View style={[styles.section, { backgroundColor: colors.surface }]}>

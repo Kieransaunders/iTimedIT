@@ -80,7 +80,7 @@ function AuthenticatedApp() {
   const [currentPage, setCurrentPage] = useState<AppPage>("dashboard");
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [pushSwitchRequest, setPushSwitchRequest] = useState<any | null>(null);
-  const [currentWorkspace, setCurrentWorkspace] = useState<"personal" | "team">("personal");
+  const [currentWorkspace, setCurrentWorkspace] = useState<"personal" | "team">("team");
   const [clientFilter, setClientFilter] = useState<string | null>(null);
 
   const loggedInUser = useQuery(api.auth.loggedInUser);
@@ -667,11 +667,7 @@ function OrganizationSwitcher() {
     useOrganization();
 
   if (!isReady || memberships.length <= 1) {
-    return activeOrganization ? (
-      <span className="text-sm text-gray-600 dark:text-gray-300">
-        {activeOrganization.name}
-      </span>
-    ) : null;
+    return null;
   }
 
   return (
@@ -808,7 +804,7 @@ function WorkspaceIndicator({
         <div className={`w-2 h-2 rounded-full ${
           currentWorkspace === "personal" ? "bg-blue-500" : "bg-purple-500"
         }`} />
-        <span>{currentWorkspace === "personal" ? "Personal Workspace" : "Team Workspace"}</span>
+        <span>{currentWorkspace === "personal" ? "Personal" : "Team"}</span>
         <svg
           className={`w-4 h-4 transition-transform ${showDropdown ? 'rotate-180' : ''}`}
           fill="none"
@@ -830,7 +826,7 @@ function WorkspaceIndicator({
             }`}
           >
             <div className="w-2 h-2 rounded-full bg-blue-500" />
-            <span>Personal Workspace</span>
+            <span>Personal</span>
             {currentWorkspace === "personal" && (
               <svg className="w-4 h-4 ml-auto" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -846,7 +842,7 @@ function WorkspaceIndicator({
             }`}
           >
             <div className="w-2 h-2 rounded-full bg-purple-500" />
-            <span>Team Workspace</span>
+            <span>Team</span>
             {currentWorkspace === "team" && (
               <svg className="w-4 h-4 ml-auto" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />

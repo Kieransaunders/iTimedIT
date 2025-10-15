@@ -1,6 +1,4 @@
 
-
-
 ## Project Overview
 
 iTimedIT is a multi-tenant time tracking platform with both **web** and **mobile** applications in a monorepo structure. The web app is a React + Vite frontend with Convex backend, while the mobile app is built with Expo/React Native sharing the same Convex backend architecture.
@@ -44,6 +42,7 @@ packages/
 ## Technology Stack
 
 ### Web App
+
 - **Frontend**: React 18 + TypeScript 5.7.2 + Vite 6
 - **Backend**: Convex (Node.js 20 runtime)
 - **UI**: Tailwind CSS + shadcn/ui components
@@ -52,6 +51,7 @@ packages/
 - **Testing**: Jest + ts-jest
 
 ### Mobile App
+
 - **Framework**: Expo ~54 + React Native 0.81
 - **Backend**: Convex (shared with web via symlink at `apps/mobile/convex -> apps/web/convex`)
 - **Routing**: Expo Router (file-based)
@@ -63,6 +63,7 @@ packages/
 ## Common Commands
 
 ### Root-level commands (manages both apps)
+
 ```bash
 npm run dev              # Start web app (alias for dev:web)
 npm run dev:web          # Start web app with Convex backend
@@ -75,6 +76,7 @@ npm run clean            # Clean all node_modules
 ```
 
 ### Web app commands (from root or apps/web/)
+
 ```bash
 npm run dev --workspace=@itimedit/web    # Development with hot reload
 npm run dev:frontend                      # Vite only (requires separate Convex)
@@ -88,6 +90,7 @@ npm run generate:vapid                    # Generate Web Push VAPID keys
 ```
 
 ### Mobile app commands (from root or apps/mobile/)
+
 ```bash
 npm run start --workspace=@itimedit/mobile   # Start Expo dev server
 npm run ios                                  # Run on iOS simulator
@@ -98,6 +101,7 @@ npm run test                                 # Run Jest tests (--runInBand)
 ```
 
 ### Convex commands (run from apps/web/)
+
 ```bash
 npx convex dev           # Start Convex development backend
 npx convex deploy        # Deploy to production Convex backend
@@ -108,6 +112,7 @@ npx convex logs          # View function logs
 ## Key Architecture Decisions
 
 ### Component Usage Verification (CRITICAL)
+
 - **ALWAYS verify component imports** before implementing features
 - **ModernDashboard.tsx is the ONLY active timer interface** - check `apps/web/src/App.tsx` to confirm which components are actually rendered
 - Search for component imports before assuming usage to avoid modifying legacy/unused code
@@ -117,6 +122,7 @@ npx convex logs          # View function logs
 **IMPORTANT**: Both web and mobile apps share the same Convex backend via symlink (`apps/mobile/convex -> apps/web/convex`). All backend functions are defined in `apps/web/convex/` and used by both applications.
 
 #### Shared Backend Features
+
 - Server-side timer interruptions using `scheduler.runAt`
 - 60-second grace periods for timer interruptions
 - Pomodoro timer with work/break phases
@@ -130,6 +136,7 @@ npx convex logs          # View function logs
   - Mobile: Calls `api.organizations.ensurePersonalWorkspace` in `app/_layout.tsx` on authentication
 
 #### Organization Context Pattern (`apps/web/convex/orgContext.ts`)
+
 ```typescript
 // Shared helpers used by both web and mobile
 requireMembership(ctx)      // Throws if no membership
@@ -140,6 +147,7 @@ maybeMembership(ctx)        // Returns null if no membership
 ### Authentication Flow
 
 Both apps use `@convex-dev/auth`:
+
 - Password authentication
 - Google OAuth (PKCE flow in mobile)
 - Anonymous/guest authentication (mobile only)
@@ -148,6 +156,7 @@ Both apps use `@convex-dev/auth`:
 ### Data Model
 
 Key tables (defined in `apps/web/convex/schema.ts`):
+
 - **organizations**: Multi-tenant workspaces (auto-created "Personal Workspace")
 - **memberships**: User-org relationships with roles (owner/admin/member)
 - **clients**: Optional client association for projects
@@ -161,12 +170,14 @@ Key tables (defined in `apps/web/convex/schema.ts`):
 ## Environment Configuration
 
 ### Web App
+
 - **Development**: `VITE_CONVEX_URL=https://watchful-hedgehog-860.convex.cloud`
 - **Production**: `VITE_CONVEX_URL=https://basic-greyhound-928.convex.cloud`
-- **Production URL**: https://itimedit.netlify.app
-- **Convex Dashboard**: https://dashboard.convex.dev/d/basic-greyhound-928
+- **Production URL**: <https://itimedit.netlify.app>
+- **Convex Dashboard**: <https://dashboard.convex.dev/d/basic-greyhound-928>
 
 ### Mobile App
+
 - `EXPO_PUBLIC_CONVEX_URL`: Points to Convex backend (same as web)
 - `EXPO_PUBLIC_GOOGLE_CLIENT_ID`: Google OAuth client ID for mobile
 - `EXPO_PUBLIC_EAS_PROJECT_ID`: Expo Application Services project ID (for push notifications)
@@ -174,17 +185,20 @@ Key tables (defined in `apps/web/convex/schema.ts`):
 ## Code Style Guidelines
 
 ### TypeScript
+
 - Strict mode enabled, no `any` types
 - Use `Id<"tableName">` type from Convex for document IDs
 - Prefer functional components with hooks
 - Use `as const` for string literals in discriminated unions
 
 ### React
+
 - Functional components only
 - React hooks for state management
 - Convex hooks (`useQuery`, `useMutation`, `useAction`) for data
 
 ### Convex Functions
+
 - **Always use new function syntax** with `args` and `returns` validators
 - Use `internalQuery`, `internalMutation`, `internalAction` for private functions
 - Import from `"./_generated/server"` for function registration
@@ -193,11 +207,13 @@ Key tables (defined in `apps/web/convex/schema.ts`):
 - Add `"use node";` to files using Node.js built-ins (e.g., web-push)
 
 ### UI (Web)
+
 - Tailwind utility classes only (no inline styles)
 - shadcn/ui components with `@/components/ui/*` imports
 - Button, Card, Dialog, Select, etc. from Radix UI
 
 ### UI (Mobile)
+
 - react-native-unistyles for styling
 - Custom components in `apps/mobile/components/`
 - Lucide icons via `lucide-react-native`
@@ -205,6 +221,7 @@ Key tables (defined in `apps/web/convex/schema.ts`):
 ## Testing
 
 ### Web App
+
 - Jest + ts-jest configuration
 - Test files in `apps/web/tests/`:
   - `unit/` - Component tests
@@ -213,6 +230,7 @@ Key tables (defined in `apps/web/convex/schema.ts`):
 - Run with `npm run test:coverage` before PRs
 
 ### Mobile App
+
 - Jest + jest-expo configuration
 - Test files in `apps/mobile/__tests__/`:
   - `hooks/` - Hook tests
@@ -223,6 +241,7 @@ Key tables (defined in `apps/web/convex/schema.ts`):
 ## Critical Notes
 
 ### For Web App Development
+
 1. **ModernDashboard.tsx** is the active timer interface (verify in App.tsx)
 2. Server-side interruptions use `scheduler.runAt` (not client-side timers)
 3. Pomodoro timer has separate work/break phases with distinct tracking
@@ -230,6 +249,7 @@ Key tables (defined in `apps/web/convex/schema.ts`):
 5. Push notifications require Node.js 20 runtime in Convex actions
 
 ### For Mobile App Development
+
 1. **Mobile app shares Convex backend with web** via symlink at `apps/mobile/convex -> apps/web/convex`
 2. **All Convex functions are in `apps/web/convex/`** - mobile uses the same functions as web
 3. **Auto-creates Personal Workspace** via `app/_layout.tsx` when user authenticates
@@ -238,12 +258,14 @@ Key tables (defined in `apps/web/convex/schema.ts`):
 6. **Timer interrupts with auto-stop**: Same backend logic as web app - uses `awaitingInterruptAck` field
 
 ### Deployment
+
 - Web: Netlify + Convex production backend
 - Mobile: Expo Application Services (EAS Build)
 - Always test locally with `npx convex dev` before deploying
 - Run `npm run lint` to catch TypeScript/Convex errors
 
 ### Important: Server Management
+
 - **NEVER start dev servers automatically** - always let the user handle server setup
 - The user manages: Expo dev server, Convex backend, and any other services
 - Only kill servers when explicitly requested by the user

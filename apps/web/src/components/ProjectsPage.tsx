@@ -91,14 +91,12 @@ export function ProjectsPage({
         const createData: any = {
           ...projectData,
         };
-        
-        // For team projects, clientId is required; for personal projects, it's optional
-        if (currentWorkspace === "team") {
-          createData.clientId = clientId as Id<"clients">;
-        } else if (clientId) {
+
+        // Client is now optional for both personal and team workspaces
+        if (clientId) {
           createData.clientId = clientId as Id<"clients">;
         }
-        
+
         await createProject(createData);
         console.log("Project created successfully");
       }
@@ -223,13 +221,12 @@ export function ProjectsPage({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label htmlFor="clientId" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Client {currentWorkspace === "team" && <span className="text-red-500">*</span>}
+                  Client (optional)
                 </label>
                 <select
                   id="clientId"
                   value={clientId}
                   onChange={(e) => setClientId(e.target.value as Id<"clients">)}
-                  required={currentWorkspace === "team"}
                   disabled={!!editingProject}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-purple-timer bg-white dark:bg-gray-700/50 text-gray-900 dark:text-gray-100"
                 >

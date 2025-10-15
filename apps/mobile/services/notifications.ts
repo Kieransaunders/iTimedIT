@@ -35,36 +35,57 @@ export async function requestNotificationPermissions(): Promise<boolean> {
 
 /**
  * Get the Expo push token for this device
- * @returns The push token string or null if unable to get token
+ * @returns The push token string
+ * @throws Error with detailed message if token cannot be obtained
  */
-export async function getExpoPushToken(): Promise<string | null> {
+export async function getExpoPushToken(): Promise<string> {
+  // Check if running on a physical device
+  if (!Constants.isDevice) {
+    throw new Error(
+      "Push notifications only work on physical devices. " +
+      "Please test on a real device instead of a simulator/emulator."
+    );
+  }
+
+  // Request permissions first
+  const hasPermission = await requestNotificationPermissions();
+  if (!hasPermission) {
+    throw new Error(
+      "Notification permissions not granted. " +
+      "Please enable notifications in your device settings."
+    );
+  }
+
+  // Get the push token
+  const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+
+  if (!projectId) {
+    console.warn("No EAS project ID found. This may cause issues in production.");
+    console.warn("Set EXPO_PUBLIC_EAS_PROJECT_ID in your .env file.");
+  }
+
   try {
-    // Check if running on a physical device
-    if (!Constants.isDevice) {
-      console.warn("Push notifications only work on physical devices");
-      return null;
-    }
+    console.log(`Getting Expo push token${projectId ? ` with project ID: ${projectId}` : " without project ID"}...`);
 
-    // Request permissions first
-    const hasPermission = await requestNotificationPermissions();
-    if (!hasPermission) {
-      console.warn("Notification permissions not granted");
-      return null;
-    }
-
-    // Get the push token
-    const projectId = Constants.expoConfig?.extra?.eas?.projectId;
-    
-    // For development, we can skip the projectId requirement
-    // In production, you'll need a valid EAS project ID
-    const tokenData = projectId 
+    const tokenData = projectId
       ? await Notifications.getExpoPushTokenAsync({ projectId })
       : await Notifications.getExpoPushTokenAsync();
 
+    if (!tokenData?.data) {
+      throw new Error("Token data is missing or invalid");
+    }
+
+    console.log("Successfully obtained push token:", tokenData.data.substring(0, 20) + "...");
     return tokenData.data;
   } catch (error) {
-    console.error("Error getting push token:", error);
-    return null;
+    // Provide detailed error information
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    throw new Error(
+      `Failed to get Expo push token: ${errorMessage}. ` +
+      `Device: ${Constants.isDevice ? "Physical" : "Simulator"}, ` +
+      `Platform: ${Platform.OS}, ` +
+      `Project ID: ${projectId || "Not set"}`
+    );
   }
 }
 

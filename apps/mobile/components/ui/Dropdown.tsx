@@ -1,4 +1,5 @@
-import { borderRadius, colors, opacity, sizing, spacing, typography } from "@/utils/theme";
+import { borderRadius, opacity, sizing, spacing, typography } from "@/utils/theme";
+import { useTheme } from "@/utils/ThemeContext";
 import React, { useState } from "react";
 import {
     FlatList,
@@ -39,6 +40,8 @@ export function Dropdown<T = string>({
   renderOption,
 }: DropdownProps<T>) {
   const [isOpen, setIsOpen] = useState(false);
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
 
   const selectedOption = options.find((opt) => opt.value === value);
 
@@ -136,102 +139,103 @@ export function Dropdown<T = string>({
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    marginBottom: spacing.md,
-  },
-  label: {
-    ...typography.body,
-    color: colors.textPrimary,
-    marginBottom: spacing.sm,
-    fontWeight: "500",
-  },
-  trigger: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.md,
-    borderWidth: 2,
-    borderColor: colors.border,
-    height: sizing.inputHeight,
-    paddingHorizontal: spacing.md,
-  },
-  triggerError: {
-    borderColor: colors.error,
-  },
-  triggerDisabled: {
-    opacity: opacity.disabled,
-  },
-  triggerText: {
-    ...typography.body,
-    color: colors.textPrimary,
-    flex: 1,
-  },
-  triggerTextPlaceholder: {
-    color: colors.textSecondary,
-  },
-  chevron: {
-    color: colors.textSecondary,
-    fontSize: 12,
-    marginLeft: spacing.sm,
-  },
-  error: {
-    ...typography.caption,
-    color: colors.error,
-    marginTop: spacing.xs,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: `rgba(0, 0, 0, ${opacity.overlay})`,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: spacing.lg,
-  },
-  modalContent: {
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.lg,
-    width: "100%",
-    maxHeight: "70%",
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  modalTitle: {
-    ...typography.heading,
-    color: colors.textPrimary,
-  },
-  closeButton: {
-    padding: spacing.sm,
-  },
-  closeButtonText: {
-    ...typography.heading,
-    color: colors.textSecondary,
-  },
-  optionsList: {
-    maxHeight: 400,
-  },
-  option: {
-    padding: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  optionSelected: {
-    backgroundColor: colors.primary + "20", // 20% opacity
-  },
-  optionText: {
-    ...typography.body,
-    color: colors.textPrimary,
-  },
-  optionTextSelected: {
-    color: colors.primary,
-    fontWeight: "600",
-  },
-});
+const createStyles = (colors: typeof import("@/utils/theme").lightColors) =>
+  StyleSheet.create({
+    container: {
+      marginBottom: spacing.md,
+    },
+    label: {
+      ...typography.body,
+      color: colors.textPrimary,
+      marginBottom: spacing.sm,
+      fontWeight: "500",
+    },
+    trigger: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      backgroundColor: colors.surface,
+      borderRadius: borderRadius.md,
+      borderWidth: 2,
+      borderColor: colors.border,
+      height: sizing.inputHeight,
+      paddingHorizontal: spacing.md,
+    },
+    triggerError: {
+      borderColor: colors.error,
+    },
+    triggerDisabled: {
+      opacity: opacity.disabled,
+    },
+    triggerText: {
+      ...typography.body,
+      color: colors.textPrimary,
+      flex: 1,
+    },
+    triggerTextPlaceholder: {
+      color: colors.textSecondary,
+    },
+    chevron: {
+      color: colors.textSecondary,
+      fontSize: 12,
+      marginLeft: spacing.sm,
+    },
+    error: {
+      ...typography.caption,
+      color: colors.error,
+      marginTop: spacing.xs,
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: `rgba(0, 0, 0, ${opacity.overlay})`,
+      justifyContent: "center",
+      alignItems: "center",
+      padding: spacing.lg,
+    },
+    modalContent: {
+      backgroundColor: colors.surface,
+      borderRadius: borderRadius.lg,
+      width: "100%",
+      maxHeight: "70%",
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    modalHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      padding: spacing.lg,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    modalTitle: {
+      ...typography.heading,
+      color: colors.textPrimary,
+    },
+    closeButton: {
+      padding: spacing.sm,
+    },
+    closeButtonText: {
+      ...typography.heading,
+      color: colors.textSecondary,
+    },
+    optionsList: {
+      maxHeight: 400,
+    },
+    option: {
+      padding: spacing.lg,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    optionSelected: {
+      backgroundColor: colors.primary + "20", // 20% opacity
+    },
+    optionText: {
+      ...typography.body,
+      color: colors.textPrimary,
+    },
+    optionTextSelected: {
+      color: colors.primary,
+      fontWeight: "600",
+    },
+  });

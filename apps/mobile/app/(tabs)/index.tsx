@@ -8,8 +8,13 @@ import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { Toast } from "@/components/ui/Toast";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useTimer } from "@/hooks/useTimer";
+import { useProjects } from "@/hooks/useProjects";
 import { useTheme } from "@/utils/ThemeContext";
-import { spacing } from "@/utils/theme";
+import { EmptyStateCard, WebAppPrompt, openWebApp } from "@/components";
+import { WorkspaceBadge } from "@/components/common/WorkspaceBadge";
+import { CompanionAppGuidance } from "@/components/common/CompanionAppGuidance";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { spacing, borderRadius } from "@/utils/theme";
 import React, { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
@@ -33,6 +38,7 @@ export default function Index() {
   } = useTimer();
 
   const { colors } = useTheme();
+  const { projects, currentWorkspace } = useProjects();
   const { 
     registerForPushNotifications, 
     setResponseHandler,
@@ -158,16 +164,35 @@ export default function Index() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* TODO: Add Personal/Team workspace tabs at the top */}
+        {/* Companion App Guidance for timer */}
+        <View style={styles.selectorContainer}>
+          <CompanionAppGuidance
+            context="timer"
+            hasData={projects.length > 0}
+          />
+        </View>
 
-        {/* Project Selector - at the top, below workspace tabs */}
+        {/* Project Selector - Always show to enable inline creation */}
         <View style={styles.selectorContainer}>
           <ProjectSelector
             selectedProject={selectedProject}
             onSelect={setSelectedProject}
             disabled={isTimerRunning}
+            workspaceType={currentWorkspace}
           />
         </View>
+
+        {/* Show empty state hint if no projects exist */}
+        {projects.length === 0 && (
+          <View style={styles.emptyStateContainer}>
+            <View style={[styles.emptyStateHint, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <MaterialCommunityIcons name="information-outline" size={24} color={colors.primary} />
+              <Text style={[styles.emptyStateText, { color: colors.textPrimary }]}>
+                Tap "Select a project" above to create your first project
+              </Text>
+            </View>
+          </View>
+        )}
 
         {/* Mode Toggle and Change Sound Button */}
         <View style={styles.modeContainer}>
@@ -180,13 +205,18 @@ export default function Index() {
         </View>
 
         {/* Large Timer Display - matching web dashboard */}
-        <LargeTimerDisplay
-          elapsedTime={elapsedTime}
-          project={runningTimer?.project || selectedProject}
-          isRunning={isTimerRunning}
-          isNearBudget={false}
-          isOverBudget={false}
-        />
+        <View style={styles.timerDisplayContainer}>
+          <View style={styles.timerHeader}>
+            <WorkspaceBadge size="medium" />
+          </View>
+          <LargeTimerDisplay
+            elapsedTime={elapsedTime}
+            project={runningTimer?.project || selectedProject}
+            isRunning={isTimerRunning}
+            isNearBudget={false}
+            isOverBudget={false}
+          />
+        </View>
 
         {/* Timer Controls - Start and Reset buttons */}
         <TimerControls
@@ -277,5 +307,30 @@ const styles = StyleSheet.create({
   },
   categoryDropdown: {
     marginBottom: 0,
+  },
+  timerDisplayContainer: {
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.lg,
+  },
+  timerHeader: {
+    alignItems: "center",
+    marginBottom: spacing.md,
+  },
+  emptyStateContainer: {
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+  },
+  emptyStateHint: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    padding: spacing.lg,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+  },
+  emptyStateText: {
+    flex: 1,
+    fontSize: 14,
+    lineHeight: 20,
   },
 });

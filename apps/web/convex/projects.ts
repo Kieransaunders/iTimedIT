@@ -184,7 +184,7 @@ export const listAll = query({
 
 export const create = mutation({
   args: {
-    clientId: v.id("clients"),
+    clientId: v.optional(v.id("clients")),
     name: v.string(),
     hourlyRate: v.number(),
     budgetType: v.union(v.literal("hours"), v.literal("amount")),
@@ -198,17 +198,22 @@ export const create = mutation({
       "admin",
     ]);
 
-    const client = await ctx.db.get(args.clientId);
-    if (!client || client.organizationId !== organizationId) {
-      throw new Error("Client not found");
+    let client = null;
+    if (args.clientId) {
+      client = await ctx.db.get(args.clientId);
+      if (!client || client.organizationId !== organizationId) {
+        throw new Error("Client not found");
+      }
+
+      // Ensure client and project have matching workspace types
+      const workspaceType = args.workspaceType || "team";
+      if (client.workspaceType && client.workspaceType !== workspaceType) {
+        throw new Error("Project workspace type must match client workspace type");
+      }
     }
 
-    // Ensure client and project have matching workspace types
     const workspaceType = args.workspaceType || "team";
-    if (client.workspaceType && client.workspaceType !== workspaceType) {
-      throw new Error("Project workspace type must match client workspace type");
-    }
-
+    
     return await ctx.db.insert("projects", {
       organizationId,
       createdBy: userId,
@@ -227,6 +232,7 @@ export const create = mutation({
 export const update = mutation({
   args: {
     id: v.id("projects"),
+    clientId: v.optional(v.id("clients")),
     name: v.optional(v.string()),
     hourlyRate: v.optional(v.number()),
     budgetType: v.optional(v.union(v.literal("hours"), v.literal("amount"))),
@@ -243,15 +249,31 @@ export const update = mutation({
       throw new Error("Project not found");
     }
 
+    // If changing client, validate the new client
+    if (args.clientId !== undefined && args.clientId !== null) {
+      const client = await ctx.db.get(args.clientId);
+      if (!client || client.organizationId !== organizationId) {
+        throw new Error("Client not found");
+      }
+      
+      // Ensure client and project have matching workspace types
+      const workspaceType = args.workspaceType !== undefined ? args.workspaceType : project.workspaceType;
+      if (client.workspaceType && client.workspaceType !== workspaceType) {
+        throw new Error("Project workspace type must match client workspace type");
+      }
+    }
+
     // If changing workspace type, ensure it matches the client
-    if (args.workspaceType !== undefined && project.clientId) {
-      const client = await ctx.db.get(project.clientId);
+    const clientId = args.clientId !== undefined ? args.clientId : project.clientId;
+    if (args.workspaceType !== undefined && clientId) {
+      const client = await ctx.db.get(clientId);
       if (client && client.workspaceType && client.workspaceType !== args.workspaceType) {
         throw new Error("Project workspace type must match client workspace type");
       }
     }
 
     await ctx.db.patch(args.id, {
+      ...(args.clientId !== undefined && { clientId: args.clientId }),
       ...(args.name !== undefined && { name: args.name }),
       ...(args.hourlyRate !== undefined && { hourlyRate: args.hourlyRate }),
       ...(args.budgetType !== undefined && { budgetType: args.budgetType }),

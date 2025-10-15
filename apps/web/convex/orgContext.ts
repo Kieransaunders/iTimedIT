@@ -139,13 +139,18 @@ export async function ensureMembership(
     };
   }
 
-  // Auto-create "Personal Workspace" for new users (including anonymous)
+  // Auto-create default workspace for new users (including anonymous)
+  // Use user's name to create a personalized workspace name
+  const user = await ctx.db.get(userId);
+  const userName = user?.name || user?.email?.split('@')[0] || 'My';
+  const workspaceName = `${userName}'s Workspace`;
+
   const now = Date.now();
   const organizationId = await ctx.db.insert("organizations", {
-    name: "Personal Workspace",
+    name: workspaceName,
     createdBy: userId,
     createdAt: now,
-    isPersonalWorkspace: true,
+    isPersonalWorkspace: true, // Keep flag for backward compatibility
   });
 
   const membershipId = await ctx.db.insert("memberships", {

@@ -1,5 +1,5 @@
 import { Project } from "@/types/models";
-import { borderRadius, colors, opacity, sizing, spacing, typography } from "@/utils/theme";
+import { borderRadius, opacity, sizing, spacing, typography } from "@/utils/theme";
 import { useTheme } from "@/utils/ThemeContext";
 import React, { useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
@@ -24,6 +24,7 @@ export function ProjectSelector({
 }: ProjectSelectorProps) {
   const [modalVisible, setModalVisible] = useState(false);
   const { colors } = useTheme();
+  const styles = createStyles(colors);
 
   const handleOpenModal = () => {
     if (!disabled) {
@@ -77,48 +78,49 @@ export function ProjectSelector({
   );
 }
 
-const styles = StyleSheet.create({
-  trigger: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-  },
-  triggerDisabled: {
-    opacity: opacity.disabled,
-  },
-  projectInfo: {
-    flex: 1,
-    gap: spacing.xs,
-  },
-  projectHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-  },
-  colorDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-  },
-  projectName: {
-    ...typography.body,
-    color: colors.textPrimary,
-    fontWeight: "600",
-    fontSize: 16,
-  },
-  clientName: {
-    ...typography.body,
-    color: colors.textSecondary,
-    fontSize: 14,
-  },
-  triggerTextPlaceholder: {
-    color: colors.textSecondary,
-    fontWeight: "400",
-  },
-});
+const createStyles = (colors: typeof import("@/utils/theme").lightColors) =>
+  StyleSheet.create({
+    trigger: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      backgroundColor: colors.surface,
+      borderRadius: borderRadius.lg,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.md,
+    },
+    triggerDisabled: {
+      opacity: opacity.disabled,
+    },
+    projectInfo: {
+      flex: 1,
+      gap: spacing.xs,
+    },
+    projectHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.sm,
+    },
+    colorDot: {
+      width: 12,
+      height: 12,
+      borderRadius: 6,
+    },
+    projectName: {
+      ...typography.body,
+      color: colors.textPrimary,
+      fontWeight: "600",
+      fontSize: 16,
+    },
+    clientName: {
+      ...typography.body,
+      color: colors.textSecondary,
+      fontSize: 14,
+    },
+    triggerTextPlaceholder: {
+      color: colors.textSecondary,
+      fontWeight: "400",
+    },
+  });

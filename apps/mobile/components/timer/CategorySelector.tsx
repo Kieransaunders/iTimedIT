@@ -74,7 +74,6 @@ export function CategorySelector({
 
   return (
     <Dropdown
-      label="Category"
       placeholder={placeholder}
       options={options}
       value={displayValue}

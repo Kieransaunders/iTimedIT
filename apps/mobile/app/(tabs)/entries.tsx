@@ -13,6 +13,9 @@ import { EditEntryModal, EntryCard, ManualEntryModal } from "../../components/en
 import { Button } from "../../components/ui";
 import { useEntries } from "../../hooks/useEntries";
 import { colors, spacing, typography } from "../../utils/theme";
+import { WebRedirectBanner } from "../../components/common/WebRedirectBanner";
+import { WorkspaceIndicator } from "../../components/common/WorkspaceIndicator";
+import { CompanionAppGuidance } from "../../components/common/CompanionAppGuidance";
 
 export default function EntriesScreen() {
   const { entries, isLoading, loadMore, status, deleteEntry } = useEntries();
@@ -84,10 +87,21 @@ export default function EntriesScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Time Entries</Text>
+        <View style={styles.headerLeft}>
+          <Text style={styles.title}>Time Entries</Text>
+          <WorkspaceIndicator variant="compact" />
+        </View>
         <Button onPress={handleAddEntry} variant="primary">
           Add Entry
         </Button>
+      </View>
+
+      {/* Companion App Guidance */}
+      <View style={styles.bannerContainer}>
+        <CompanionAppGuidance
+          context="entries"
+          hasData={entries.length > 0}
+        />
       </View>
 
       <FlatList
@@ -159,9 +173,18 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
+  headerLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
   title: {
     ...typography.title,
     color: colors.textPrimary,
+  },
+  bannerContainer: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.md,
   },
   listContent: {
     padding: spacing.lg,

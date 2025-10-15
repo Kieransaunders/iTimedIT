@@ -153,10 +153,10 @@ export function ModernDashboard({
 
   // Use appropriate API based on workspace type
   const projects = useQuery(
-    currentWorkspace === "personal" 
+    currentWorkspace === "personal"
       ? api.personalProjects.listPersonal
       : api.projects.listAll,
-    currentWorkspace === "personal" ? {} : { workspaceType: "team" }
+    currentWorkspace === "personal" ? {} : {}
   );
   const runningTimer = useQuery(api.timer.getRunningTimer, { workspaceType: currentWorkspace });
   const userSettings = useQuery(api.users.getUserSettings);
@@ -187,10 +187,10 @@ export function ModernDashboard({
       : api.clients.create
   );
   const clients = useQuery(
-    currentWorkspace === "personal" 
+    currentWorkspace === "personal"
       ? api.personalClients.listPersonal
       : api.clients.list,
-    currentWorkspace === "personal" ? {} : { workspaceType: "team" }
+    currentWorkspace === "personal" ? {} : {}
   );
   const createManualEntry = useMutation(api.timer.createManualEntry);
   const updateUserSettings = useMutation(api.users.updateUserSettings);
@@ -216,14 +216,27 @@ export function ModernDashboard({
     }));
   }, [projects]);
 
-  // Filter projects based on search term
-  const filteredProjects = useMemo(() => {
-    if (!searchTerm.trim()) return projectsWithColors;
-    const term = searchTerm.toLowerCase();
-    return projectsWithColors.filter(project =>
-      project.name.toLowerCase().includes(term) ||
-      (project.client?.name && project.client.name.toLowerCase().includes(term))
-    );
+  // Filter projects based on search term and separate by workspace type
+  const { personalProjects, teamProjects, filteredProjects } = useMemo(() => {
+    // Separate projects by workspace type
+    const personal = projectsWithColors.filter(p => p.workspaceType === "personal");
+    const team = projectsWithColors.filter(p => !p.workspaceType || p.workspaceType === "team");
+
+    // Apply search filter
+    let filtered = projectsWithColors;
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase();
+      filtered = projectsWithColors.filter(project =>
+        project.name.toLowerCase().includes(term) ||
+        (project.client?.name && project.client.name.toLowerCase().includes(term))
+      );
+    }
+
+    return {
+      personalProjects: personal,
+      teamProjects: team,
+      filteredProjects: filtered
+    };
   }, [projectsWithColors, searchTerm]);
 
   const currentProject = useMemo(() => {
@@ -251,12 +264,21 @@ export function ModernDashboard({
     }
   }, [runningTimer?.projectId, projectsWithColors.length]);
 
-  // Update time display
+  // Update time display - runs whenever we have a running timer
   useEffect(() => {
-    if (!runningTimer) return;
+    if (!runningTimer) {
+      // Reset now to current time when timer stops
+      setNow(Date.now());
+      return;
+    }
+
+    // Update immediately
+    setNow(Date.now());
+
+    // Then update every second
     const interval = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(interval);
-  }, [runningTimer]);
+  }, [runningTimer?._id]); // Re-run when timer ID changes (or when timer starts/stops)
 
   // Heartbeat when timer is running
   useEffect(() => {
@@ -699,16 +721,12 @@ export function ModernDashboard({
       toast.error("Project name is required");
       return;
     }
-    if (!newProjectForm.clientId) {
-      toast.error("Please select a client");
-      return;
-    }
-    
+
     setIsCreatingProject(true);
     try {
       const projectId = await createProject({
         name: newProjectForm.name.trim(),
-        clientId: newProjectForm.clientId,
+        ...(newProjectForm.clientId && { clientId: newProjectForm.clientId }),
         hourlyRate: newProjectForm.hourlyRate,
         budgetType: newProjectForm.budgetType,
         budgetHours: newProjectForm.budgetType === "hours" ? newProjectForm.budgetHours : undefined,
@@ -1050,35 +1068,119 @@ export function ModernDashboard({
                     
                     {/* Project List */}
                     <div className="max-h-60 overflow-y-auto">
-                      {filteredProjects.length > 0 ? (
-                        filteredProjects.map((project) => (
-                          <div
-                            key={project._id}
-                            className={cn(
-                              "flex items-center gap-3 p-3 hover:bg-gray-100/50 dark:hover:bg-gray-700/50 cursor-pointer transition-colors",
-                              project._id === currentProjectId && "bg-blue-50/50 dark:bg-blue-900/20"
-                            )}
-                            onClick={() => handleProjectSelect(project._id)}
-                          >
-                            <span
-                              className="h-3 w-3 rounded-full"
-                              style={{ backgroundColor: project.color }}
-                            />
-                            <div className="flex-1">
-                              <div className="text-gray-900 dark:text-white font-medium">{project.name}</div>
-                              <div className="text-gray-600 dark:text-gray-300 text-sm">– {project.client?.name || 'No Client'}</div>
+                      {searchTerm.trim() ? (
+                        // Show filtered results when searching
+                        filteredProjects.length > 0 ? (
+                          filteredProjects.map((project) => (
+                            <div
+                              key={project._id}
+                              className={cn(
+                                "flex items-center gap-3 p-3 hover:bg-gray-100/50 dark:hover:bg-gray-700/50 cursor-pointer transition-colors",
+                                project._id === currentProjectId && "bg-blue-50/50 dark:bg-blue-900/20"
+                              )}
+                              onClick={() => handleProjectSelect(project._id)}
+                            >
+                              <span
+                                className="h-3 w-3 rounded-full"
+                                style={{ backgroundColor: project.color }}
+                              />
+                              <div className="flex-1">
+                                <div className="text-gray-900 dark:text-white font-medium">{project.name}</div>
+                                <div className="text-gray-600 dark:text-gray-300 text-sm">
+                                  – {project.client?.name || 'No Client'}
+                                  {project.workspaceType === "personal" && (
+                                    <span className="ml-1 text-xs text-blue-500 dark:text-blue-400">(Personal)</span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="text-gray-500 dark:text-gray-400 text-xs">
+                                {formatCurrencyWithSymbol(project.hourlyRate)}/hr
+                              </div>
                             </div>
-                            <div className="text-gray-500 dark:text-gray-400 text-xs">
-                              {formatCurrencyWithSymbol(project.hourlyRate)}/hr
-                            </div>
+                          ))
+                        ) : (
+                          <div className="p-3 text-center text-gray-500 dark:text-gray-400 text-sm">
+                            No projects found
                           </div>
-                        ))
+                        )
                       ) : (
-                        <div className="p-3 text-center text-gray-500 dark:text-gray-400 text-sm">
-                          No projects found
-                        </div>
+                        // Show separated personal and team projects when not searching
+                        <>
+                          {/* Personal Projects Section */}
+                          {personalProjects.length > 0 && (
+                            <>
+                              <div className="px-3 py-2 bg-gray-100/50 dark:bg-gray-700/30 border-b border-gray-200/50 dark:border-gray-700/50">
+                                <div className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+                                  Personal Projects
+                                </div>
+                              </div>
+                              {personalProjects.map((project) => (
+                                <div
+                                  key={project._id}
+                                  className={cn(
+                                    "flex items-center gap-3 p-3 hover:bg-gray-100/50 dark:hover:bg-gray-700/50 cursor-pointer transition-colors",
+                                    project._id === currentProjectId && "bg-blue-50/50 dark:bg-blue-900/20"
+                                  )}
+                                  onClick={() => handleProjectSelect(project._id)}
+                                >
+                                  <span
+                                    className="h-3 w-3 rounded-full"
+                                    style={{ backgroundColor: project.color }}
+                                  />
+                                  <div className="flex-1">
+                                    <div className="text-gray-900 dark:text-white font-medium">{project.name}</div>
+                                    <div className="text-gray-600 dark:text-gray-300 text-sm">– {project.client?.name || 'No Client'}</div>
+                                  </div>
+                                  <div className="text-gray-500 dark:text-gray-400 text-xs">
+                                    {formatCurrencyWithSymbol(project.hourlyRate)}/hr
+                                  </div>
+                                </div>
+                              ))}
+                            </>
+                          )}
+
+                          {/* Team Projects Section */}
+                          {teamProjects.length > 0 && (
+                            <>
+                              <div className="px-3 py-2 bg-gray-100/50 dark:bg-gray-700/30 border-b border-gray-200/50 dark:border-gray-700/50">
+                                <div className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+                                  Team Projects
+                                </div>
+                              </div>
+                              {teamProjects.map((project) => (
+                                <div
+                                  key={project._id}
+                                  className={cn(
+                                    "flex items-center gap-3 p-3 hover:bg-gray-100/50 dark:hover:bg-gray-700/50 cursor-pointer transition-colors",
+                                    project._id === currentProjectId && "bg-blue-50/50 dark:bg-blue-900/20"
+                                  )}
+                                  onClick={() => handleProjectSelect(project._id)}
+                                >
+                                  <span
+                                    className="h-3 w-3 rounded-full"
+                                    style={{ backgroundColor: project.color }}
+                                  />
+                                  <div className="flex-1">
+                                    <div className="text-gray-900 dark:text-white font-medium">{project.name}</div>
+                                    <div className="text-gray-600 dark:text-gray-300 text-sm">– {project.client?.name || 'No Client'}</div>
+                                  </div>
+                                  <div className="text-gray-500 dark:text-gray-400 text-xs">
+                                    {formatCurrencyWithSymbol(project.hourlyRate)}/hr
+                                  </div>
+                                </div>
+                              ))}
+                            </>
+                          )}
+
+                          {/* No Projects Message */}
+                          {personalProjects.length === 0 && teamProjects.length === 0 && (
+                            <div className="p-3 text-center text-gray-500 dark:text-gray-400 text-sm">
+                              No projects found
+                            </div>
+                          )}
+                        </>
                       )}
-                      
+
                     </div>
                   </>
                 )}
@@ -1171,7 +1273,7 @@ export function ModernDashboard({
                       
                       <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          Client *
+                          Client (optional)
                         </label>
                         <div className="flex gap-2">
                           <select
@@ -1262,7 +1364,7 @@ export function ModernDashboard({
                       <div className="flex gap-2 pt-2">
                         <Button
                           onClick={handleProjectCreated}
-                          disabled={isCreatingProject || !newProjectForm.name.trim() || !newProjectForm.clientId}
+                          disabled={isCreatingProject || !newProjectForm.name.trim()}
                           className="flex-1"
                         >
                           {isCreatingProject ? "Creating..." : "Create Project"}
@@ -1598,53 +1700,109 @@ export function ModernDashboard({
         )}
 
         {/* Recent Projects */}
-        <section className="w-full max-w-6xl px-4 sm:px-0">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Recent Projects
-            </h2>
-            {projectsWithColors.length > 4 && (
-              <span className="text-sm text-gray-500 dark:text-gray-400">
-                {projectsWithColors.length} projects • Scroll to see more →
-              </span>
-            )}
-          </div>
-          <div className="relative">
-            {/* Scroll fade indicators */}
-            <div className="absolute left-0 top-0 bottom-0 w-6 bg-gradient-to-r from-gray-50 dark:from-gray-900 to-transparent pointer-events-none z-10 opacity-0 transition-opacity duration-200" id="scroll-fade-left"></div>
-            <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-gray-50 dark:from-gray-900 to-transparent pointer-events-none z-10 opacity-0 transition-opacity duration-200" id="scroll-fade-right"></div>
-            
-            <div 
-              ref={projectScrollRef} 
-              className="project-scroll-container flex gap-3 sm:gap-4 overflow-x-auto scroll-smooth pb-2" 
-              style={{ 
-                WebkitOverflowScrolling: 'touch'
-              }}
-            >
-              {projectsWithColors.map((project) => (
+        <section className="w-full max-w-6xl px-4 sm:px-0 space-y-6">
+          {/* Personal Projects */}
+          {personalProjects.length > 0 && (
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Personal Projects
+                </h2>
+                {personalProjects.length > 4 && (
+                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                    {personalProjects.length} projects • Scroll to see more →
+                  </span>
+                )}
+              </div>
+              <div className="relative">
+                {/* Scroll fade indicators */}
+                <div className="absolute left-0 top-0 bottom-0 w-6 bg-gradient-to-r from-gray-50 dark:from-gray-900 to-transparent pointer-events-none z-10 opacity-0 transition-opacity duration-200" id="scroll-fade-left-personal"></div>
+                <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-gray-50 dark:from-gray-900 to-transparent pointer-events-none z-10 opacity-0 transition-opacity duration-200" id="scroll-fade-right-personal"></div>
+
                 <div
-                  key={project._id}
-                  className={cn(
-                    "bg-white/60 dark:bg-gray-800/30 backdrop-blur-sm border border-gray-300/50 dark:border-gray-700/50 rounded-xl p-4 cursor-pointer transition-all duration-200 hover:bg-gray-100/60 dark:hover:bg-gray-700/40 hover:scale-105 flex-shrink-0 w-64 sm:w-72",
-                    project._id === currentProjectId && "ring-2 ring-gray-400/50 dark:ring-white/20"
-                  )}
-                  onClick={() => switchProject(project._id)}
+                  className="project-scroll-container flex gap-3 sm:gap-4 overflow-x-auto scroll-smooth pb-2"
+                  style={{
+                    WebkitOverflowScrolling: 'touch'
+                  }}
                 >
-                  <div className="flex items-center gap-2 mb-2">
-                    <span
-                      className="h-3 w-3 rounded-full"
-                      style={{ backgroundColor: project.color }}
-                    />
-                    <span className="font-medium text-gray-900 dark:text-white text-sm truncate">{project.name}</span>
-                  </div>
-                  <div className="text-gray-700 dark:text-gray-300 text-xs truncate font-medium">{project.client?.name || 'No Client'}</div>
-                  <div className="text-gray-600 dark:text-gray-400 text-xs mt-1">
-                    {formatCurrencyWithSymbol(project.hourlyRate)}/hr
-                  </div>
+                  {personalProjects.map((project) => (
+                    <div
+                      key={project._id}
+                      className={cn(
+                        "bg-white/60 dark:bg-gray-800/30 backdrop-blur-sm border border-gray-300/50 dark:border-gray-700/50 rounded-xl p-4 cursor-pointer transition-all duration-200 hover:bg-gray-100/60 dark:hover:bg-gray-700/40 hover:scale-105 flex-shrink-0 w-64 sm:w-72",
+                        project._id === currentProjectId && "ring-2 ring-blue-400/50 dark:ring-blue-500/40"
+                      )}
+                      onClick={() => switchProject(project._id)}
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <span
+                          className="h-3 w-3 rounded-full"
+                          style={{ backgroundColor: project.color }}
+                        />
+                        <span className="font-medium text-gray-900 dark:text-white text-sm truncate">{project.name}</span>
+                      </div>
+                      <div className="text-gray-700 dark:text-gray-300 text-xs truncate font-medium">{project.client?.name || 'No Client'}</div>
+                      <div className="text-gray-600 dark:text-gray-400 text-xs mt-1">
+                        {formatCurrencyWithSymbol(project.hourlyRate)}/hr
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* Team Projects */}
+          {teamProjects.length > 0 && (
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Team Projects
+                </h2>
+                {teamProjects.length > 4 && (
+                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                    {teamProjects.length} projects • Scroll to see more →
+                  </span>
+                )}
+              </div>
+              <div className="relative">
+                {/* Scroll fade indicators */}
+                <div className="absolute left-0 top-0 bottom-0 w-6 bg-gradient-to-r from-gray-50 dark:from-gray-900 to-transparent pointer-events-none z-10 opacity-0 transition-opacity duration-200" id="scroll-fade-left-team"></div>
+                <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-gray-50 dark:from-gray-900 to-transparent pointer-events-none z-10 opacity-0 transition-opacity duration-200" id="scroll-fade-right-team"></div>
+
+                <div
+                  ref={projectScrollRef}
+                  className="project-scroll-container flex gap-3 sm:gap-4 overflow-x-auto scroll-smooth pb-2"
+                  style={{
+                    WebkitOverflowScrolling: 'touch'
+                  }}
+                >
+                  {teamProjects.map((project) => (
+                    <div
+                      key={project._id}
+                      className={cn(
+                        "bg-white/60 dark:bg-gray-800/30 backdrop-blur-sm border border-gray-300/50 dark:border-gray-700/50 rounded-xl p-4 cursor-pointer transition-all duration-200 hover:bg-gray-100/60 dark:hover:bg-gray-700/40 hover:scale-105 flex-shrink-0 w-64 sm:w-72",
+                        project._id === currentProjectId && "ring-2 ring-gray-400/50 dark:ring-white/20"
+                      )}
+                      onClick={() => switchProject(project._id)}
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <span
+                          className="h-3 w-3 rounded-full"
+                          style={{ backgroundColor: project.color }}
+                        />
+                        <span className="font-medium text-gray-900 dark:text-white text-sm truncate">{project.name}</span>
+                      </div>
+                      <div className="text-gray-700 dark:text-gray-300 text-xs truncate font-medium">{project.client?.name || 'No Client'}</div>
+                      <div className="text-gray-600 dark:text-gray-400 text-xs mt-1">
+                        {formatCurrencyWithSymbol(project.hourlyRate)}/hr
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </section>
 
         {/* Recent Entries */}

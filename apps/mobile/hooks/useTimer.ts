@@ -9,6 +9,8 @@ import {
   playBreakStartSound,
   playBreakEndSound
 } from "@/services/soundManager";
+import { useOrganization } from "@/contexts/OrganizationContext";
+import { NetworkErrorHandler, NetworkErrorState } from "@/utils/networkErrorHandler";
 
 export interface UseTimerReturn {
   runningTimer: RunningTimer | null;
@@ -16,8 +18,11 @@ export interface UseTimerReturn {
   selectedProject: Project | null;
   selectedCategory: string | null;
   timerMode: "normal" | "pomodoro";
+  currentWorkspace: "personal" | "team";
   isLoading: boolean;
   error: string | null;
+  networkError: NetworkErrorState;
+  retryConnection: () => void;
   userSettings: { gracePeriod: number } | undefined;
   startTimer: (
     projectId: Id<"projects">,
@@ -38,19 +43,33 @@ export interface UseTimerReturn {
  * Manages timer state and operations using Convex queries and mutations
  */
 export function useTimer(): UseTimerReturn {
+  // Organization context
+  const { currentWorkspace, isReady } = useOrganization();
+
   // Local state
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [timerMode, setTimerMode] = useState<"normal" | "pomodoro">("normal");
   const [elapsedTime, setElapsedTime] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [networkError, setNetworkError] = useState<NetworkErrorState>(
+    NetworkErrorHandler.createErrorState(null)
+  );
+  const [retryCount, setRetryCount] = useState(0);
 
   // Refs to track previous state for sound triggers
   const prevInterruptRef = useRef<boolean>(false);
   const prevPomodoroPhaseRef = useRef<"work" | "break" | undefined>();
+  const prevWorkspaceRef = useRef<"personal" | "team">(currentWorkspace);
 
   // Convex queries and mutations
-  const runningTimer = useQuery(api.timer.getRunningTimer) as RunningTimer | null | undefined;
+  // Note: getRunningTimer accepts workspaceType to filter results by workspace
+  // Other mutations auto-detect workspace from project context
+  const runningTimer = useQuery(
+    api.timer.getRunningTimer,
+    isReady ? { workspaceType: currentWorkspace } : "skip"
+  ) as RunningTimer | null | undefined;
+  
   const startMutation = useMutation(api.timer.start);
   const stopMutation = useMutation(api.timer.stop);
   const resetMutation = useMutation(api.timer.reset);
@@ -58,7 +77,35 @@ export function useTimer(): UseTimerReturn {
   const ackInterruptMutation = useMutation(api.timer.ackInterrupt);
   const userSettings = useQuery(api.users.getUserSettings);
 
-  const isLoading = runningTimer === undefined || userSettings === undefined;
+  const isLoading = !isReady || runningTimer === undefined || userSettings === undefined;
+
+  // Handle network errors for timer queries
+  useEffect(() => {
+    if ((runningTimer === undefined || userSettings === undefined) && isReady) {
+      // Query failed, likely due to network error
+      const error = new Error("Failed to fetch timer data");
+      setNetworkError(NetworkErrorHandler.createErrorState(error, retryCount));
+    } else if (runningTimer !== undefined && userSettings !== undefined) {
+      // Query succeeded, clear any network errors
+      setNetworkError(NetworkErrorHandler.createErrorState(null));
+    }
+  }, [runningTimer, userSettings, isReady, retryCount]);
+
+  /**
+   * Handle workspace switching during active timer sessions
+   * Stop timer if workspace changes while timer is running
+   */
+  useEffect(() => {
+    const previousWorkspace = prevWorkspaceRef.current;
+    
+    if (previousWorkspace !== currentWorkspace && runningTimer) {
+      // Workspace changed while timer is running - stop the timer
+      console.warn("Workspace changed during active timer session, stopping timer");
+      stopTimer().catch(console.error);
+    }
+    
+    prevWorkspaceRef.current = currentWorkspace;
+  }, [currentWorkspace, runningTimer, stopTimer]);
 
   /**
    * Calculate elapsed time from running timer
@@ -90,7 +137,7 @@ export function useTimer(): UseTimerReturn {
    * Send heartbeat every 30 seconds when timer is running
    */
   useEffect(() => {
-    if (!runningTimer) {
+    if (!runningTimer || !isReady) {
       return;
     }
 
@@ -103,7 +150,7 @@ export function useTimer(): UseTimerReturn {
     }, 30000); // 30 seconds
 
     return () => clearInterval(interval);
-  }, [runningTimer]);
+  }, [runningTimer, isReady, sendHeartbeat]);
 
   /**
    * Play sound alerts for timer interruptions
@@ -178,39 +225,55 @@ export function useTimer(): UseTimerReturn {
       category?: string,
       pomodoroEnabled?: boolean
     ) => {
-      try {
-        setError(null);
+      return await NetworkErrorHandler.withRetry(async () => {
+        try {
+          setError(null);
 
-        await startMutation({
-          projectId,
-          category,
-          pomodoroEnabled: pomodoroEnabled ?? timerMode === "pomodoro",
-        });
-      } catch (err: any) {
-        console.error("Failed to start timer:", err);
-        const errorMessage = err?.message || "Failed to start timer";
-        setError(errorMessage);
-        throw new Error(errorMessage);
-      }
+          await startMutation({
+            projectId,
+            category,
+            pomodoroEnabled: pomodoroEnabled ?? timerMode === "pomodoro",
+          });
+        } catch (err: any) {
+          console.error("Failed to start timer:", err);
+          const errorMessage = err?.message || "Failed to start timer";
+          setError(errorMessage);
+          
+          // Show network error if it's a retryable error
+          if (NetworkErrorHandler.isRetryableError(err)) {
+            NetworkErrorHandler.showNetworkError(err);
+          }
+          
+          throw new Error(errorMessage);
+        }
+      });
     },
-    [startMutation, timerMode]
+    [startMutation, timerMode, currentWorkspace]
   );
 
   /**
    * Stop the running timer
    */
   const stopTimer = useCallback(async () => {
-    try {
-      setError(null);
+    return await NetworkErrorHandler.withRetry(async () => {
+      try {
+        setError(null);
 
-      await stopMutation({});
-    } catch (err: any) {
-      console.error("Failed to stop timer:", err);
-      const errorMessage = err?.message || "Failed to stop timer";
-      setError(errorMessage);
-      throw new Error(errorMessage);
-    }
-  }, [stopMutation]);
+        await stopMutation({});
+      } catch (err: any) {
+        console.error("Failed to stop timer:", err);
+        const errorMessage = err?.message || "Failed to stop timer";
+        setError(errorMessage);
+        
+        // Show network error if it's a retryable error
+        if (NetworkErrorHandler.isRetryableError(err)) {
+          NetworkErrorHandler.showNetworkError(err);
+        }
+        
+        throw new Error(errorMessage);
+      }
+    });
+  }, [stopMutation, currentWorkspace]);
 
   /**
    * Reset the running timer
@@ -226,20 +289,28 @@ export function useTimer(): UseTimerReturn {
       setError(errorMessage);
       throw new Error(errorMessage);
     }
-  }, [resetMutation]);
+  }, [resetMutation, currentWorkspace]);
 
   /**
    * Send heartbeat to keep timer alive
    */
   const sendHeartbeat = useCallback(async () => {
     try {
-      await heartbeatMutation();
+      await NetworkErrorHandler.withRetry(
+        async () => {
+          await heartbeatMutation({});
+        },
+        { maxRetries: 2 } // Fewer retries for heartbeats
+      );
     } catch (err: any) {
       console.error("Failed to send heartbeat:", err);
       // Don't set error state for heartbeat failures
-      // They should fail silently
+      // They should fail silently but we can track network issues
+      if (NetworkErrorHandler.isRetryableError(err)) {
+        setNetworkError(NetworkErrorHandler.createErrorState(err));
+      }
     }
-  }, [heartbeatMutation]);
+  }, [heartbeatMutation, currentWorkspace]);
 
   /**
    * Acknowledge a timer interrupt
@@ -259,8 +330,13 @@ export function useTimer(): UseTimerReturn {
         throw new Error(errorMessage);
       }
     },
-    [ackInterruptMutation]
+    [ackInterruptMutation, currentWorkspace]
   );
+
+  const retryConnection = () => {
+    setRetryCount(prev => prev + 1);
+    setNetworkError(NetworkErrorHandler.createErrorState(null));
+  };
 
   return {
     runningTimer: runningTimer ?? null,
@@ -268,8 +344,11 @@ export function useTimer(): UseTimerReturn {
     selectedProject,
     selectedCategory,
     timerMode,
+    currentWorkspace,
     isLoading,
     error,
+    networkError,
+    retryConnection,
     userSettings,
     startTimer,
     stopTimer,

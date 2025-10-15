@@ -4,6 +4,8 @@ import { setupNotificationChannels, setupNotificationCategories } from "@/servic
 import { tokenStorage } from "@/services/storage";
 import { lightTheme, darkTheme } from "@/utils/theme";
 import { ThemeProvider, useTheme } from "@/utils/ThemeContext";
+import { OrganizationProvider } from "@/contexts/OrganizationContext";
+import { OrganizationErrorBoundary } from "@/components/common/OrganizationErrorBoundary";
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import { Slot, useRouter, useSegments } from "expo-router";
 import { useEffect, useRef } from "react";
@@ -26,27 +28,12 @@ UnistylesRegistry.addThemes({
  * Protected layout component that handles authentication routing
  */
 function ProtectedLayout() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
   const { colors } = useTheme();
   const segments = useSegments();
   const router = useRouter();
-  const workspaceInitializedRef = useRef(false);
-  const ensureWorkspace = useMutation(api.organizations.ensurePersonalWorkspace);
 
-  // Initialize Personal Workspace when user is authenticated
-  useEffect(() => {
-    if (isAuthenticated && !workspaceInitializedRef.current) {
-      workspaceInitializedRef.current = true;
-      ensureWorkspace().catch((error) => {
-        console.error("Failed to initialize workspace:", error);
-        // Reset on error so it can be retried
-        workspaceInitializedRef.current = false;
-      });
-    } else if (!isAuthenticated) {
-      // Reset when user logs out
-      workspaceInitializedRef.current = false;
-    }
-  }, [isAuthenticated, ensureWorkspace]);
+
 
   useEffect(() => {
     if (isLoading) {
@@ -76,7 +63,15 @@ function ProtectedLayout() {
     );
   }
 
-  return <Slot />;
+  // Always wrap with OrganizationProvider to prevent race conditions
+  // Pass null userId when not authenticated - provider handles this gracefully
+  return (
+    <OrganizationErrorBoundary>
+      <OrganizationProvider userId={user?._id ?? null}>
+        <Slot />
+      </OrganizationProvider>
+    </OrganizationErrorBoundary>
+  );
 }
 
 export default function RootLayout() {

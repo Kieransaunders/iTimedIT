@@ -241,11 +241,6 @@ export function OrganizationManagementCard() {
       <div className="pb-6 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center gap-2 mb-2">
           <h2 className="text-xl font-semibold">Workspace Settings</h2>
-          {isPersonalWorkspace && (
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-100">
-              Personal
-            </span>
-          )}
         </div>
         {isEditingName ? (
           <form onSubmit={handleRename} className="flex items-end gap-2">
@@ -295,14 +290,9 @@ export function OrganizationManagementCard() {
 
       {/* Team Members Section */}
       <div>
-        <h2 className="text-xl font-semibold mb-2">
-          {isPersonalWorkspace ? "Workspace Owner" : "Team Members"}
-        </h2>
+        <h2 className="text-xl font-semibold mb-2">Team Members</h2>
         <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
-          {isPersonalWorkspace
-            ? "This is your personal workspace. To collaborate with others, create a Team Workspace."
-            : <>Manage who can access <strong>{activeOrganization?.name}</strong> and control their roles.</>
-          }
+          Manage who can access <strong>{activeOrganization?.name}</strong> and control their roles.
         </p>
         {isMembersLoading ? (
           <div className="animate-pulse h-24 bg-gray-100 dark:bg-gray-800 rounded" />
@@ -348,15 +338,14 @@ export function OrganizationManagementCard() {
         )}
       </div>
 
-      {/* Invitation Form - Only show for Team Workspaces */}
-      {!isPersonalWorkspace && (
-        <form onSubmit={handleInvite} className="border border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-4 space-y-4">
-          <div>
-            <h3 className="text-lg font-medium">Invite a teammate</h3>
-            <p className="text-sm text-gray-600 dark:text-gray-300">
-              Send an invitation to collaborate on projects and track time together.
-            </p>
-          </div>
+      {/* Invitation Form */}
+      <form onSubmit={handleInvite} className="border border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-4 space-y-4">
+        <div>
+          <h3 className="text-lg font-medium">Invite a teammate</h3>
+          <p className="text-sm text-gray-600 dark:text-gray-300">
+            Send an invitation to collaborate on projects and track time together.
+          </p>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div className="md:col-span-2">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
@@ -397,13 +386,11 @@ export function OrganizationManagementCard() {
             {isSending ? "Sending..." : "Send Invitation"}
           </button>
         </div>
-        </form>
-      )}
+      </form>
 
-      {/* Pending Invitations - Only show for Team Workspaces */}
-      {!isPersonalWorkspace && (
-        <div>
-          <h3 className="text-lg font-medium mb-3">Pending invitations</h3>
+      {/* Pending Invitations */}
+      <div>
+        <h3 className="text-lg font-medium mb-3">Pending invitations</h3>
         {isInvitationsLoading ? (
           <div className="animate-pulse h-20 bg-gray-100 dark:bg-gray-800 rounded" />
         ) : sortedInvitations.length === 0 ? (
@@ -498,8 +485,7 @@ export function OrganizationManagementCard() {
             </table>
           </div>
         )}
-        </div>
-      )}
+      </div>
     </div>
   );
 }

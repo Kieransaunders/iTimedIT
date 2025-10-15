@@ -1,6 +1,7 @@
 import { useMutation, usePaginatedQuery } from "convex/react";
 import { api } from "../convex/_generated/api";
 import { Id } from "../convex/_generated/dataModel";
+import { useOrganization } from "../contexts/OrganizationContext";
 
 export interface ManualEntryData {
   projectId: Id<"projects">;
@@ -14,6 +15,7 @@ export interface UseEntriesReturn {
   entries: any[];
   isLoading: boolean;
   error: Error | null;
+  currentWorkspace: "personal" | "team";
   loadMore: (numItems: number) => void;
   status: "LoadingFirstPage" | "CanLoadMore" | "LoadingMore" | "Exhausted";
   createManualEntry: (data: ManualEntryData) => Promise<void>;
@@ -28,21 +30,40 @@ export interface UseEntriesReturn {
 }
 
 export function useEntries(projectId?: Id<"projects">): UseEntriesReturn {
-  // Use paginated query for entries
+  const { currentWorkspace, isReady } = useOrganization();
+
+  // Use paginated query for entries based on workspace context
   const { results, status, loadMore } = usePaginatedQuery(
-    api.entries.list,
-    { projectId },
+    currentWorkspace === "personal" ? api.personalEntries.listPersonal : api.entries.list,
+    isReady
+      ? currentWorkspace === "personal"
+        ? { projectId }
+        : { projectId, workspaceType: "team" }
+      : "skip",
     { initialNumItems: 20 }
   );
 
-  // Mutations
-  const createManualEntryMutation = useMutation(api.entries.createManualEntry);
-  const editEntryMutation = useMutation(api.entries.edit);
-  const deleteEntryMutation = useMutation(api.entries.deleteEntry);
+  // Mutations based on workspace context
+  const createManualEntryMutation = useMutation(
+    currentWorkspace === "personal" ? api.personalEntries.createManualPersonal : api.entries.createManualEntry
+  );
+  const editEntryMutation = useMutation(
+    currentWorkspace === "personal" ? api.personalEntries.editPersonal : api.entries.edit
+  );
+  const deleteEntryMutation = useMutation(
+    currentWorkspace === "personal" ? api.personalEntries.deletePersonal : api.entries.deleteEntry
+  );
 
   const createManualEntry = async (data: ManualEntryData) => {
     try {
-      await createManualEntryMutation(data);
+      if (currentWorkspace === "personal") {
+        await createManualEntryMutation(data);
+      } else {
+        await createManualEntryMutation({
+          ...data,
+          workspaceType: "team",
+        });
+      }
     } catch (error) {
       console.error("Failed to create manual entry:", error);
       throw error;
@@ -60,7 +81,15 @@ export function useEntries(projectId?: Id<"projects">): UseEntriesReturn {
     }>
   ) => {
     try {
-      await editEntryMutation({ id, ...updates });
+      if (currentWorkspace === "personal") {
+        await editEntryMutation({ id, ...updates });
+      } else {
+        await editEntryMutation({ 
+          id, 
+          ...updates,
+          workspaceType: "team",
+        });
+      }
     } catch (error) {
       console.error("Failed to edit entry:", error);
       throw error;
@@ -69,7 +98,14 @@ export function useEntries(projectId?: Id<"projects">): UseEntriesReturn {
 
   const deleteEntry = async (id: Id<"timeEntries">) => {
     try {
-      await deleteEntryMutation({ id });
+      if (currentWorkspace === "personal") {
+        await deleteEntryMutation({ id });
+      } else {
+        await deleteEntryMutation({ 
+          id,
+          workspaceType: "team",
+        });
+      }
     } catch (error) {
       console.error("Failed to delete entry:", error);
       throw error;
@@ -78,8 +114,9 @@ export function useEntries(projectId?: Id<"projects">): UseEntriesReturn {
 
   return {
     entries: results ?? [],
-    isLoading: status === "LoadingFirstPage",
+    isLoading: !isReady || status === "LoadingFirstPage",
     error: null, // Convex handles errors internally
+    currentWorkspace,
     loadMore,
     status,
     createManualEntry,

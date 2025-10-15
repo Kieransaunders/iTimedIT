@@ -26,11 +26,6 @@
             "CFBundleURLSchemes": [
               "itimeditapp"
             ]
-          },
-          {
-            "CFBundleURLSchemes": [
-              "com.googleusercontent.apps.434888822269-fgcqfko6njlc83eqbogltcgaj9ilpeeu"
-            ]
           }
         ],
         "ITSAppUsesNonExemptEncryption": false
@@ -38,7 +33,22 @@
     },
     "android": {
       "icon": "./assets/images/icon.png",
-      "package": "com.itimedit.app"
+      "package": "com.itimedit.app",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "itimeditapp"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ]
     },
     "web": {
       "favicon": "./assets/images/favicon.png"

@@ -3,20 +3,21 @@ import { useMemo } from "react";
 import { api } from "../convex/_generated/api";
 import { Client } from "../types/models";
 import { Id } from "../convex/_generated/dataModel";
+import { useOrganization } from "../contexts/OrganizationContext";
 
 export interface UseClientsOptions {
-  workspaceType?: "personal" | "team";
+  // No longer need workspaceType option as it comes from context
 }
 
 export interface UseClientsReturn {
   clients: Client[];
   isLoading: boolean;
   error: Error | null;
+  currentWorkspace: "personal" | "team";
   createClient: (params: {
     name: string;
     color?: string;
     note?: string;
-    workspaceType?: "personal" | "team";
   }) => Promise<Id<"clients">>;
 }
 
@@ -24,17 +25,24 @@ export interface UseClientsReturn {
  * Hook to fetch and manage clients
  */
 export function useClients(options: UseClientsOptions = {}): UseClientsReturn {
-  const { workspaceType } = options;
+  const { currentWorkspace, isReady } = useOrganization();
 
-  // Fetch clients from Convex
-  const clientsData = useQuery(api.clients.list, {
-    workspaceType,
-  });
+  // Fetch clients based on current workspace context
+  const clientsData = useQuery(
+    currentWorkspace === "personal" ? api.personalClients.listPersonal : api.clients.list,
+    isReady
+      ? currentWorkspace === "personal"
+        ? {}
+        : { workspaceType: "team" }
+      : "skip"
+  );
 
-  const createClientMutation = useMutation(api.clients.create);
+  const createClientMutation = useMutation(
+    currentWorkspace === "personal" ? api.personalClients.createPersonal : api.clients.create
+  );
 
-  // Determine loading state
-  const isLoading = clientsData === undefined;
+  // Determine loading state - wait for organization context to be ready
+  const isLoading = !isReady || clientsData === undefined;
 
   // Handle error state
   const error = null;
@@ -49,20 +57,30 @@ export function useClients(options: UseClientsOptions = {}): UseClientsReturn {
     name: string;
     color?: string;
     note?: string;
-    workspaceType?: "personal" | "team";
   }) => {
-    return await createClientMutation({
-      name: params.name,
-      color: params.color,
-      note: params.note,
-      workspaceType: params.workspaceType || "team",
-    });
+    if (currentWorkspace === "personal") {
+      // Personal clients don't need workspaceType parameter
+      return await createClientMutation({
+        name: params.name,
+        color: params.color,
+        note: params.note,
+      });
+    } else {
+      // Team clients need workspaceType parameter
+      return await createClientMutation({
+        name: params.name,
+        color: params.color,
+        note: params.note,
+        workspaceType: "team",
+      });
+    }
   };
 
   return {
     clients,
     isLoading,
     error,
+    currentWorkspace,
     createClient,
   };
 }

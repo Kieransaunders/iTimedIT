@@ -75,6 +75,8 @@ export function useNotifications(): UseNotificationsReturn {
       setIsLoading(true);
       setError(null);
 
+      console.log("Starting push notification registration...");
+
       // Set up notification channels (Android) and categories (iOS)
       await setupNotificationChannels();
       await setupNotificationCategories();
@@ -85,22 +87,22 @@ export function useNotifications(): UseNotificationsReturn {
         throw new Error("Notification permissions not granted");
       }
 
-      // Get the Expo push token
+      // Get the Expo push token (now throws with detailed error)
       const token = await getExpoPushToken();
-      if (!token) {
-        throw new Error("Failed to get push token");
-      }
 
       setExpoPushToken(token);
 
       // Register the token with Convex
       await registerToken({ token });
 
-      console.log("Successfully registered push token:", token);
+      console.log("Successfully registered push token with backend");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to register for push notifications";
       setError(message);
       console.error("Error registering for push notifications:", err);
+
+      // Re-throw the error so callers can handle it
+      throw err;
     } finally {
       setIsLoading(false);
     }

@@ -23,6 +23,12 @@ import {
 } from "../../utils/theme";
 import { useRouter } from "expo-router";
 import Toast from "react-native-toast-message";
+import { WebRedirectBanner } from "../../components/common/WebRedirectBanner";
+import { EmptyStateCard, WebAppPrompt, openWebApp } from "../../components";
+import { WorkspaceIndicator } from "../../components/common/WorkspaceIndicator";
+import { WorkspaceEmptyState } from "../../components/common/WorkspaceEmptyState";
+import { CompanionAppGuidance } from "../../components/common/CompanionAppGuidance";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 export default function ProjectsScreen() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -126,8 +132,19 @@ export default function ProjectsScreen() {
     <>
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.title}>Projects</Text>
+          <View style={styles.headerContent}>
+            <Text style={styles.title}>Projects</Text>
+            <WorkspaceIndicator variant="compact" />
+          </View>
         </View>
+
+      {/* Companion App Guidance */}
+      <View style={styles.bannerContainer}>
+        <CompanionAppGuidance
+          context="projects"
+          hasData={projects.length > 0}
+        />
+      </View>
 
       {/* Workspace Type Toggle */}
       <View style={styles.toggleContainer}>
@@ -195,11 +212,10 @@ export default function ProjectsScreen() {
         </View>
       ) : projects.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>
-            {searchTerm
-              ? "No projects found matching your search"
-              : "No projects available"}
-          </Text>
+          <WorkspaceEmptyState
+            type="projects"
+            searchTerm={searchTerm}
+          />
         </View>
       ) : (
         <FlatList
@@ -235,9 +251,18 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
+  headerContent: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
   title: {
     ...typography.title,
     color: colors.textPrimary,
+  },
+  bannerContainer: {
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
   },
   toggleContainer: {
     flexDirection: "row",
@@ -332,10 +357,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: spacing.xl,
+    gap: spacing.md,
   },
   emptyText: {
     ...typography.body,
+    color: colors.textPrimary,
+    fontSize: 16,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  emptySubtext: {
+    ...typography.body,
     color: colors.textSecondary,
+    fontSize: 14,
     textAlign: "center",
   },
 });

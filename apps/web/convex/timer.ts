@@ -213,9 +213,22 @@ export const stop = mutation({
       throw new Error("Not authenticated");
     }
 
-    // Try to get membership for team workspace, but allow personal workspace too
+    // Try to find any running timer for this user (team or personal workspace)
     const membership = await maybeMembership(ctx);
-    const organizationId = membership?.organizationId;
+    let organizationId = membership?.organizationId;
+    let timer = await getRunningTimerForUser(ctx, userId, organizationId);
+
+    // If no timer found in team workspace, try personal workspace
+    if (!timer && organizationId !== undefined) {
+      timer = await getRunningTimerForUser(ctx, userId, undefined);
+      if (timer) {
+        organizationId = undefined; // Use personal workspace
+      }
+    }
+
+    if (!timer) {
+      return { success: false, message: "No running timer" };
+    }
 
     return await stopInternal(
       ctx,
@@ -234,11 +247,18 @@ export const reset = mutation({
       throw new Error("Not authenticated");
     }
 
-    // Try to get membership for team workspace, but allow personal workspace too
+    // Try to find any running timer for this user (team or personal workspace)
     const membership = await maybeMembership(ctx);
-    const organizationId = membership?.organizationId;
+    let organizationId = membership?.organizationId;
+    let timer = await getRunningTimerForUser(ctx, userId, organizationId);
 
-    const timer = await getRunningTimerForUser(ctx, userId, organizationId);
+    // If no timer found in team workspace, try personal workspace
+    if (!timer && organizationId !== undefined) {
+      timer = await getRunningTimerForUser(ctx, userId, undefined);
+      if (timer) {
+        organizationId = undefined; // Use personal workspace
+      }
+    }
 
     if (!timer) {
       return { success: false, message: "No running timer" };
@@ -346,11 +366,18 @@ export const heartbeat = mutation({
       throw new Error("Not authenticated");
     }
 
-    // Try to get membership for team workspace, but allow personal workspace too
+    // Try to find any running timer for this user (team or personal workspace)
     const membership = await maybeMembership(ctx);
-    const organizationId = membership?.organizationId;
+    let organizationId = membership?.organizationId;
+    let timer = await getRunningTimerForUser(ctx, userId, organizationId);
 
-    const timer = await getRunningTimerForUser(ctx, userId, organizationId);
+    // If no timer found in team workspace, try personal workspace
+    if (!timer && organizationId !== undefined) {
+      timer = await getRunningTimerForUser(ctx, userId, undefined);
+      if (timer) {
+        organizationId = undefined; // Use personal workspace
+      }
+    }
 
     if (timer) {
       const now = Date.now();
@@ -371,11 +398,18 @@ export const requestInterrupt = mutation({
       throw new Error("Not authenticated");
     }
 
-    // Try to get membership for team workspace, but allow personal workspace too
+    // Try to find any running timer for this user (team or personal workspace)
     const membership = await maybeMembership(ctx);
-    const organizationId = membership?.organizationId;
+    let organizationId = membership?.organizationId;
+    let timer = await getRunningTimerForUser(ctx, userId, organizationId);
 
-    const timer = await getRunningTimerForUser(ctx, userId, organizationId);
+    // If no timer found in team workspace, try personal workspace
+    if (!timer && organizationId !== undefined) {
+      timer = await getRunningTimerForUser(ctx, userId, undefined);
+      if (timer) {
+        organizationId = undefined; // Use personal workspace
+      }
+    }
 
     if (!timer) {
       return { shouldShowInterrupt: false };

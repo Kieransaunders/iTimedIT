@@ -2,9 +2,14 @@ import { Tabs } from "expo-router";
 import { ThemeToggle } from "@/components/common/ThemeToggle";
 import { useTheme } from "@/utils/ThemeContext";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { View, TouchableOpacity, Linking } from "react-native";
 
 export default function TabLayout() {
   const { colors } = useTheme();
+
+  const handleReportPress = () => {
+    Linking.openURL("https://itimedit.com/projects");
+  };
 
   return (
     <Tabs
@@ -19,7 +24,24 @@ export default function TabLayout() {
           backgroundColor: colors.surface,
         },
         headerTintColor: colors.textPrimary,
-        headerRight: () => <ThemeToggle />,
+        headerRight: () => (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginRight: 12, paddingVertical: 4 }}>
+            <TouchableOpacity
+              onPress={handleReportPress}
+              style={{
+                padding: 8,
+                borderRadius: 8,
+                backgroundColor: colors.primary,
+              }}
+              accessible={true}
+              accessibilityLabel="Open reporting in web browser"
+              accessibilityRole="button"
+            >
+              <MaterialCommunityIcons name="chart-bar" size={20} color="#fff" />
+            </TouchableOpacity>
+            <ThemeToggle />
+          </View>
+        ),
       }}
     >
       <Tabs.Screen
@@ -31,11 +53,11 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="projects"
+        name="workspace"
         options={{
-          title: "Projects",
-          tabBarLabel: "Projects",
-          tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="folder" color={color} size={size} />,
+          title: "Workspace",
+          tabBarLabel: "Workspace",
+          tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="swap-horizontal" color={color} size={size} />,
         }}
       />
       <Tabs.Screen
@@ -52,6 +74,13 @@ export default function TabLayout() {
           title: "Settings",
           tabBarLabel: "Settings",
           tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="cog" color={color} size={size} />,
+        }}
+      />
+      {/* Projects tab removed - project creation now available inline from dashboard */}
+      <Tabs.Screen
+        name="projects"
+        options={{
+          href: null, // Hide from tab bar but keep route available
         }}
       />
     </Tabs>
