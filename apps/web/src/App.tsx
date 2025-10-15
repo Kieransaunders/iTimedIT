@@ -82,6 +82,7 @@ function AuthenticatedApp() {
   const [pushSwitchRequest, setPushSwitchRequest] = useState<any | null>(null);
   const [currentWorkspace, setCurrentWorkspace] = useState<"personal" | "work">("work");
   const [clientFilter, setClientFilter] = useState<string | null>(null);
+  const [workspaceInitialized, setWorkspaceInitialized] = useState(false);
 
   const loggedInUser = useQuery(api.auth.loggedInUser);
   const { signOut } = useAuthActions();
@@ -89,15 +90,44 @@ function AuthenticatedApp() {
   const startTimerMutation = useMutation(api.timer.start);
   const ackInterrupt = useMutation(api.timer.ackInterrupt);
   const savePushSubscription = useMutation(api.pushNotifications.savePushSubscription);
+  const ensureWorkspace = useMutation(api.organizations.ensurePersonalWorkspace);
   const pushListenerCleanup = useRef<(() => void) | null>(null);
   const hasAnnouncedAuth = useRef<boolean>(false);
+  const workspaceInitializedRef = useRef<boolean>(false);
 
   // Do not auto sign out if query returns null; allow session to establish post sign-in.
   // The <Authenticated>/<Unauthenticated> gates already handle rendering.
 
+  // Ensure workspace exists for authenticated users (especially new OAuth users)
+  useEffect(() => {
+    if (!loggedInUser || workspaceInitializedRef.current) {
+      return;
+    }
+
+    // Mark as initialized to prevent duplicate calls
+    workspaceInitializedRef.current = true;
+
+    const initializeWorkspace = async () => {
+      try {
+        await ensureWorkspace();
+        setWorkspaceInitialized(true);
+      } catch (error) {
+        console.error("Failed to initialize workspace:", error);
+        // Reset flag so we can retry
+        workspaceInitializedRef.current = false;
+
+        toast.error("Workspace initialization failed", {
+          description: "Please refresh the page. If the problem persists, contact support.",
+        });
+      }
+    };
+
+    void initializeWorkspace();
+  }, [loggedInUser, ensureWorkspace]);
+
   // One-time welcome toast after successful sign-in
   useEffect(() => {
-    if (!hasAnnouncedAuth.current && loggedInUser) {
+    if (!hasAnnouncedAuth.current && loggedInUser && workspaceInitialized) {
       hasAnnouncedAuth.current = true;
       toast.success("Welcome to iTimedIT", {
         description: `Signed in as ${loggedInUser.email}`,
@@ -105,7 +135,7 @@ function AuthenticatedApp() {
       // Navigate to dashboard after successful sign-in
       setCurrentPage("dashboard");
     }
-  }, [loggedInUser]);
+  }, [loggedInUser, workspaceInitialized]);
 
   useEffect(() => {
     if (!loggedInUser) {
@@ -174,7 +204,8 @@ function AuthenticatedApp() {
     };
   }, [loggedInUser?._id, stopTimerMutation, ackInterrupt, savePushSubscription]);
 
-  if (loggedInUser === undefined) {
+  // Show loading while user data or workspace is being set up
+  if (loggedInUser === undefined || (loggedInUser && !workspaceInitialized)) {
     return (
       <div className="flex justify-center items-center py-16">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
