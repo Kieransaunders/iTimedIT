@@ -8,9 +8,15 @@ export { WorkspaceTransitionOverlay } from "./common/WorkspaceTransitionOverlay"
 // Companion App UI Components
 export { EmptyStateCard } from "./EmptyStateCard";
 export { WebAppPrompt, openWebApp, createWebAppLink } from "./WebAppPrompt";
-export { CompanionAppGuidance } from "./common/CompanionAppGuidance";
+export { CompanionAppGuidance, CompanionAppFooter } from "./common/CompanionAppGuidance";
 // Note: WorkspaceEmptyState not exported to avoid require cycle
 // Import directly from "./common/WorkspaceEmptyState" where needed
+
+// Quick Actions & Creation
+export { FloatingActionButton } from "./common/FloatingActionButton";
+export { QuickActionMenu } from "./common/QuickActionMenu";
+export { CreateProjectModal } from "./projects/CreateProjectModal";
+export { CreateClientModal } from "./clients/CreateClientModal";
 
 // Re-export existing UI components
 export * from "./ui";

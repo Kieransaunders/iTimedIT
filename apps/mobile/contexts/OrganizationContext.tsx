@@ -51,7 +51,7 @@ export function OrganizationProvider({
   const setActiveOrganization = useMutation(api.organizations.setActiveOrganization);
 
   const [ensuredForUser, setEnsuredForUser] = useState<Id<"users"> | null>(null);
-  const [currentWorkspace, setCurrentWorkspace] = useState<"personal" | "work">("work");
+  const [currentWorkspace, setCurrentWorkspace] = useState<"personal" | "work" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [hasPermissionError, setHasPermissionError] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
@@ -60,6 +60,10 @@ export function OrganizationProvider({
   const [optimisticWorkspace, setOptimisticWorkspace] = useState<"personal" | "work" | null>(null);
   const [optimisticOrganization, setOptimisticOrganization] = useState<Doc<"organizations"> | null>(null);
   const ensuringRef = useRef(false);
+  const hasSetDefaultRef = useRef(false);
+
+  const currentMembership = useQuery(api.organizations.currentMembership);
+  const memberships = useQuery(api.organizations.listMemberships);
 
   // Load workspace preference from storage on mount (with migration from "team" to "work")
   useEffect(() => {
@@ -80,7 +84,24 @@ export function OrganizationProvider({
     };
 
     loadWorkspacePreference();
-  }, []); // Ensure workspace exists when user changes
+  }, []);
+
+  // Auto-select first available workspace if no preference is set
+  useEffect(() => {
+    if (currentWorkspace === null && memberships && memberships.length > 0 && !hasSetDefaultRef.current) {
+      hasSetDefaultRef.current = true;
+
+      // Default to first workspace in list
+      const firstMembership = memberships[0];
+      const isPersonal = firstMembership.organization?.isPersonalWorkspace === true;
+      const defaultWorkspace = isPersonal ? "personal" : "work";
+
+      setCurrentWorkspace(defaultWorkspace);
+      storage.setItem(WORKSPACE_TYPE_KEY, defaultWorkspace).catch(console.error);
+    }
+  }, [currentWorkspace, memberships]);
+
+  // Ensure workspace exists when user changes
   useEffect(() => {
     if (!userId) {
       setEnsuredForUser(null);
@@ -123,11 +144,8 @@ export function OrganizationProvider({
       });
   }, [userId, ensuredForUser, ensureWorkspace, retryCount]);
 
-  const currentMembership = useQuery(api.organizations.currentMembership);
-  const memberships = useQuery(api.organizations.listMemberships);
-
   const isLoading =
-    currentMembership === undefined || memberships === undefined || ensuringRef.current;
+    currentMembership === undefined || memberships === undefined || ensuringRef.current || currentWorkspace === null;
 
   // Switch workspace function with optimistic updates
   const switchWorkspace = async (workspace: "personal" | "work") => {
@@ -165,15 +183,15 @@ export function OrganizationProvider({
 
   const value = useMemo<OrganizationContextValue>(() => {
     // Use optimistic values during transitions for smoother UX
-    const displayWorkspace = optimisticWorkspace || currentWorkspace;
+    const displayWorkspace = optimisticWorkspace || currentWorkspace || "work"; // Fallback to "work"
     const displayOrganization = optimisticOrganization || currentMembership?.organization || null;
-    
+
     return {
       activeMembershipId: currentMembership?.membershipId ?? null,
       activeOrganization: displayOrganization,
       activeRole: currentMembership?.role ?? null,
       memberships: memberships ?? [],
-      currentWorkspace: displayWorkspace,
+      currentWorkspace: displayWorkspace as "personal" | "work",
       switchOrganization: async (organizationId: Id<"organizations">) => {
         setIsSwitchingOrganization(true);
         

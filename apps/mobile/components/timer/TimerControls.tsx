@@ -52,8 +52,8 @@ export function TimerControls({
             onPress={onStop}
             loading={loading}
             size="lg"
-            style={startButtonStyle}
-            icon={(props) => <MaterialCommunityIcons name="stop" {...props} />}
+            style={styles.stopButton}
+            icon={(props) => <MaterialCommunityIcons name="square" size={16} {...props} />}
             accessibilityLabel="Stop timer"
             accessibilityHint="Stops the running timer and saves the time entry"
           >
@@ -87,6 +87,10 @@ const styles = StyleSheet.create({
   },
   startButton: {
     flex: 1,
+  },
+  stopButton: {
+    flex: 1,
+    backgroundColor: "#ef4444", // Red color matching web app
   },
   resetButton: {
     minWidth: 100,

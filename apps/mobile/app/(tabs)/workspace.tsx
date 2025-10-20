@@ -29,7 +29,7 @@ export default function WorkspaceScreen() {
           </Text>
         </View>
 
-        {currentWorkspace === "team" && activeOrganization && (
+        {currentWorkspace === "work" && activeOrganization && (
           <View style={styles.infoCard}>
             <Text style={styles.infoLabel}>Organization</Text>
             <Text style={styles.infoValue}>{activeOrganization.name}</Text>

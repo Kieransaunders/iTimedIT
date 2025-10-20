@@ -10,7 +10,7 @@ export interface ProjectSelectorProps {
   selectedProject: Project | null;
   onSelect: (project: Project) => void;
   disabled?: boolean;
-  workspaceType?: "personal" | "team";
+  workspaceType?: "personal" | "work";
 }
 
 /**

@@ -28,12 +28,13 @@ export interface Project {
   organizationId?: string;
   clientId?: string;
   name: string;
+  color?: string;
   hourlyRate: number;
   budgetType: "hours" | "amount";
   budgetHours?: number;
   budgetAmount?: number;
   archived: boolean;
-  workspaceType?: "personal" | "team";
+  workspaceType?: "personal" | "work";
   client?: Client;
   budgetRemaining?: number;
   budgetRemainingFormatted?: string;

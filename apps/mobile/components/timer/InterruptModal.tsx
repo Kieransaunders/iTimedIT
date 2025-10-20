@@ -70,7 +70,7 @@ export function InterruptModal({
 
           {/* Description */}
           <Text style={[styles.description, { color: colors.textSecondary }]}>
-            We noticed you've been working for a while. Are you still actively working on this project?
+            We noticed you&apos;ve been working for a while. Are you still actively working on this project?
           </Text>
 
           {/* Countdown */}

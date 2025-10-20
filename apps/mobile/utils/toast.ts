@@ -72,7 +72,7 @@ export class ToastManager {
   /**
    * Show workspace-specific success message
    */
-  static workspaceSuccess(workspace: "personal" | "team", action: string) {
+  static workspaceSuccess(workspace: "personal" | "work", action: string) {
     this.success({
       title: "Workspace Updated",
       message: `Switched to ${workspace} workspace. ${action}`,
@@ -82,7 +82,7 @@ export class ToastManager {
   /**
    * Show workspace-specific error message
    */
-  static workspaceError(workspace: "personal" | "team", error: string) {
+  static workspaceError(workspace: "personal" | "work", error: string) {
     this.error({
       title: "Workspace Error",
       message: `Failed to switch to ${workspace} workspace: ${error}`,

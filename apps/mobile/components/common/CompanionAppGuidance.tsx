@@ -4,7 +4,6 @@ import { useOrganization } from "@/contexts/OrganizationContext";
 import { WebAppPrompt, openWebApp } from "../WebAppPrompt";
 import { useTheme } from "@/utils/ThemeContext";
 import { spacing, typography, borderRadius } from "@/utils/theme";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 export interface CompanionAppGuidanceProps {
   context: "projects" | "clients" | "timer" | "entries" | "settings";
@@ -23,7 +22,7 @@ export function CompanionAppGuidance({
   const { colors } = useTheme();
 
   const getContextualGuidance = () => {
-    const workspaceLabel = currentWorkspace === "personal" ? "personal" : "team";
+    const workspaceLabel = currentWorkspace === "personal" ? "personal" : "work";
     const orgName = activeOrganization?.name || "your organization";
 
     switch (context) {
@@ -77,7 +76,7 @@ export function CompanionAppGuidance({
 
       case "settings":
         return {
-          message: `Configure ${currentWorkspace === "team" ? `${orgName} team settings` : "workspace preferences"}, billing, integrations, and advanced features using the web app.`,
+          message: `Configure ${currentWorkspace === "work" ? `${orgName} team settings` : "workspace preferences"}, billing, integrations, and advanced features using the web app.`,
           actionText: "Open Settings",
           path: "/settings",
           icon: "cog-outline",
@@ -98,58 +97,34 @@ export function CompanionAppGuidance({
   const path = customPath || guidance.path;
 
   return (
-    <View style={styles.container}>
-      <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <MaterialCommunityIcons
-          name={guidance.icon as any}
-          size={20}
-          color={colors.primary}
-        />
-        <Text style={[styles.headerText, { color: colors.textPrimary }]}>
-          Mobile Companion App
-        </Text>
-      </View>
+    <WebAppPrompt
+      message={message}
+      actionText={guidance.actionText}
+      onOpenWebApp={() => openWebApp(path)}
+      variant="info"
+      dismissible={true}
+      persistDismissal={true}
+      dismissalKey={`companion_guidance_${context}_${currentWorkspace}`}
+    />
+  );
+}
 
-      <WebAppPrompt
-        message={message}
-        actionText={guidance.actionText}
-        onOpenWebApp={() => openWebApp(path)}
-        variant="info"
-        dismissible={true}
-        persistDismissal={true}
-        dismissalKey={`companion_guidance_${context}_${currentWorkspace}`}
-      />
+export function CompanionAppFooter() {
+  const { colors } = useTheme();
 
-      <View style={[styles.footer, { backgroundColor: colors.surface }]}>
-        <Text style={[styles.footerText, { color: colors.textSecondary }]}>
-          💡 This mobile app is optimized for quick time tracking. Use the web app for comprehensive project and team management.
-        </Text>
-      </View>
+  return (
+    <View style={[styles.footer, { backgroundColor: colors.surface }]}>
+      <Text style={[styles.footerText, { color: colors.textSecondary }]}>
+        💡 This mobile app is optimized for quick time tracking. Use the web app for comprehensive project and team management.
+      </Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    borderRadius: borderRadius.md,
-    overflow: "hidden",
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
-    gap: spacing.sm,
-  },
-  headerText: {
-    ...typography.body,
-    fontSize: 14,
-    fontWeight: "600",
-  },
   footer: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
   },
   footerText: {
     ...typography.caption,

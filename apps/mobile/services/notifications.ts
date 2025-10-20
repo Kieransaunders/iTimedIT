@@ -1,6 +1,7 @@
 import Constants from "expo-constants";
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
+import { setupTimerNotificationChannel, setupTimerNotificationCategory } from "./timerNotification";
 
 /**
  * Configure how notifications are handled when the app is in the foreground
@@ -114,6 +115,9 @@ export async function setupNotificationChannels(): Promise<void> {
       vibrationPattern: [0, 250, 250, 250],
       lightColor: "#ff9f1c",
     });
+
+    // Timer foreground notification channel
+    await setupTimerNotificationChannel();
   }
 }
 
@@ -180,4 +184,7 @@ export async function setupNotificationCategories(): Promise<void> {
       },
     },
   ]);
+
+  // Timer running category with Stop and View actions
+  await setupTimerNotificationCategory();
 }

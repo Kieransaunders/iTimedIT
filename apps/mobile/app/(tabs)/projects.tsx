@@ -33,7 +33,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 export default function ProjectsScreen() {
   const [searchTerm, setSearchTerm] = useState("");
   const [refreshing, setRefreshing] = useState(false);
-  const [workspaceType, setWorkspaceType] = useState<"personal" | "team">("personal");
+  const [workspaceType, setWorkspaceType] = useState<"personal" | "work">("personal");
   const { projects, isLoading } = useProjects({ searchTerm, workspaceType });
   const { startTimer, runningTimer } = useTimer();
   const router = useRouter();
@@ -171,18 +171,18 @@ export default function ProjectsScreen() {
         <TouchableOpacity
           style={[
             styles.toggleButton,
-            workspaceType === "team" && styles.toggleButtonActive,
+            workspaceType === "work" && styles.toggleButtonActive,
           ]}
-          onPress={() => setWorkspaceType("team")}
+          onPress={() => setWorkspaceType("work")}
           accessible={true}
           accessibilityLabel="Team workspace"
           accessibilityRole="button"
-          accessibilityState={{ selected: workspaceType === "team" }}
+          accessibilityState={{ selected: workspaceType === "work" }}
         >
           <Text
             style={[
               styles.toggleText,
-              workspaceType === "team" && styles.toggleTextActive,
+              workspaceType === "work" && styles.toggleTextActive,
             ]}
           >
             Team

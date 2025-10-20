@@ -13,7 +13,7 @@ export interface UseClientsReturn {
   clients: Client[];
   isLoading: boolean;
   error: Error | null;
-  currentWorkspace: "personal" | "team";
+  currentWorkspace: "personal" | "work";
   createClient: (params: {
     name: string;
     color?: string;
@@ -33,7 +33,7 @@ export function useClients(options: UseClientsOptions = {}): UseClientsReturn {
     isReady
       ? currentWorkspace === "personal"
         ? {}
-        : { workspaceType: "team" }
+        : { workspaceType: "work" }
       : "skip"
   );
 
@@ -71,7 +71,7 @@ export function useClients(options: UseClientsOptions = {}): UseClientsReturn {
         name: params.name,
         color: params.color,
         note: params.note,
-        workspaceType: "team",
+        workspaceType: "work",
       });
     }
   };

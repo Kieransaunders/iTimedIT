@@ -15,7 +15,7 @@ export interface UseEntriesReturn {
   entries: any[];
   isLoading: boolean;
   error: Error | null;
-  currentWorkspace: "personal" | "team";
+  currentWorkspace: "personal" | "work";
   loadMore: (numItems: number) => void;
   status: "LoadingFirstPage" | "CanLoadMore" | "LoadingMore" | "Exhausted";
   createManualEntry: (data: ManualEntryData) => Promise<void>;
@@ -36,9 +36,7 @@ export function useEntries(projectId?: Id<"projects">): UseEntriesReturn {
   const { results, status, loadMore } = usePaginatedQuery(
     currentWorkspace === "personal" ? api.personalEntries.listPersonal : api.entries.list,
     isReady
-      ? currentWorkspace === "personal"
-        ? { projectId }
-        : { projectId, workspaceType: "team" }
+      ? { projectId } // Don't pass workspaceType - backend uses org context
       : "skip",
     { initialNumItems: 20 }
   );
@@ -56,14 +54,8 @@ export function useEntries(projectId?: Id<"projects">): UseEntriesReturn {
 
   const createManualEntry = async (data: ManualEntryData) => {
     try {
-      if (currentWorkspace === "personal") {
-        await createManualEntryMutation(data);
-      } else {
-        await createManualEntryMutation({
-          ...data,
-          workspaceType: "team",
-        });
-      }
+      // Backend uses org context, no workspaceType needed
+      await createManualEntryMutation(data);
     } catch (error) {
       console.error("Failed to create manual entry:", error);
       throw error;
@@ -81,15 +73,8 @@ export function useEntries(projectId?: Id<"projects">): UseEntriesReturn {
     }>
   ) => {
     try {
-      if (currentWorkspace === "personal") {
-        await editEntryMutation({ id, ...updates });
-      } else {
-        await editEntryMutation({ 
-          id, 
-          ...updates,
-          workspaceType: "team",
-        });
-      }
+      // Backend uses org context, no workspaceType needed
+      await editEntryMutation({ id, ...updates });
     } catch (error) {
       console.error("Failed to edit entry:", error);
       throw error;
@@ -98,14 +83,8 @@ export function useEntries(projectId?: Id<"projects">): UseEntriesReturn {
 
   const deleteEntry = async (id: Id<"timeEntries">) => {
     try {
-      if (currentWorkspace === "personal") {
-        await deleteEntryMutation({ id });
-      } else {
-        await deleteEntryMutation({ 
-          id,
-          workspaceType: "team",
-        });
-      }
+      // Backend uses org context, no workspaceType needed
+      await deleteEntryMutation({ id });
     } catch (error) {
       console.error("Failed to delete entry:", error);
       throw error;

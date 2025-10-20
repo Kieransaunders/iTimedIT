@@ -1,6 +1,8 @@
 import { CategorySelector } from "@/components/timer/CategorySelector";
 import { LargeTimerDisplay } from "@/components/timer/LargeTimerDisplay";
 import { ProjectSelector } from "@/components/timer/ProjectSelector";
+import { ProjectCarousel } from "@/components/timer/ProjectCarousel";
+import { TodaySummaryCard } from "@/components/timer/TodaySummaryCard";
 import { SegmentedModeToggle } from "@/components/timer/SegmentedModeToggle";
 import { TimerControls } from "@/components/timer/TimerControls";
 import { InterruptModal } from "@/components/timer/InterruptModal";
@@ -9,14 +11,22 @@ import { Toast } from "@/components/ui/Toast";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useTimer } from "@/hooks/useTimer";
 import { useProjects } from "@/hooks/useProjects";
+import { useFavoriteProjects } from "@/hooks/useFavoriteProjects";
 import { useTheme } from "@/utils/ThemeContext";
+import { calculateBudgetStatus } from "@/utils/budget";
+import { warningTap } from "@/utils/haptics";
 import { EmptyStateCard, WebAppPrompt, openWebApp } from "@/components";
 import { WorkspaceBadge } from "@/components/common/WorkspaceBadge";
-import { CompanionAppGuidance } from "@/components/common/CompanionAppGuidance";
+import { TipsBottomSheet, useTipsBottomSheet } from "@/components/common/TipsBottomSheet";
+import { FloatingActionButton } from "@/components/common/FloatingActionButton";
+import { QuickActionMenu } from "@/components/common/QuickActionMenu";
+import { CreateProjectModal } from "@/components/projects/CreateProjectModal";
+import { CreateClientModal } from "@/components/clients/CreateClientModal";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { spacing, borderRadius } from "@/utils/theme";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { CelebrationComponent, type CelebrationHandle } from "@/utils/celebration";
 
 export default function Index() {
   const {
@@ -39,16 +49,72 @@ export default function Index() {
 
   const { colors } = useTheme();
   const { projects, currentWorkspace } = useProjects();
-  const { 
-    registerForPushNotifications, 
+  const { favoriteIds, isFavorite, toggleFavorite } = useFavoriteProjects();
+  const {
+    registerForPushNotifications,
     setResponseHandler,
-    notificationResponse 
+    notificationResponse
   } = useNotifications();
   const [isStarting, setIsStarting] = useState(false);
   const [isStopping, setIsStopping] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
   const [showInterruptModal, setShowInterruptModal] = useState(false);
+  const [showTipsSheet, setShowTipsSheet] = useState(false);
+  const [showQuickMenu, setShowQuickMenu] = useState(false);
+  const [showCreateProject, setShowCreateProject] = useState(false);
+  const [showCreateClient, setShowCreateClient] = useState(false);
+
+  // Celebration ref for confetti
+  const celebrationRef = useRef<CelebrationHandle>(null);
+
+  // Track budget status for haptic feedback
+  const previousBudgetStatus = useRef<string>("safe");
+
+  // Tips bottom sheet auto-show logic
+  const { shouldAutoShow, markAsShown } = useTipsBottomSheet();
+
+  // Show tips on first 3 app opens
+  useEffect(() => {
+    if (shouldAutoShow) {
+      setShowTipsSheet(true);
+      markAsShown();
+    }
+  }, [shouldAutoShow, markAsShown]);
+
+  // Monitor budget status and trigger haptic feedback when crossing thresholds
+  useEffect(() => {
+    if (!runningTimer || !selectedProject) return;
+
+    const budgetInfo = calculateBudgetStatus(selectedProject);
+    const currentStatus = budgetInfo.status;
+
+    // Only trigger haptics when status changes to warning or critical
+    if (currentStatus !== previousBudgetStatus.current) {
+      if (currentStatus === "warning") {
+        // Gentle warning haptic when approaching budget limit (80%)
+        warningTap();
+      } else if (currentStatus === "critical") {
+        // Stronger haptic when exceeding budget (100%)
+        warningTap();
+        // Trigger again after a short delay for emphasis
+        setTimeout(() => warningTap(), 200);
+      }
+      previousBudgetStatus.current = currentStatus;
+    }
+  }, [runningTimer, selectedProject, elapsedTime]); // Track elapsedTime to update as timer runs
+
+  // Separate projects by workspace type for carousels
+  const { personalProjects, workProjects, recentProjects } = useMemo(() => {
+    const personal = projects.filter(p => p.workspaceType === "personal");
+    const work = projects.filter(p => !p.workspaceType || p.workspaceType === "work");
+
+    // Get recent projects (last 5 used) - for now just take first 5
+    // TODO: Track actual usage and sort by last used
+    const recent = projects.slice(0, Math.min(5, projects.length));
+
+    return { personalProjects: personal, workProjects: work, recentProjects: recent };
+  }, [projects]);
 
   // Register for push notifications on mount
   useEffect(() => {
@@ -58,14 +124,19 @@ export default function Index() {
     });
   }, []);
 
-  // Handle notification actions (Continue/Stop for interrupts, Pomodoro actions)
+  // Handle notification actions (Continue/Stop for interrupts, Pomodoro actions, Timer controls)
   useEffect(() => {
     if (!notificationResponse) return;
 
     const actionIdentifier = notificationResponse.actionIdentifier;
     const data = notificationResponse.notification.request.content.data;
 
-    if (data?.type === "timer-interrupt") {
+    if (data?.type === "timer-running") {
+      if (actionIdentifier === "stop-timer") {
+        // Stop the timer from lock screen notification
+        handleStopTimer();
+      }
+    } else if (data?.type === "timer-interrupt") {
       if (actionIdentifier === "continue") {
         handleAcknowledgeInterrupt(true);
       } else if (actionIdentifier === "stop") {
@@ -128,7 +199,17 @@ export default function Index() {
   const handleStopTimer = async () => {
     try {
       setIsStopping(true);
+      const wasRunning = isTimerRunning;
+      const timeLogged = elapsedTime;
+
       await stopTimer();
+
+      // Celebrate if timer was running for at least 1 minute
+      if (wasRunning && timeLogged >= 60) {
+        setTimeout(() => {
+          celebrationRef.current?.celebrate();
+        }, 300); // Small delay after stop completes
+      }
     } catch (err: any) {
       showErrorToast(err.message || "Failed to stop timer");
     } finally {
@@ -164,31 +245,72 @@ export default function Index() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Companion App Guidance for timer */}
-        <View style={styles.selectorContainer}>
-          <CompanionAppGuidance
-            context="timer"
-            hasData={projects.length > 0}
-          />
-        </View>
+        {/* Today's Summary Card - Above carousels */}
+        <TodaySummaryCard
+          todaysTotalSeconds={elapsedTime}
+          entriesCount={0}
+          topProject={selectedProject}
+          todaysEarnings={0}
+        />
 
-        {/* Project Selector - Always show to enable inline creation */}
-        <View style={styles.selectorContainer}>
-          <ProjectSelector
-            selectedProject={selectedProject}
-            onSelect={setSelectedProject}
-            disabled={isTimerRunning}
-            workspaceType={currentWorkspace}
-          />
-        </View>
+        {/* Project Carousels - Sliding panels like web dashboard */}
+        {projects.length > 0 ? (
+          <>
+            {/* Recent Projects Carousel */}
+            {recentProjects.length > 0 && (
+              <ProjectCarousel
+                projects={recentProjects}
+                selectedProject={selectedProject}
+                onSelectProject={setSelectedProject}
+                onToggleFavorite={toggleFavorite}
+                onQuickStart={(project) => {
+                  setSelectedProject(project);
+                  handleStartTimer();
+                }}
+                isFavorite={isFavorite}
+                sectionTitle="⚡ Recent Projects"
+              />
+            )}
 
-        {/* Show empty state hint if no projects exist */}
-        {projects.length === 0 && (
+            {/* Personal Projects Carousel */}
+            {personalProjects.length > 0 && (
+              <ProjectCarousel
+                projects={personalProjects}
+                selectedProject={selectedProject}
+                onSelectProject={setSelectedProject}
+                onToggleFavorite={toggleFavorite}
+                onQuickStart={(project) => {
+                  setSelectedProject(project);
+                  handleStartTimer();
+                }}
+                isFavorite={isFavorite}
+                sectionTitle="👤 Personal Projects"
+              />
+            )}
+
+            {/* Work Projects Carousel */}
+            {workProjects.length > 0 && (
+              <ProjectCarousel
+                projects={workProjects}
+                selectedProject={selectedProject}
+                onSelectProject={setSelectedProject}
+                onToggleFavorite={toggleFavorite}
+                onQuickStart={(project) => {
+                  setSelectedProject(project);
+                  handleStartTimer();
+                }}
+                isFavorite={isFavorite}
+                sectionTitle="💼 Work Projects"
+              />
+            )}
+          </>
+        ) : (
+          /* Show empty state hint if no projects exist */
           <View style={styles.emptyStateContainer}>
             <View style={[styles.emptyStateHint, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <MaterialCommunityIcons name="information-outline" size={24} color={colors.primary} />
               <Text style={[styles.emptyStateText, { color: colors.textPrimary }]}>
-                Tap "Select a project" above to create your first project
+                No projects yet. Use the web app to create your first project.
               </Text>
             </View>
           </View>
@@ -215,6 +337,7 @@ export default function Index() {
             isRunning={isTimerRunning}
             isNearBudget={false}
             isOverBudget={false}
+            startedAt={runningTimer?.startedAt}
           />
         </View>
 
@@ -226,7 +349,10 @@ export default function Index() {
           onReset={handleResetTimer}
           disabled={!canStartTimer && !isTimerRunning}
           loading={isStarting || isStopping}
-          projectColor={(runningTimer?.project || selectedProject)?.color}
+          projectColor={
+            (runningTimer?.project || selectedProject)?.client?.color ||
+            (runningTimer?.project || selectedProject)?.color
+          }
         />
 
         {/* Category Selector - below timer controls */}
@@ -246,6 +372,22 @@ export default function Index() {
         </View>
       </ScrollView>
 
+      {/* Tips Button - Replaces fixed footer */}
+      <View style={[styles.tipsButtonContainer, { backgroundColor: colors.background }]}>
+        <TouchableOpacity
+          onPress={() => setShowTipsSheet(true)}
+          style={[styles.tipsButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel="Show tips"
+        >
+          <Text style={[styles.tipsButtonText, { color: colors.textSecondary }]}>💡 Tips</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Tips Bottom Sheet */}
+      <TipsBottomSheet visible={showTipsSheet} onClose={() => setShowTipsSheet(false)} />
+
       {/* Error Toast */}
       {showToast && (
         <Toast
@@ -263,6 +405,53 @@ export default function Index() {
         onContinue={() => handleAcknowledgeInterrupt(true)}
         onStop={() => handleAcknowledgeInterrupt(false)}
         gracePeriodSeconds={userSettings?.gracePeriod ?? 60}
+      />
+
+      {/* Floating Action Button */}
+      <FloatingActionButton onPress={() => setShowQuickMenu(true)} />
+
+      {/* Quick Action Menu */}
+      <QuickActionMenu
+        visible={showQuickMenu}
+        onClose={() => setShowQuickMenu(false)}
+        onCreateProject={() => setShowCreateProject(true)}
+        onCreateClient={() => setShowCreateClient(true)}
+      />
+
+      {/* Create Project Modal */}
+      <CreateProjectModal
+        visible={showCreateProject}
+        onClose={() => setShowCreateProject(false)}
+        onSuccess={() => {
+          // Projects will auto-refresh via Convex reactivity
+          console.log("Project created successfully");
+        }}
+        workspaceType={currentWorkspace?.type as "personal" | "work"}
+      />
+
+      {/* Create Client Modal */}
+      <CreateClientModal
+        visible={showCreateClient}
+        onClose={() => setShowCreateClient(false)}
+        onSuccess={() => {
+          // Clients will auto-refresh via Convex reactivity
+          console.log("Client created successfully");
+        }}
+        workspaceType={currentWorkspace?.type as "personal" | "work"}
+      />
+
+      {/* Celebration Confetti */}
+      <CelebrationComponent
+        ref={celebrationRef}
+        colors={[
+          (runningTimer?.project || selectedProject)?.client?.color ||
+          (runningTimer?.project || selectedProject)?.color ||
+          "#a855f7",
+          "#ec4899",
+          "#f59e0b",
+          "#22c55e",
+          "#3b82f6"
+        ]}
       />
     </View>
   );
@@ -332,5 +521,22 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     lineHeight: 20,
+  },
+  tipsButtonContainer: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(0,0,0,0.05)",
+  },
+  tipsButton: {
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    alignItems: "center",
+  },
+  tipsButtonText: {
+    fontSize: 12,
+    fontWeight: "500",
   },
 });

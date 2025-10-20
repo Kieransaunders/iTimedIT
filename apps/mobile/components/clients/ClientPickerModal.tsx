@@ -21,7 +21,7 @@ export interface ClientPickerModalProps {
   selectedClientId: Id<"clients"> | null;
   onSelect: (client: Client) => void;
   onClose: () => void;
-  workspaceType?: "personal" | "team";
+  workspaceType?: "personal" | "work";
 }
 
 export function ClientPickerModal({

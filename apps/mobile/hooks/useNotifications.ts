@@ -189,29 +189,43 @@ export function useNotifications(): UseNotificationsReturn {
       return;
     }
 
+    // Get action identifier for notification actions (Stop, View, etc.)
+    const actionIdentifier = response.actionIdentifier;
+
     // Default behavior: handle deep linking based on notification data
     const data = response.notification.request.content.data;
-    
+
     if (data?.type) {
       switch (data.type) {
+        case "timer-running":
+          // Handle timer notification actions
+          if (actionIdentifier === "stop-timer") {
+            // Timer will be stopped via custom handler set in index.tsx
+            console.log("Stop timer action triggered from notification");
+          } else {
+            // Default tap or "view-timer" action - navigate to timer screen
+            router.push("/");
+          }
+          break;
+
         case "timer-interrupt":
           // Navigate to timer screen (already on home)
           router.push("/");
           break;
-        
+
         case "budget-warning":
         case "budget-overrun":
           // Navigate to projects screen to show project details
           // The projects screen will show budget information
           router.push("/projects");
           break;
-        
+
         case "pomodoro-break":
         case "pomodoro-complete":
           // Navigate to timer screen
           router.push("/");
           break;
-        
+
         default:
           // Navigate to home by default
           router.push("/");

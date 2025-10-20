@@ -16,7 +16,7 @@ export interface UseProjectsReturn {
   recentProjects: Project[];
   isLoading: boolean;
   error: Error | null;
-  currentWorkspace: "personal" | "team";
+  currentWorkspace: "personal" | "work";
   networkError: NetworkErrorState;
   retryFetch: () => void;
   createProject: (params: {
@@ -46,9 +46,7 @@ export function useProjects(options: UseProjectsOptions = {}): UseProjectsReturn
   const projectsData = useQuery(
     currentWorkspace === "personal" ? api.personalProjects.listPersonal : api.projects.listAll,
     isReady
-      ? currentWorkspace === "personal"
-        ? { searchTerm, includeArchived }
-        : { searchTerm, workspaceType: "team", includeArchived }
+      ? { searchTerm, includeArchived } // Backend uses org context
       : "skip"
   );
 
@@ -95,28 +93,15 @@ export function useProjects(options: UseProjectsOptions = {}): UseProjectsReturn
     budgetAmount?: number;
   }) => {
     return await NetworkErrorHandler.withRetry(async () => {
-      if (currentWorkspace === "personal") {
-        // Personal projects don't need workspaceType parameter
-        return await createProjectMutation({
-          clientId: params.clientId,
-          name: params.name,
-          hourlyRate: params.hourlyRate,
-          budgetType: params.budgetType,
-          budgetHours: params.budgetHours,
-          budgetAmount: params.budgetAmount,
-        });
-      } else {
-        // Team projects need workspaceType parameter
-        return await createProjectMutation({
-          clientId: params.clientId,
-          name: params.name,
-          hourlyRate: params.hourlyRate,
-          budgetType: params.budgetType,
-          budgetHours: params.budgetHours,
-          budgetAmount: params.budgetAmount,
-          workspaceType: "team",
-        });
-      }
+      // Backend uses org context, no workspaceType needed
+      return await createProjectMutation({
+        clientId: params.clientId,
+        name: params.name,
+        hourlyRate: params.hourlyRate,
+        budgetType: params.budgetType,
+        budgetHours: params.budgetHours,
+        budgetAmount: params.budgetAmount,
+      });
     });
   };
 

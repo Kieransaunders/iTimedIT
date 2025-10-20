@@ -21,12 +21,12 @@ export function WorkspaceIndicator({
 
   const isPersonal = currentWorkspace === "personal";
   const iconName = isPersonal ? "account" : "account-group";
-  const workspaceLabel = isPersonal ? "Personal" : "Team";
-  
+  const workspaceLabel = isPersonal ? "Personal" : "Work";
+
   // Get organization name, fallback to "Personal Workspace" for personal
-  const organizationName = isPersonal 
-    ? "Personal Workspace" 
-    : (activeOrganization?.name || "Team Workspace");
+  const organizationName = isPersonal
+    ? "Personal Workspace"
+    : (activeOrganization?.name || "Work Workspace");
 
   const indicatorStyles = [
     styles.container,

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Text,
   TouchableOpacity,
@@ -6,10 +6,13 @@ import {
   ActivityIndicator,
   StyleProp,
   ViewStyle,
+  Modal,
+  FlatList,
 } from "react-native";
 import { createStyleSheet, useStyles } from "react-native-unistyles";
-import { useOrganization } from "@/contexts/OrganizationContext";
+import { useOrganization, type MembershipWithOrganization } from "@/contexts/OrganizationContext";
 import { WorkspaceTransitionOverlay } from "./common/WorkspaceTransitionOverlay";
+import type { Id } from "@/convex/_generated/dataModel";
 
 export interface WorkspaceSwitcherProps {
   style?: StyleProp<ViewStyle>;
@@ -20,20 +23,40 @@ export function WorkspaceSwitcher({ style, onWorkspaceChange }: WorkspaceSwitche
   const {
     currentWorkspace,
     switchWorkspace,
+    switchOrganization,
     isReady,
     activeOrganization,
-    isSwitchingWorkspace
+    memberships,
+    isSwitchingWorkspace,
+    isSwitchingOrganization,
   } = useOrganization();
   const { styles, theme } = useStyles(stylesheet);
+  const [isOpen, setIsOpen] = useState(false);
 
-  const handleWorkspaceSwitch = async (workspace: "personal" | "work") => {
-    if (workspace === currentWorkspace || isSwitchingWorkspace) return;
+  const isSwitching = isSwitchingWorkspace || isSwitchingOrganization;
+
+  // Filter memberships into personal and work
+  const personalMembership = memberships.find(
+    (item) => item.organization?.isPersonalWorkspace === true
+  );
+  const workMemberships = memberships.filter(
+    (item) => item.organization?.isPersonalWorkspace !== true
+  );
+
+  const handleWorkspaceSelect = async (
+    organizationId: Id<"organizations">,
+    isPersonal: boolean
+  ) => {
+    if (isSwitching) return;
 
     try {
-      await switchWorkspace(workspace);
-      onWorkspaceChange?.(workspace);
+      await switchOrganization(organizationId);
+      await switchWorkspace(isPersonal ? "personal" : "work");
+      onWorkspaceChange?.(isPersonal ? "personal" : "work");
+      setIsOpen(false);
     } catch (error) {
       console.error("Failed to switch workspace:", error);
+      // Error handling is done in the context with toast messages
     }
   };
 
@@ -45,82 +68,148 @@ export function WorkspaceSwitcher({ style, onWorkspaceChange }: WorkspaceSwitche
     );
   }
 
+  // Display name and color for the button
+  const displayName =
+    currentWorkspace === "personal"
+      ? "Personal"
+      : activeOrganization?.name || "Work";
+  const displayColor =
+    currentWorkspace === "personal"
+      ? "#3b82f6" // Blue for personal
+      : activeOrganization?.color || "#8b5cf6"; // Purple default for work
+
+  const renderWorkspaceItem = ({
+    item,
+    isPersonal,
+  }: {
+    item: MembershipWithOrganization;
+    isPersonal: boolean;
+  }) => {
+    const organization = item.organization;
+    if (!organization) return null;
+
+    const isActive =
+      (isPersonal && currentWorkspace === "personal") ||
+      (!isPersonal &&
+        currentWorkspace === "work" &&
+        activeOrganization?._id === organization._id);
+
+    const workspaceColor = isPersonal
+      ? "#3b82f6"
+      : organization.color || "#8b5cf6";
+    const workspaceName = isPersonal ? "Personal" : organization.name;
+
+    return (
+      <TouchableOpacity
+        style={[styles.option, isActive && styles.optionSelected]}
+        onPress={() => handleWorkspaceSelect(organization._id, isPersonal)}
+        disabled={isSwitching}
+        accessible={true}
+        accessibilityLabel={`Select ${workspaceName} workspace`}
+        accessibilityRole="button"
+        accessibilityState={{ selected: isActive }}
+      >
+        <View style={styles.optionContent}>
+          <View style={styles.optionInfo}>
+            <View style={styles.optionHeader}>
+              <View
+                style={[styles.colorDot, { backgroundColor: workspaceColor }]}
+              />
+              <Text
+                style={[
+                  styles.optionTitle,
+                  isActive && styles.optionTitleSelected,
+                ]}
+              >
+                {workspaceName}
+              </Text>
+            </View>
+          </View>
+          {isActive && (
+            <View style={styles.activeIndicator}>
+              <Text style={styles.checkmark}>✓</Text>
+            </View>
+          )}
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
   return (
     <View style={[styles.container, style]}>
-      <View style={styles.switcher}>
-        <TouchableOpacity
-          style={[
-            styles.option,
-            styles.leftOption,
-            currentWorkspace === "personal" && styles.activeOption,
-          ]}
-          onPress={() => handleWorkspaceSwitch("personal")}
-          disabled={isSwitchingWorkspace}
-          accessible={true}
-          accessibilityLabel="Switch to personal workspace"
-          accessibilityRole="button"
-          accessibilityState={{ selected: currentWorkspace === "personal" }}
-        >
-          {isSwitchingWorkspace && currentWorkspace === "personal" ? (
-            <ActivityIndicator size="small" color={theme.colors.textPrimary} />
-          ) : (
-            <Text
-              style={[
-                styles.optionText,
-                currentWorkspace === "personal" && styles.activeOptionText,
-              ]}
-            >
-              Personal
-            </Text>
-          )}
-        </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.trigger}
+        onPress={() => setIsOpen(true)}
+        disabled={isSwitching}
+        accessible={true}
+        accessibilityLabel={`Current workspace: ${displayName}. Tap to change.`}
+        accessibilityRole="button"
+        accessibilityHint="Opens workspace selection"
+      >
+        <View style={styles.triggerContent}>
+          <View
+            style={[styles.colorDot, { backgroundColor: displayColor }]}
+          />
+          <Text style={styles.triggerText} numberOfLines={1}>
+            {displayName}
+          </Text>
+          <Text style={styles.chevron}>▼</Text>
+        </View>
+        {isSwitching && (
+          <ActivityIndicator
+            size="small"
+            color={theme.colors.primary}
+            style={styles.loadingIndicator}
+          />
+        )}
+      </TouchableOpacity>
 
+      <Modal
+        visible={isOpen}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setIsOpen(false)}
+      >
         <TouchableOpacity
-          style={[
-            styles.option,
-            styles.rightOption,
-            currentWorkspace === "work" && styles.activeOption,
-          ]}
-          onPress={() => handleWorkspaceSwitch("work")}
-          disabled={isSwitchingWorkspace || !activeOrganization}
-          accessible={true}
-          accessibilityLabel={
-            activeOrganization
-              ? `Switch to work workspace for ${activeOrganization.name}`
-              : "Work workspace not available"
-          }
-          accessibilityRole="button"
-          accessibilityState={{
-            selected: currentWorkspace === "work",
-            disabled: !activeOrganization
-          }}
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setIsOpen(false)}
         >
-          {isSwitchingWorkspace && currentWorkspace === "work" ? (
-            <ActivityIndicator size="small" color={theme.colors.textPrimary} />
-          ) : (
-            <Text
-              style={[
-                styles.optionText,
-                currentWorkspace === "work" && styles.activeOptionText,
-                !activeOrganization && styles.disabledOptionText,
-              ]}
-            >
-              Work
-            </Text>
-          )}
-        </TouchableOpacity>
-      </View>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Workspace</Text>
+              <TouchableOpacity
+                onPress={() => setIsOpen(false)}
+                style={styles.closeButton}
+                accessible={true}
+                accessibilityLabel="Close workspace selector"
+                accessibilityRole="button"
+              >
+                <Text style={styles.closeButtonText}>✕</Text>
+              </TouchableOpacity>
+            </View>
 
-      {currentWorkspace === "work" && activeOrganization && (
-        <Text style={styles.organizationLabel} numberOfLines={1}>
-          {activeOrganization.name}
-        </Text>
-      )}
+            <FlatList
+              data={[
+                ...(personalMembership ? [{ item: personalMembership, isPersonal: true }] : []),
+                ...workMemberships.map((item) => ({ item, isPersonal: false })),
+              ]}
+              keyExtractor={(data) => data.item.membership._id}
+              renderItem={({ item: data }) =>
+                renderWorkspaceItem({ item: data.item, isPersonal: data.isPersonal })
+              }
+              style={styles.optionsList}
+              showsVerticalScrollIndicator={false}
+              ItemSeparatorComponent={() => <View style={styles.separator} />}
+            />
+          </View>
+        </TouchableOpacity>
+      </Modal>
 
       <WorkspaceTransitionOverlay
-        visible={isSwitchingWorkspace}
+        visible={isSwitching}
         type="workspace"
-        targetName={currentWorkspace === "personal" ? "Personal" : "Work"}
+        targetName={displayName}
       />
     </View>
   );
@@ -131,51 +220,129 @@ const stylesheet = createStyleSheet((theme) => ({
     alignItems: "center",
     gap: theme.spacing.sm,
   },
-  switcher: {
-    flexDirection: "row",
+  trigger: {
     backgroundColor: theme.colors.surface,
     borderRadius: theme.borderRadius.md,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    padding: 2,
     minHeight: theme.sizing.minTouchTarget,
-  },
-  option: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm,
-    borderRadius: theme.borderRadius.sm,
-    minHeight: theme.sizing.minTouchTarget - 4, // Account for container padding
-    minWidth: 80, // Ensure adequate touch target width
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
-  leftOption: {
-    marginRight: 1,
+  triggerContent: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing.sm,
   },
-  rightOption: {
-    marginLeft: 1,
-  },
-  activeOption: {
-    backgroundColor: theme.colors.primary,
-    ...theme.shadows.sm,
-  },
-  optionText: {
+  triggerText: {
     fontSize: 14,
     fontWeight: "600",
+    color: theme.colors.textPrimary,
+    flex: 1,
+  },
+  chevron: {
     color: theme.colors.textSecondary,
-  },
-  activeOptionText: {
-    color: "#ffffff",
-  },
-  disabledOptionText: {
-    color: theme.colors.textTertiary,
-    opacity: theme.opacity.disabled,
-  },
-  organizationLabel: {
     fontSize: 12,
+    marginLeft: theme.spacing.xs,
+  },
+  loadingIndicator: {
+    marginLeft: theme.spacing.sm,
+  },
+  colorDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: `rgba(0, 0, 0, ${theme.opacity.overlay})`,
+    justifyContent: "flex-end",
+  },
+  modalContent: {
+    backgroundColor: theme.colors.surface,
+    borderTopLeftRadius: theme.borderRadius.xl,
+    borderTopRightRadius: theme.borderRadius.xl,
+    maxHeight: "70%",
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderBottomWidth: 0,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: theme.spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: theme.colors.textPrimary,
+  },
+  closeButton: {
+    padding: theme.spacing.sm,
+    minWidth: theme.sizing.minTouchTarget,
+    minHeight: theme.sizing.minTouchTarget,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  closeButtonText: {
+    fontSize: 18,
     color: theme.colors.textSecondary,
-    textAlign: "center",
-    maxWidth: 200,
+  },
+  optionsList: {
+    maxHeight: 400,
+  },
+  option: {
+    padding: theme.spacing.lg,
+    minHeight: theme.sizing.minTouchTarget + theme.spacing.md,
+  },
+  optionSelected: {
+    backgroundColor: theme.colors.primary + "10", // 10% opacity
+  },
+  optionContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  optionInfo: {
+    flex: 1,
+    gap: theme.spacing.xs,
+  },
+  optionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing.sm,
+  },
+  optionTitle: {
+    fontSize: 16,
+    fontWeight: "500",
+    color: theme.colors.textPrimary,
+  },
+  optionTitleSelected: {
+    color: theme.colors.primary,
+    fontWeight: "600",
+  },
+  activeIndicator: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: theme.colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  checkmark: {
+    color: "#ffffff",
+    fontSize: 14,
+    fontWeight: "bold",
+  },
+  separator: {
+    height: 1,
+    backgroundColor: theme.colors.borderLight,
   },
 }));

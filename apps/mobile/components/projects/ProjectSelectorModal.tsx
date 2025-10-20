@@ -32,7 +32,7 @@ export interface ProjectSelectorModalProps {
   selectedProject: Project | null;
   onSelect: (project: Project) => void;
   onClose: () => void;
-  workspaceType?: "personal" | "team";
+  workspaceType?: "personal" | "work";
 }
 
 /**
@@ -154,7 +154,7 @@ export function ProjectSelectorModal({
       return;
     }
     // Only require client for team workspace
-    if (workspaceType === "team" && !newProjectForm.clientId) {
+    if (workspaceType === "work" && !newProjectForm.clientId) {
       Toast.show({
         type: "error",
         text1: "Please select a client",
@@ -424,7 +424,7 @@ export function ProjectSelectorModal({
               </View>
 
               {/* Only show client field for team workspace */}
-              {workspaceType === "team" && (
+              {workspaceType === "work" && (
                 <View style={styles.formField}>
                   <Text style={styles.formLabel}>Client *</Text>
                   <View style={styles.clientPickerContainer}>
@@ -599,14 +599,14 @@ export function ProjectSelectorModal({
                     styles.submitButton,
                     (isCreatingProject ||
                      !newProjectForm.name.trim() ||
-                     (workspaceType === "team" && !newProjectForm.clientId)) &&
+                     (workspaceType === "work" && !newProjectForm.clientId)) &&
                       styles.submitButtonDisabled,
                   ]}
                   onPress={handleProjectCreated}
                   disabled={
                     isCreatingProject ||
                     !newProjectForm.name.trim() ||
-                    (workspaceType === "team" && !newProjectForm.clientId)
+                    (workspaceType === "work" && !newProjectForm.clientId)
                   }
                   accessible={true}
                   accessibilityLabel="Create project"

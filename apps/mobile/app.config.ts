@@ -23,7 +23,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     supportsTablet: true,
     bundleIdentifier: "com.itimedit.app",
     infoPlist: {
-      UIBackgroundModes: ["fetch", "remote-notification"],
+      UIBackgroundModes: ["fetch", "remote-notification", "processing"],
       CFBundleURLTypes: [
         {
           CFBundleURLSchemes: [
@@ -37,7 +37,14 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   android: {
     icon: "./assets/images/icon.png",
     package: "com.itimedit.app",
-    permissions: ["RECEIVE_BOOT_COMPLETED", "VIBRATE", "SCHEDULE_EXACT_ALARM"],
+    permissions: [
+      "RECEIVE_BOOT_COMPLETED",
+      "VIBRATE",
+      "SCHEDULE_EXACT_ALARM",
+      "FOREGROUND_SERVICE",
+      "WAKE_LOCK",
+      "REQUEST_IGNORE_BATTERY_OPTIMIZATIONS",
+    ],
     edgeToEdgeEnabled: true,
     predictiveBackGestureEnabled: false,
     intentFilters: [

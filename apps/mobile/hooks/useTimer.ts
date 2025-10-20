@@ -11,6 +11,8 @@ import {
 } from "@/services/soundManager";
 import { useOrganization } from "@/contexts/OrganizationContext";
 import { NetworkErrorHandler, NetworkErrorState } from "@/utils/networkErrorHandler";
+import { timerNotificationService } from "@/services/timerNotification";
+import { shouldRequestBatteryOptimization, requestBatteryOptimizationExemption } from "@/services/batteryOptimization";
 
 export interface UseTimerReturn {
   runningTimer: RunningTimer | null;
@@ -18,7 +20,7 @@ export interface UseTimerReturn {
   selectedProject: Project | null;
   selectedCategory: string | null;
   timerMode: "normal" | "pomodoro";
-  currentWorkspace: "personal" | "team";
+  currentWorkspace: "personal" | "work";
   isLoading: boolean;
   error: string | null;
   networkError: NetworkErrorState;
@@ -60,7 +62,7 @@ export function useTimer(): UseTimerReturn {
   // Refs to track previous state for sound triggers
   const prevInterruptRef = useRef<boolean>(false);
   const prevPomodoroPhaseRef = useRef<"work" | "break" | undefined>();
-  const prevWorkspaceRef = useRef<"personal" | "team">(currentWorkspace);
+  const prevWorkspaceRef = useRef<"personal" | "work">(currentWorkspace);
 
   // Convex queries and mutations
   // Note: getRunningTimer accepts workspaceType to filter results by workspace
@@ -217,6 +219,34 @@ export function useTimer(): UseTimerReturn {
   }, [runningTimer?.nextInterruptAt, runningTimer?.awaitingInterruptAck, elapsedTime]);
 
   /**
+   * Start timer notification when timer is running
+   * Stop notification when timer stops
+   */
+  useEffect(() => {
+    if (runningTimer && runningTimer.project) {
+      // Start lock screen notification
+      timerNotificationService.startTimerNotification(
+        runningTimer.project,
+        runningTimer.startedAt
+      ).catch((error) => {
+        console.error("Failed to start timer notification:", error);
+      });
+    } else {
+      // Stop lock screen notification
+      timerNotificationService.stopTimerNotification().catch((error) => {
+        console.error("Failed to stop timer notification:", error);
+      });
+    }
+
+    // Cleanup on unmount
+    return () => {
+      if (!runningTimer) {
+        timerNotificationService.stopTimerNotification().catch(console.error);
+      }
+    };
+  }, [runningTimer?.project, runningTimer?.startedAt]);
+
+  /**
    * Start a timer for the selected project
    */
   const startTimer = useCallback(
@@ -234,16 +264,25 @@ export function useTimer(): UseTimerReturn {
             category,
             pomodoroEnabled: pomodoroEnabled ?? timerMode === "pomodoro",
           });
+
+          // Check if we should request battery optimization exemption (Android only)
+          const shouldRequest = await shouldRequestBatteryOptimization();
+          if (shouldRequest) {
+            // Show the prompt after a short delay to avoid interrupting the timer start
+            setTimeout(() => {
+              requestBatteryOptimizationExemption();
+            }, 2000);
+          }
         } catch (err: any) {
           console.error("Failed to start timer:", err);
           const errorMessage = err?.message || "Failed to start timer";
           setError(errorMessage);
-          
+
           // Show network error if it's a retryable error
           if (NetworkErrorHandler.isRetryableError(err)) {
             NetworkErrorHandler.showNetworkError(err);
           }
-          
+
           throw new Error(errorMessage);
         }
       });
