@@ -189,10 +189,17 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
       }
 
       if (userId !== null) {
-        if (Object.keys(patch).length > 0) {
-          await ctx.db.patch(userId, patch);
+        // Verify the user document still exists before trying to patch it
+        const existingUser = await ctx.db.get(userId);
+        if (existingUser) {
+          if (Object.keys(patch).length > 0) {
+            await ctx.db.patch(userId, patch);
+          }
+          return userId;
         }
-        return userId;
+        // User was deleted but auth account still exists - create new user
+        console.warn(`User ${userId} referenced by auth account was deleted, creating new user`);
+        userId = null;
       }
 
       return await ctx.db.insert("users", patch);
