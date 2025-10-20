@@ -135,32 +135,47 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
   providers,
   callbacks: {
     async redirect({ redirectTo }) {
-      // Log for debugging (helpful during development)
-      console.log("Convex redirect check:", redirectTo);
+      // Enhanced logging for debugging
+      console.log("=== Convex Auth Redirect Debug ===");
+      console.log("redirectTo:", redirectTo);
+      console.log("NODE_ENV:", process.env.NODE_ENV);
 
-      const u = new URL(redirectTo);
-      const origin = `${u.protocol}//${u.host}`; // e.g., https://itimedit.com or exp://192.168.1.42:8081
-      const scheme = u.protocol.replace(":", ""); // e.g., itimeditapp, http, https, exp, exps
+      try {
+        const u = new URL(redirectTo);
+        const origin = `${u.protocol}//${u.host}`; // e.g., https://itimedit.com or exp://192.168.1.42:8081
+        const scheme = u.protocol.replace(":", ""); // e.g., itimeditapp, http, https, exp, exps
 
-      // 1) Web (dev/prod) by exact origin
-      if (WEB_ORIGINS.has(origin)) {
-        return redirectTo;
+        console.log("Parsed origin:", origin);
+        console.log("Parsed scheme:", scheme);
+        console.log("WEB_ORIGINS has origin?", WEB_ORIGINS.has(origin));
+
+        // 1) Web (dev/prod) by exact origin
+        if (WEB_ORIGINS.has(origin)) {
+          console.log("✅ Redirect allowed (web origin)");
+          return redirectTo;
+        }
+
+        // 2) Native mobile app by scheme
+        if (NATIVE_SCHEMES.has(scheme)) {
+          console.log("✅ Redirect allowed (native scheme)");
+          return redirectTo;
+        }
+
+        // 3) Expo Go (dev) — allow only in non-production and only exp:// / exps://
+        if (
+          process.env.NODE_ENV !== "production" &&
+          (scheme === "exp" || scheme === "exps")
+        ) {
+          console.log("✅ Redirect allowed (expo dev)");
+          return redirectTo; // origin can vary (phone/LAN IP), that's expected
+        }
+
+        console.error("❌ Redirect rejected - not in allowed list");
+        throw new Error(`Invalid redirectTo URI: ${redirectTo}`);
+      } catch (error) {
+        console.error("❌ Redirect validation error:", error);
+        throw error;
       }
-
-      // 2) Native mobile app by scheme
-      if (NATIVE_SCHEMES.has(scheme)) {
-        return redirectTo;
-      }
-
-      // 3) Expo Go (dev) — allow only in non-production and only exp:// / exps://
-      if (
-        process.env.NODE_ENV !== "production" &&
-        (scheme === "exp" || scheme === "exps")
-      ) {
-        return redirectTo; // origin can vary (phone/LAN IP), that's expected
-      }
-
-      throw new Error(`Invalid redirectTo URI: ${redirectTo}`);
     },
     createOrUpdateUser: async (ctx, args) => {
       const patch = extractUserPatch(args.provider, args.type, args.profile);
