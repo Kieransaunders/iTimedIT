@@ -1,37 +1,73 @@
 import React from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View, Alert } from "react-native";
 import { Project } from "../../types/models";
 import { borderRadius, colors, shadows, spacing, typography } from "../../utils/theme";
 import { Ionicons } from "@expo/vector-icons";
+import { openWebApp } from "../WebAppPrompt";
 
 export interface ProjectCardProps {
   project: Project;
   onPress: () => void;
   onStartTimer?: () => void;
+  showEditOption?: boolean;
 }
 
 /**
  * ProjectCard component displays project information in a card format
  * Shows project name, client name (if available), and hourly rate
  */
-export function ProjectCard({ project, onPress, onStartTimer }: ProjectCardProps) {
+export function ProjectCard({ project, onPress, onStartTimer, showEditOption = true }: ProjectCardProps) {
   // Debug log
   console.log('ProjectCard render:', {
     projectName: project.name,
     hasOnStartTimer: !!onStartTimer
   });
 
+  const handleLongPress = () => {
+    if (!showEditOption) {
+      return;
+    }
+
+    Alert.alert(
+      project.name,
+      "What would you like to do?",
+      [
+        {
+          text: "Edit in Web App",
+          onPress: () => {
+            // Open web app to project edit page
+            openWebApp(`/projects/${project._id}`);
+          },
+        },
+        ...(onStartTimer
+          ? [
+              {
+                text: "Start Timer",
+                onPress: onStartTimer,
+              },
+            ]
+          : []),
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
   return (
     <TouchableOpacity
       style={styles.card}
       onPress={onPress}
+      onLongPress={handleLongPress}
       activeOpacity={0.7}
       accessible={true}
       accessibilityLabel={`Project: ${project.name}${
         project.client ? `, Client: ${project.client.name}` : ""
       }, Hourly rate: $${project.hourlyRate}`}
       accessibilityRole="button"
-      accessibilityHint="Tap to select this project for time tracking"
+      accessibilityHint="Tap to select this project for time tracking. Long press for more options"
     >
       <View style={styles.header}>
         <View style={styles.titleContainer}>

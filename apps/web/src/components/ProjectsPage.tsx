@@ -1,12 +1,13 @@
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Id } from "../../convex/_generated/dataModel";
 import { notifyMutationError } from "../lib/notifyMutationError";
 import { useOrganization } from "../lib/organization-context";
 import { WorkspaceHeader, WorkspaceType } from "./WorkspaceSwitcher";
 import { useCurrency } from "../hooks/useCurrency";
 import { Briefcase } from "lucide-react";
+import { ProjectFilters, defaultFilters } from "./ProjectFilters";
 
 interface ProjectsPageProps {
   onProjectSelect?: (projectId: string) => void;
@@ -35,7 +36,8 @@ export function ProjectsPage({
   const [budgetHours, setBudgetHours] = useState("");
   const [budgetAmount, setBudgetAmount] = useState("");
   const currentWorkspace = workspaceType; // Use prop instead of internal state
-  const [showArchived, setShowArchived] = useState(false);
+  const [filters, setFilters] = useState(defaultFilters);
+  const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const { isReady } = useOrganization();
 
   const clients = useQuery(
@@ -51,7 +53,7 @@ export function ProjectsPage({
       ? api.personalProjects.listPersonal
       : api.projects.listAll,
     isReady
-      ? (currentWorkspace === "personal" ? { includeArchived: showArchived } : { workspaceType: "work", includeArchived: showArchived })
+      ? (currentWorkspace === "personal" ? { includeArchived: filters.showArchived } : { workspaceType: "work", includeArchived: filters.showArchived })
       : "skip"
   );
   const createProject = useMutation(
@@ -156,14 +158,82 @@ export function ProjectsPage({
     }
   };
 
+  // Filter and process projects
+  const filteredProjects = useMemo(() => {
+    if (!projects) return [];
+
+    let filtered = projects;
+
+    // Client filter (from props or from filters)
+    if (clientFilter) {
+      filtered = filtered.filter(project => project.clientId === clientFilter);
+    } else if (filters.clientId !== "all") {
+      filtered = filtered.filter(project => project.clientId === filters.clientId);
+    }
+
+    // Search filter
+    if (filters.search) {
+      const searchLower = filters.search.toLowerCase();
+      filtered = filtered.filter(project =>
+        project.name.toLowerCase().includes(searchLower) ||
+        project.client?.name.toLowerCase().includes(searchLower)
+      );
+    }
+
+    // Budget type filter
+    if (filters.budgetType !== "all") {
+      filtered = filtered.filter(project => project.budgetType === filters.budgetType);
+    }
+
+    // Budget status filter
+    if (filters.budgetStatus !== "all") {
+      filtered = filtered.filter(project => {
+        // Projects must have budget set to be filtered by status
+        const hasBudget = project.budgetType === "hours"
+          ? (project.budgetHours && project.budgetHours > 0)
+          : (project.budgetAmount && project.budgetAmount > 0);
+
+        if (!hasBudget) return false;
+
+        // Calculate remaining based on budget type
+        let remaining = 0;
+        let total = 0;
+
+        if (project.budgetType === "hours") {
+          total = project.budgetHours || 0;
+          const used = project.totalHours || 0;
+          remaining = total - used;
+        } else {
+          total = project.budgetAmount || 0;
+          const used = (project.totalHours || 0) * project.hourlyRate;
+          remaining = total - used;
+        }
+
+        const percentRemaining = total > 0 ? (remaining / total) * 100 : 0;
+
+        switch (filters.budgetStatus) {
+          case "overBudget":
+            return remaining < 0;
+          case "nearLimit":
+            return remaining >= 0 && percentRemaining <= 20;
+          case "onTrack":
+            return percentRemaining > 20;
+          default:
+            return true;
+        }
+      });
+    }
+
+    return filtered;
+  }, [projects, filters, clientFilter]);
+
+  const resetFilters = () => {
+    setFilters(defaultFilters);
+  };
+
   if (!isReady || !clients || !projects) {
     return <div className="animate-pulse bg-gray-200 dark:bg-gray-700 h-64 rounded-lg"></div>;
   }
-
-  // Filter projects by client if clientFilter is set
-  const filteredProjects = clientFilter
-    ? projects.filter(project => project.clientId === clientFilter)
-    : projects;
 
   const filteredClient = clientFilter ? clients.find(c => c._id === clientFilter) : null;
 
@@ -201,15 +271,31 @@ export function ProjectsPage({
         </div>
       )}
 
-      <div className="flex justify-end mb-6">
-        {!showForm && (
-          <button
-            onClick={() => setShowForm(true)}
-            className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-hover shadow-lg transition-colors"
-          >
-            Add Project
-          </button>
-        )}
+      {/* Filters Section */}
+      <div className="mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="flex-1">
+            <ProjectFilters
+              filters={filters}
+              onFiltersChange={setFilters}
+              onReset={resetFilters}
+              totalProjects={projects.length}
+              filteredCount={filteredProjects.length}
+              clients={clients}
+              viewMode={viewMode}
+              onViewModeChange={setViewMode}
+            />
+          </div>
+
+          {!showForm && (
+            <button
+              onClick={() => setShowForm(true)}
+              className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-hover shadow-lg transition-colors whitespace-nowrap"
+            >
+              Add Project
+            </button>
+          )}
+        </div>
       </div>
 
       {showForm && (
@@ -337,10 +423,12 @@ export function ProjectsPage({
         </div>
       )}
 
-      <div className="bg-white dark:bg-gray-800/50 dark:backdrop-blur-sm rounded-lg shadow dark:shadow-dark-card border-0 dark:border dark:border-gray-700/50">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 dark:bg-gray-700/50">
+      {/* Table View */}
+      {viewMode === 'table' && (
+        <div className="bg-white dark:bg-gray-800/50 dark:backdrop-blur-sm rounded-lg shadow dark:shadow-dark-card border-0 dark:border dark:border-gray-700/50">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 dark:bg-gray-700/50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Client / Project
@@ -473,61 +561,193 @@ export function ProjectsPage({
               ))}
             </tbody>
           </table>
-        </div>
+          </div>
 
-        {filteredProjects.length === 0 && (
-          <div className="text-center py-16">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-purple-100 to-blue-100 dark:from-purple-900/30 dark:to-blue-900/30 mb-4">
-              <Briefcase className="w-8 h-8 text-purple-600 dark:text-purple-400" />
+          {filteredProjects.length === 0 && (
+            <div className="text-center py-16">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-purple-100 to-blue-100 dark:from-purple-900/30 dark:to-blue-900/30 mb-4">
+                <Briefcase className="w-8 h-8 text-purple-600 dark:text-purple-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                {clientFilter
+                  ? "No projects for this client"
+                  : filters.showArchived
+                    ? "No archived projects"
+                    : "No projects yet"
+                }
+              </h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm mx-auto">
+                {clientFilter
+                  ? "This client doesn't have any projects yet."
+                  : filters.showArchived
+                    ? "You don't have any archived projects."
+                    : "Start tracking your work by adding your first project"
+                }
+              </p>
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-              {clientFilter
-                ? "No projects for this client"
-                : showArchived
-                  ? "No archived projects"
-                  : "No projects yet"
-              }
-            </h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm mx-auto">
-              {clientFilter
-                ? "This client doesn't have any projects yet."
-                : showArchived
-                  ? "You don't have any archived projects."
-                  : "Start tracking your work by adding your first project"
-              }
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* Floating Archive Toggle */}
-      <div className="fixed bottom-6 right-6 z-50">
-        <button
-          onClick={() => setShowArchived(!showArchived)}
-          className={`group relative p-4 rounded-full shadow-lg transition-all duration-200 hover:scale-105 ${
-            showArchived 
-              ? "bg-gray-600 text-white hover:bg-gray-700" 
-              : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600"
-          }`}
-          title={showArchived ? "Show Active Projects" : "Show Archived Projects"}
-        >
-          {showArchived ? (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l4-4 4 4m6 1V5a2 2 0 00-2-2H7a2 2 0 00-2 2v11a2 2 0 002 2h10a2 2 0 002-2z" />
-            </svg>
-          ) : (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8l4 4 4-4m6-1v11a2 2 0 01-2 2H7a2 2 0 01-2-2V7a2 2 0 012-2h10a2 2 0 012 2z" />
-            </svg>
           )}
-          
-          {/* Tooltip */}
-          <div className="absolute bottom-full right-0 mb-2 px-3 py-2 text-sm font-medium text-white bg-gray-900 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
-            {showArchived ? "Show Active Projects" : "Show Archived Projects"}
-            <div className="absolute top-full right-4 w-2 h-2 bg-gray-900 transform rotate-45"></div>
-          </div>
-        </button>
-      </div>
+        </div>
+      )}
+
+      {/* Card View */}
+      {viewMode === 'cards' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredProjects.map((project) => (
+            <div
+              key={project._id}
+              className={`bg-white dark:bg-gray-800/50 dark:backdrop-blur-sm rounded-lg shadow dark:shadow-dark-card border-0 dark:border dark:border-gray-700/50 p-6 ${
+                project.archived ? "opacity-60" : ""
+              }`}
+            >
+              {/* Header */}
+              <div className="flex items-start gap-3 mb-4">
+                <span
+                  className="h-8 w-8 rounded-full border border-gray-300 dark:border-gray-600 flex-shrink-0"
+                  style={{ backgroundColor: project.client?.color || "#8b5cf6" }}
+                />
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 truncate">
+                    {project.name}
+                  </h3>
+                  {project.client?.name && (
+                    <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                      {project.client.name}
+                    </p>
+                  )}
+                  {project.archived && (
+                    <span className="inline-block mt-1 px-2 py-1 text-xs font-medium bg-gray-200 text-gray-700 dark:bg-gray-600 dark:text-gray-300 rounded-full">
+                      ARCHIVED
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Stats */}
+              <div className="space-y-3 mb-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-500 dark:text-gray-400">Hourly Rate</span>
+                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                    {getCurrencySymbol()}{project.hourlyRate}/hr
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-500 dark:text-gray-400">Time Used</span>
+                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                    {project.totalHoursFormatted || "0h"}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-500 dark:text-gray-400">Allocated</span>
+                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                    {project.budgetType === "hours"
+                      ? `${project.budgetHours || 0} hours`
+                      : formatCurrency(project.budgetAmount || 0)
+                    }
+                  </span>
+                </div>
+                <div className="flex justify-between items-center pt-2 border-t border-gray-200 dark:border-gray-700">
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Remaining</span>
+                  <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                    {project.budgetRemainingFormatted}
+                  </span>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-2 pt-4 border-t border-gray-200 dark:border-gray-700">
+                {!project.archived ? (
+                  <>
+                    <button
+                      onClick={() => onStartTimer?.(project._id)}
+                      className="flex-1 p-2 text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-md transition-all"
+                      title="Start Timer"
+                    >
+                      <svg className="w-4 h-4 mx-auto" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M8 5v14l11-7z"/>
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => onProjectSelect?.(project._id)}
+                      className="flex-1 p-2 text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-md transition-all"
+                      title="View Details"
+                    >
+                      <svg className="w-4 h-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => handleEdit(project)}
+                      className="flex-1 p-2 text-purple-600 hover:text-purple-900 dark:text-purple-400 dark:hover:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-md transition-all"
+                      title="Edit Project"
+                    >
+                      <svg className="w-4 h-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => handleArchive(project._id)}
+                      className="flex-1 p-2 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-all"
+                      title="Archive Project"
+                    >
+                      <svg className="w-4 h-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8l4 4 4-4m6-1v11a2 2 0 01-2 2H7a2 2 0 01-2-2V7a2 2 0 012-2h10a2 2 0 012 2z" />
+                      </svg>
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => onProjectSelect?.(project._id)}
+                      className="flex-1 p-2 text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-md transition-all"
+                      title="View Details"
+                    >
+                      <svg className="w-4 h-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => handleUnarchive(project._id)}
+                      className="flex-1 p-2 text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-md transition-all"
+                      title="Restore Project"
+                    >
+                      <svg className="w-4 h-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l4-4 4 4m6 1V5a2 2 0 00-2-2H7a2 2 0 00-2 2v11a2 2 0 002 2h10a2 2 0 002-2z" />
+                      </svg>
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          ))}
+
+          {filteredProjects.length === 0 && (
+            <div className="col-span-full text-center py-16">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-purple-100 to-blue-100 dark:from-purple-900/30 dark:to-blue-900/30 mb-4">
+                <Briefcase className="w-8 h-8 text-purple-600 dark:text-purple-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                {clientFilter
+                  ? "No projects for this client"
+                  : filters.showArchived
+                    ? "No archived projects"
+                    : "No projects yet"
+                }
+              </h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm mx-auto">
+                {clientFilter
+                  ? "This client doesn't have any projects yet."
+                  : filters.showArchived
+                    ? "You don't have any archived projects."
+                    : "Start tracking your work by adding your first project"
+                }
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
     </div>
   );
 }

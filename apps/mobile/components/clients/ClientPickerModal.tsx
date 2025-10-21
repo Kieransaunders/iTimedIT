@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   View,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useClients } from "@/hooks/useClients";
@@ -15,6 +16,7 @@ import { useTheme } from "@/utils/ThemeContext";
 import { borderRadius, colors, sizing, spacing, typography } from "@/utils/theme";
 import { Client } from "@/types/models";
 import { Id } from "@/convex/_generated/dataModel";
+import { openWebApp } from "../WebAppPrompt";
 
 export interface ClientPickerModalProps {
   visible: boolean;
@@ -37,6 +39,30 @@ export function ClientPickerModal({
   const handleSelectClient = (client: Client) => {
     onSelect(client);
     onClose();
+  };
+
+  const handleLongPressClient = (client: Client) => {
+    Alert.alert(
+      client.name,
+      "What would you like to do?",
+      [
+        {
+          text: "Edit in Web App",
+          onPress: () => {
+            openWebApp(`/clients/${client._id}`);
+          },
+        },
+        {
+          text: "Select Client",
+          onPress: () => handleSelectClient(client),
+        },
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+      ],
+      { cancelable: true }
+    );
   };
 
   return (
@@ -88,6 +114,7 @@ export function ClientPickerModal({
                   },
                 ]}
                 onPress={() => handleSelectClient(item)}
+                onLongPress={() => handleLongPressClient(item)}
               >
                 <View style={styles.clientInfo}>
                   {item.color && (

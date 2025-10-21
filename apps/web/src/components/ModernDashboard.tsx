@@ -639,10 +639,13 @@ export function ModernDashboard({
 
   const handleAddCategory = useCallback(async () => {
     if (!newCategoryName.trim()) return;
+    const categoryName = newCategoryName.trim();
     try {
-      await createCategory({ name: newCategoryName.trim() });
+      await createCategory({ name: categoryName });
       setNewCategoryName("");
-      toast.success(`Category "${newCategoryName.trim()}" added`);
+      setSelectedCategory(categoryName);
+      setShowCategoryManager(false);
+      toast.success(`Category "${categoryName}" added and selected`);
     } catch (error) {
       toast.error("Failed to add category");
     }
@@ -1647,39 +1650,49 @@ export function ModernDashboard({
             
             {/* Category Management */}
             {showCategoryManager && (
-              <div className="mt-4 p-4 bg-gray-800/30 rounded-lg border border-gray-700">
-                <h4 className="text-sm font-medium text-gray-300 mb-3">Manage Categories</h4>
-                
+              <div className="mt-4 p-4 bg-white/70 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-300/50 dark:border-gray-700/50 rounded-xl shadow-lg">
+                <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Manage Categories</h4>
+
                 {/* Add new category */}
-                <div className="flex gap-2 mb-3">
+                <div className="flex gap-2 mb-4">
                   <input
                     type="text"
                     value={newCategoryName}
                     onChange={(e) => setNewCategoryName(e.target.value)}
                     placeholder="New category name..."
-                    className="flex-1 px-3 py-2 bg-white/70 dark:bg-gray-700/50 border border-gray-300/50 dark:border-gray-600 rounded text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#F85E00] backdrop-blur-sm"
+                    className="flex-1 px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#F85E00] transition-shadow"
                     onKeyPress={(e) => e.key === 'Enter' && handleAddCategory()}
                   />
                   <button
                     onClick={handleAddCategory}
                     disabled={!newCategoryName.trim()}
-                    className="px-3 py-2 bg-[#F85E00] text-white text-sm rounded hover:bg-[#d14e00] disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-4 py-2 bg-[#F85E00] text-white text-sm font-medium rounded-lg hover:bg-[#d14e00] disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm hover:shadow-md"
                   >
                     Add
                   </button>
                 </div>
-                
+
                 {/* Existing categories */}
                 <div className="space-y-2">
                   {categories?.map((category) => (
-                    <div key={category._id} className="flex items-center justify-between text-sm">
-                      <span className="text-gray-300">
-                        {category.name} {category.isDefault ? '(Default)' : ''}
+                    <div
+                      key={category._id}
+                      className="flex items-center justify-between p-3 bg-white/50 dark:bg-gray-700/30 border border-gray-200/50 dark:border-gray-600/50 rounded-lg hover:bg-white/80 dark:hover:bg-gray-700/50 transition-colors cursor-pointer group"
+                      onClick={() => {
+                        setSelectedCategory(category.name);
+                        setShowCategoryDropdown(false);
+                      }}
+                    >
+                      <span className="text-sm font-medium text-gray-900 dark:text-white">
+                        {category.name} {category.isDefault && <span className="text-xs text-gray-500 dark:text-gray-400">(Default)</span>}
                       </span>
                       {category.name !== "General" && (
                         <button
-                          onClick={() => handleDeleteCategory(category._id, category.name)}
-                          className="text-red-400 hover:text-red-300 text-xs"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteCategory(category._id, category.name);
+                          }}
+                          className="px-2 py-1 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity rounded hover:bg-red-50 dark:hover:bg-red-900/20"
                         >
                           Delete
                         </button>
@@ -1901,7 +1914,7 @@ export function ModernDashboard({
                 </Dialog>
               )}
             </div>
-            <RecentEntriesTable projectId={currentProjectId} workspaceType={currentWorkspace} />
+            <RecentEntriesTable projectId={currentProjectId} workspaceType={currentWorkspace} showHeader={false} />
           </div>
         </section>
       </div>

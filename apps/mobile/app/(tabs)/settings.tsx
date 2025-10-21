@@ -28,7 +28,7 @@ import Toast from "react-native-toast-message";
 import { useAuth } from "@/hooks/useAuth";
 import { getUserDisplayName, getUserInitials, getUserEmail, isAnonymousUser } from "@/utils/userUtils";
 import { useRouter } from "expo-router";
-import { OrganizationSelector } from "@/components";
+import { OrganizationSelector, openWebApp } from "@/components";
 
 type SoundType = 'breakStart' | 'breakEnd' | 'interrupt' | 'overrun';
 
@@ -410,6 +410,19 @@ export default function SettingsScreen() {
                 Org ID: {currentMembership.organization._id}
               </Text>
             )}
+
+            {/* Advanced Settings Link */}
+            <TouchableOpacity
+              onPress={() => openWebApp('/settings')}
+              style={[styles.advancedSettingsButton, { backgroundColor: colors.surface, borderColor: colors.primary }]}
+            >
+              <Ionicons name="settings-outline" size={20} color={colors.primary} />
+              <Text style={[styles.advancedSettingsButtonText, { color: colors.primary }]}>
+                Advanced Settings
+              </Text>
+              <Ionicons name="open-outline" size={16} color={colors.primary} />
+            </TouchableOpacity>
+
             <TouchableOpacity
               onPress={handleSignOut}
               style={[styles.signOutButton, { backgroundColor: colors.error }]}

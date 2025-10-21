@@ -4,6 +4,9 @@ import { useMemo, useState } from "react";
 import { Id } from "../../convex/_generated/dataModel";
 import { useOrganization } from "../lib/organization-context";
 import { formatDateTime, formatDate } from "../lib/utils";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
 
 interface RecentEntriesTableProps {
   projectId: Id<"projects"> | null;
@@ -33,13 +36,14 @@ export function RecentEntriesTable({
   filters,
   workspaceType = "work",
 }: RecentEntriesTableProps) {
-  const [editingEntry, setEditingEntry] = useState<string | null>(null);
-  const [editNote, setEditNote] = useState("");
-  const [editingDuration, setEditingDuration] = useState<string | null>(null);
-  const [editDurationHours, setEditDurationHours] = useState(0);
-  const [editDurationMinutes, setEditDurationMinutes] = useState(0);
-  const [editingCategory, setEditingCategory] = useState<string | null>(null);
-  const [editCategoryValue, setEditCategoryValue] = useState("");
+  const [editingEntry, setEditingEntry] = useState<any | null>(null);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editForm, setEditForm] = useState({
+    hours: 0,
+    minutes: 0,
+    category: "",
+    note: "",
+  });
   const { isReady } = useOrganization();
 
   const entries = useQuery(
@@ -68,32 +72,41 @@ export function RecentEntriesTable({
 
 
 
-  const handleEditNote = async (entryId: string, note: string) => {
-    await editEntry({ id: entryId as Id<"timeEntries">, note });
+  const handleRowClick = (entry: any, duration: number) => {
+    const hours = Math.floor(duration / 3600);
+    const minutes = Math.floor((duration % 3600) / 60);
+
+    setEditingEntry(entry);
+    setEditForm({
+      hours,
+      minutes,
+      category: entry.category || "",
+      note: entry.note || "",
+    });
+    setShowEditDialog(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingEntry) return;
+
+    const totalSeconds = (editForm.hours * 3600) + (editForm.minutes * 60);
+
+    await editEntry({
+      id: editingEntry._id as Id<"timeEntries">,
+      seconds: totalSeconds,
+      category: editForm.category || undefined,
+      note: editForm.note || undefined,
+    });
+
+    setShowEditDialog(false);
     setEditingEntry(null);
-    setEditNote("");
+    setEditForm({ hours: 0, minutes: 0, category: "", note: "" });
   };
 
-  const handleEditCategory = async (entryId: string, category: string) => {
-    await editEntry({ id: entryId as Id<"timeEntries">, category: category || undefined });
-    setEditingCategory(null);
-    setEditCategoryValue("");
-  };
-
-  const handleEditDuration = async (entryId: string, hours: number, minutes: number) => {
-    const totalSeconds = (hours * 3600) + (minutes * 60);
-    await editEntry({ id: entryId as Id<"timeEntries">, seconds: totalSeconds });
-    setEditingDuration(null);
-    setEditDurationHours(0);
-    setEditDurationMinutes(0);
-  };
-
-  const startEditingDuration = (entryId: string, currentSeconds: number) => {
-    setEditingDuration(entryId);
-    const hours = Math.floor(currentSeconds / 3600);
-    const minutes = Math.floor((currentSeconds % 3600) / 60);
-    setEditDurationHours(hours);
-    setEditDurationMinutes(minutes);
+  const handleCancelEdit = () => {
+    setShowEditDialog(false);
+    setEditingEntry(null);
+    setEditForm({ hours: 0, minutes: 0, category: "", note: "" });
   };
 
   // COMMENTED OUT: Overrun merge functionality
@@ -165,7 +178,7 @@ export function RecentEntriesTable({
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800/50 dark:backdrop-blur-sm rounded-lg shadow dark:shadow-dark-card border-0 dark:border dark:border-gray-700/50">
+    <div className="bg-white dark:bg-gray-800/50 dark:backdrop-blur-sm rounded-lg shadow-sm dark:shadow-dark-card border border-gray-200 dark:border-gray-700/50">
       {showHeader && (
         <div className="p-6 border-b border-gray-200 dark:border-gray-600">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{title}</h3>
@@ -220,26 +233,26 @@ export function RecentEntriesTable({
         </div>
       )} */}
 
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead className="bg-gray-50 dark:bg-gray-700/50">
+      <div className="overflow-x-auto -mx-4 sm:mx-0">
+        <table className="w-full min-w-full">
+          <thead className="bg-gray-100 dark:bg-gray-700/50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+              <th className="px-3 sm:px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                 Project
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+              <th className="px-3 sm:px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap">
                 Date & Time
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+              <th className="px-3 sm:px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                 Duration
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+              <th className="px-3 sm:px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider hidden md:table-cell">
                 Category
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+              <th className="px-3 sm:px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider hidden lg:table-cell">
                 Note
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+              <th className="px-3 sm:px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                 Actions
               </th>
             </tr>
@@ -249,153 +262,38 @@ export function RecentEntriesTable({
               const duration = entry.seconds || (entry.stoppedAt ? (entry.stoppedAt - entry.startedAt) / 1000 : 0);
               
               return (
-                <tr key={entry._id}>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                <tr
+                  key={entry._id}
+                  onClick={() => handleRowClick(entry, duration)}
+                  className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors cursor-pointer"
+                >
+                  <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                       {entry.project?.name}
                     </div>
-                    <div className="text-sm text-gray-500 dark:text-gray-400">
+                    <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
                       {entry.client?.name}
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                  <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-100">
                     {formatDateTime(entry.startedAt)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                    {editingDuration === entry._id ? (
-                      <div className="flex gap-2 items-center">
-                        <input
-                          type="number"
-                          value={editDurationHours}
-                          onChange={(e) => setEditDurationHours(parseInt(e.target.value) || 0)}
-                          className="w-16 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700/50 text-gray-900 dark:text-gray-100"
-                          min="0"
-                          placeholder="Hours"
-                        />
-                        <span className="text-xs">h</span>
-                        <input
-                          type="number"
-                          value={editDurationMinutes}
-                          onChange={(e) => setEditDurationMinutes(parseInt(e.target.value) || 0)}
-                          className="w-16 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700/50 text-gray-900 dark:text-gray-100"
-                          min="0"
-                          max="59"
-                          placeholder="Min"
-                        />
-                        <span className="text-xs">m</span>
-                        <button
-                          onClick={() => handleEditDuration(entry._id, editDurationHours, editDurationMinutes)}
-                          className="px-2 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
-                        >
-                          Save
-                        </button>
-                        <button
-                          onClick={() => {
-                            setEditingDuration(null);
-                            setEditDurationHours(0);
-                            setEditDurationMinutes(0);
-                          }}
-                          className="px-2 py-1 text-sm bg-gray-600 text-white rounded hover:bg-gray-700"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    ) : (
-                      <div
-                        onClick={() => startEditingDuration(entry._id, duration)}
-                        className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 p-1 rounded"
-                        title="Click to edit duration"
-                      >
-                        {formatTime(duration)}
-                      </div>
-                    )}
+                  <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-100">
+                    {formatTime(duration)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {editingCategory === entry._id ? (
-                      <div className="flex gap-2">
-                        <select
-                          value={editCategoryValue}
-                          onChange={(e) => setEditCategoryValue(e.target.value)}
-                          className="px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700/50 text-gray-900 dark:text-gray-100"
-                          autoFocus
-                        >
-                          <option value="">No category</option>
-                          {categories?.map((category) => (
-                            <option key={category._id} value={category.name}>
-                              {category.name} {category.isDefault ? '(Default)' : ''}
-                            </option>
-                          ))}
-                        </select>
-                        <button
-                          onClick={() => handleEditCategory(entry._id, editCategoryValue)}
-                          className="px-2 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
-                        >
-                          Save
-                        </button>
-                        <button
-                          onClick={() => {
-                            setEditingCategory(null);
-                            setEditCategoryValue("");
-                          }}
-                          className="px-2 py-1 text-sm bg-gray-600 text-white rounded hover:bg-gray-700"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    ) : (
-                      <div
-                        onClick={() => {
-                          setEditingCategory(entry._id);
-                          setEditCategoryValue(entry.category || "");
-                        }}
-                        className="text-sm text-gray-900 dark:text-gray-100 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 p-1 rounded"
-                      >
-                        {entry.category || "No category"}
-                      </div>
-                    )}
+                  <td className="px-3 sm:px-6 py-4 whitespace-nowrap hidden md:table-cell text-sm font-medium text-gray-800 dark:text-gray-100">
+                    {entry.category || <span className="text-gray-500 dark:text-gray-400 italic">No category</span>}
                   </td>
-                  <td className="px-6 py-4">
-                    {editingEntry === entry._id ? (
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={editNote}
-                          onChange={(e) => setEditNote(e.target.value)}
-                          className="flex-1 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700/50 text-gray-900 dark:text-gray-100"
-                          autoFocus
-                        />
-                        <button
-                          onClick={() => handleEditNote(entry._id, editNote)}
-                          className="px-2 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
-                        >
-                          Save
-                        </button>
-                        <button
-                          onClick={() => {
-                            setEditingEntry(null);
-                            setEditNote("");
-                          }}
-                          className="px-2 py-1 text-sm bg-gray-600 text-white rounded hover:bg-gray-700"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    ) : (
-                      <div
-                        onClick={() => {
-                          setEditingEntry(entry._id);
-                          setEditNote(entry.note || "");
-                        }}
-                        className="text-sm text-gray-900 dark:text-gray-100 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 p-1 rounded"
-                      >
-                        {entry.note || "Click to add note..."}
-                      </div>
-                    )}
+                  <td className="px-3 sm:px-6 py-4 hidden lg:table-cell text-sm text-gray-800 dark:text-gray-100 truncate max-w-xs">
+                    {entry.note || <span className="text-gray-500 dark:text-gray-400 italic">No note</span>}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td
+                    className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <button
                       onClick={() => deleteEntry({ id: entry._id as Id<"timeEntries"> })}
-                      className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                      className="font-medium text-red-600 hover:text-red-800 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20 px-2 py-1 rounded transition-colors text-xs sm:text-sm"
                     >
                       Delete
                     </button>
@@ -412,6 +310,111 @@ export function RecentEntriesTable({
           {emptyStateMessage}
         </div>
       )}
+
+      {/* Edit Entry Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Edit Time Entry</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {editingEntry && (
+              <>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Project
+                  </label>
+                  <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                    {editingEntry.project?.name}
+                  </div>
+                  <div className="text-xs text-gray-600 dark:text-gray-400">
+                    {editingEntry.client?.name || 'No Client'}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Date & Time
+                  </label>
+                  <div className="text-sm text-gray-800 dark:text-gray-100">
+                    {formatDateTime(editingEntry.startedAt)}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Duration
+                  </label>
+                  <div className="flex gap-3 items-center">
+                    <div className="flex-1">
+                      <Input
+                        type="number"
+                        value={editForm.hours}
+                        onChange={(e) => setEditForm(prev => ({ ...prev, hours: parseInt(e.target.value) || 0 }))}
+                        placeholder="Hours"
+                        min="0"
+                        className="bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600"
+                      />
+                      <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">Hours</div>
+                    </div>
+                    <div className="flex-1">
+                      <Input
+                        type="number"
+                        value={editForm.minutes}
+                        onChange={(e) => setEditForm(prev => ({ ...prev, minutes: parseInt(e.target.value) || 0 }))}
+                        placeholder="Minutes"
+                        min="0"
+                        max="59"
+                        className="bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600"
+                      />
+                      <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">Minutes</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Category
+                  </label>
+                  <select
+                    value={editForm.category}
+                    onChange={(e) => setEditForm(prev => ({ ...prev, category: e.target.value }))}
+                    className="w-full h-10 px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  >
+                    <option value="">No category</option>
+                    {categories?.map((category) => (
+                      <option key={category._id} value={category.name}>
+                        {category.name} {category.isDefault ? '(Default)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Note
+                  </label>
+                  <textarea
+                    value={editForm.note}
+                    onChange={(e) => setEditForm(prev => ({ ...prev, note: e.target.value }))}
+                    placeholder="Add a note about this entry..."
+                    className="w-full min-h-[80px] px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
+                  />
+                </div>
+
+                <div className="flex gap-2 pt-4">
+                  <Button onClick={handleSaveEdit} className="flex-1">
+                    Save Changes
+                  </Button>
+                  <Button variant="outline" onClick={handleCancelEdit} className="flex-1">
+                    Cancel
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
