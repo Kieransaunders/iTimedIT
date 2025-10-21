@@ -429,11 +429,24 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                               type="number"
                               id="customIntervalValue"
                               value={customIntervalValue}
-                              onChange={(event) =>
-                                setCustomIntervalValue(
-                                  Math.max(1, Math.min(480, parseInt(event.target.value, 10) || 1)),
-                                )
-                              }
+                              onChange={(event) => {
+                                const value = event.target.value;
+                                if (value !== "") {
+                                  const numValue = parseInt(value, 10);
+                                  if (!isNaN(numValue)) {
+                                    setCustomIntervalValue(numValue);
+                                  }
+                                }
+                              }}
+                              onBlur={(event) => {
+                                const value = event.target.value;
+                                const numValue = parseInt(value, 10);
+                                if (isNaN(numValue) || numValue < 1) {
+                                  setCustomIntervalValue(1);
+                                } else if (numValue > 480) {
+                                  setCustomIntervalValue(480);
+                                }
+                              }}
                               min={1}
                               max={480}
                               className="block w-full rounded-md border border-gray-300/50 px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700/50 dark:text-gray-100 bg-white backdrop-blur-sm"
@@ -484,11 +497,24 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                               type="number"
                               id="customGracePeriodValue"
                               value={customGracePeriodValue}
-                              onChange={(event) =>
-                                setCustomGracePeriodValue(
-                                  Math.max(5, Math.min(300, parseInt(event.target.value, 10) || 5)),
-                                )
-                              }
+                              onChange={(event) => {
+                                const value = event.target.value;
+                                if (value !== "") {
+                                  const numValue = parseInt(value, 10);
+                                  if (!isNaN(numValue)) {
+                                    setCustomGracePeriodValue(numValue);
+                                  }
+                                }
+                              }}
+                              onBlur={(event) => {
+                                const value = event.target.value;
+                                const numValue = parseInt(value, 10);
+                                if (isNaN(numValue) || numValue < 5) {
+                                  setCustomGracePeriodValue(5);
+                                } else if (numValue > 300) {
+                                  setCustomGracePeriodValue(300);
+                                }
+                              }}
                               min={5}
                               max={300}
                               className="block w-full rounded-md border border-gray-300/50 px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700/50 dark:text-gray-100 bg-white backdrop-blur-sm"
