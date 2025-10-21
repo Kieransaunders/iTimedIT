@@ -19,6 +19,7 @@ import { ProfilePage, type AppPage } from "./components/ProfilePage";
 import { ProfileAvatar } from "./components/ProfileAvatar";
 import { TestEmailPage } from "./components/TestEmailPage";
 import { EntriesPage } from "./components/EntriesPage";
+import { InterruptWatcher } from "./components/InterruptWatcher";
 import {
   ensurePushSubscription,
   isPushSupported,
@@ -219,6 +220,9 @@ function AuthenticatedApp() {
 
   return (
     <OrganizationProvider userId={loggedInUser._id}>
+      {/* Global interrupt watcher - monitors interrupts on all screens */}
+      <InterruptWatcher />
+
       <div className="flex flex-col min-h-screen">
         {/* Desktop Header */}
         <header className="sticky top-0 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm h-16 flex justify-between items-center border-b border-gray-200 dark:border-gray-700 shadow-sm px-4 sm:px-6">
