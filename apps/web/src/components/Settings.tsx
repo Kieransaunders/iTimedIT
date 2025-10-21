@@ -49,10 +49,10 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
   const [interruptEnabled, setInterruptEnabled] = useState(true);
   const [interruptInterval, setInterruptInterval] = useState<number>(45);
   const [isCustomInterval, setIsCustomInterval] = useState(false);
-  const [customIntervalValue, setCustomIntervalValue] = useState<number>(45);
+  const [customIntervalValue, setCustomIntervalValue] = useState<string>("45");
   const [gracePeriod, setGracePeriod] = useState<number>(60);
   const [isCustomGracePeriod, setIsCustomGracePeriod] = useState(false);
-  const [customGracePeriodValue, setCustomGracePeriodValue] = useState<number>(60);
+  const [customGracePeriodValue, setCustomGracePeriodValue] = useState<string>("60");
   const [budgetWarningEnabled, setBudgetWarningEnabled] = useState(true);
   const [budgetWarningThresholdHours, setBudgetWarningThresholdHours] = useState(1.0);
   const [budgetWarningThresholdAmount, setBudgetWarningThresholdAmount] = useState(50.0);
@@ -95,11 +95,11 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
       if (presetIntervals.includes(interval)) {
         setInterruptInterval(interval);
         setIsCustomInterval(false);
-        setCustomIntervalValue(interval);
+        setCustomIntervalValue(interval.toString());
       } else {
         setInterruptInterval(-1); // Indicates custom
         setIsCustomInterval(true);
-        setCustomIntervalValue(interval);
+        setCustomIntervalValue(interval.toString());
       }
 
       // Check if grace period is a preset value or custom
@@ -108,11 +108,11 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
       if (presetGracePeriods.includes(grace)) {
         setGracePeriod(grace);
         setIsCustomGracePeriod(false);
-        setCustomGracePeriodValue(grace);
+        setCustomGracePeriodValue(grace.toString());
       } else {
         setGracePeriod(-1); // Indicates custom
         setIsCustomGracePeriod(true);
-        setCustomGracePeriodValue(grace);
+        setCustomGracePeriodValue(grace.toString());
       }
 
       setBudgetWarningEnabled(settings.budgetWarningEnabled ?? true);
@@ -157,10 +157,10 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
       setIsSaving(true);
 
       // Determine the actual interval value to save
-      const actualInterval = isCustomInterval ? customIntervalValue : interruptInterval;
+      const actualInterval = isCustomInterval ? parseFloat(customIntervalValue) : interruptInterval;
 
       // Determine the actual grace period value to save
-      const actualGracePeriod = isCustomGracePeriod ? customGracePeriodValue : gracePeriod;
+      const actualGracePeriod = isCustomGracePeriod ? parseFloat(customGracePeriodValue) : gracePeriod;
 
       // Save timer settings
       await updateSettings({
@@ -245,10 +245,10 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
       setIsSaving(true);
 
       // Determine the actual interval value to save
-      const actualInterval = isCustomInterval ? customIntervalValue : interruptInterval;
+      const actualInterval = isCustomInterval ? parseFloat(customIntervalValue) : interruptInterval;
 
       // Determine the actual grace period value to save
-      const actualGracePeriod = isCustomGracePeriod ? customGracePeriodValue : gracePeriod;
+      const actualGracePeriod = isCustomGracePeriod ? parseFloat(customGracePeriodValue) : gracePeriod;
 
       // Save timer settings
       await updateSettings({
@@ -430,21 +430,17 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                               id="customIntervalValue"
                               value={customIntervalValue}
                               onChange={(event) => {
-                                const value = event.target.value;
-                                if (value !== "") {
-                                  const numValue = parseInt(value, 10);
-                                  if (!isNaN(numValue)) {
-                                    setCustomIntervalValue(numValue);
-                                  }
-                                }
+                                setCustomIntervalValue(event.target.value);
                               }}
                               onBlur={(event) => {
                                 const value = event.target.value;
-                                const numValue = parseInt(value, 10);
+                                const numValue = parseFloat(value);
                                 if (isNaN(numValue) || numValue < 1) {
-                                  setCustomIntervalValue(1);
+                                  setCustomIntervalValue("1");
                                 } else if (numValue > 480) {
-                                  setCustomIntervalValue(480);
+                                  setCustomIntervalValue("480");
+                                } else {
+                                  setCustomIntervalValue(numValue.toString());
                                 }
                               }}
                               min={1}
@@ -498,21 +494,17 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
                               id="customGracePeriodValue"
                               value={customGracePeriodValue}
                               onChange={(event) => {
-                                const value = event.target.value;
-                                if (value !== "") {
-                                  const numValue = parseInt(value, 10);
-                                  if (!isNaN(numValue)) {
-                                    setCustomGracePeriodValue(numValue);
-                                  }
-                                }
+                                setCustomGracePeriodValue(event.target.value);
                               }}
                               onBlur={(event) => {
                                 const value = event.target.value;
-                                const numValue = parseInt(value, 10);
+                                const numValue = parseFloat(value);
                                 if (isNaN(numValue) || numValue < 5) {
-                                  setCustomGracePeriodValue(5);
+                                  setCustomGracePeriodValue("5");
                                 } else if (numValue > 300) {
-                                  setCustomGracePeriodValue(300);
+                                  setCustomGracePeriodValue("300");
+                                } else {
+                                  setCustomGracePeriodValue(numValue.toString());
                                 }
                               }}
                               min={5}
