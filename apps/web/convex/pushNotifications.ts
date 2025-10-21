@@ -1,6 +1,6 @@
 import { mutation, query, action, internalQuery, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
-import { ensureMembership, requireMembership } from "./orgContext";
+import { ensureMembership, requireMembership, maybeMembership } from "./orgContext";
 import { internal } from "./_generated/api";
 
 // Save or update push subscription
@@ -91,8 +91,11 @@ export const removePushSubscription = mutation({
 export const getNotificationPrefs = query({
   args: {},
   handler: async (ctx) => {
-    const membership = await requireMembership(ctx);
-    
+    const membership = await maybeMembership(ctx);
+    if (!membership) {
+      return null;
+    }
+
     const prefs = await ctx.db
       .query("notificationPrefs")
       .withIndex("byUser", (q) => q.eq("userId", membership.userId))
