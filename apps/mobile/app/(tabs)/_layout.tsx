@@ -47,8 +47,8 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Dashboard",
-          tabBarLabel: "Dashboard",
+          title: "Timer",
+          tabBarLabel: "Timer",
           tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="timer" color={color} size={size} />,
         }}
       />
@@ -76,7 +76,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="cog" color={color} size={size} />,
         }}
       />
-      {/* Projects tab removed - project creation now available inline from dashboard */}
+      {/* Projects tab removed - project creation now available inline from timer screen */}
       <Tabs.Screen
         name="projects"
         options={{

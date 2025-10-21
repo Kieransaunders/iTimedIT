@@ -14,8 +14,7 @@ import { useQuery } from "convex/react";
 import { Settings, LayoutDashboard, Calendar, Mail, User as UserIcon } from "lucide-react";
 
 export type AppPage =
-  | "dashboard"
-  | "modern"
+  | "timer"
   | "clients"
   | "projects"
   | "entries"
