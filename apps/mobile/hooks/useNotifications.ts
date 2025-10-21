@@ -10,6 +10,8 @@ import * as Notifications from "expo-notifications";
 import { useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { Alert, Platform } from "react-native";
+import * as Device from "expo-device";
+import Constants from "expo-constants";
 
 export type NotificationHandler = (notification: Notifications.Notification) => void;
 export type NotificationResponseHandler = (response: Notifications.NotificationResponse) => void;
@@ -92,8 +94,16 @@ export function useNotifications(): UseNotificationsReturn {
 
       setExpoPushToken(token);
 
+      // Collect device information
+      const deviceInfo = {
+        platform: Platform.OS,
+        deviceName: Device.deviceName || undefined,
+        osVersion: Device.osVersion || undefined,
+        appVersion: Constants.expoConfig?.version || undefined,
+      };
+
       // Register the token with Convex
-      await registerToken({ token });
+      await registerToken({ token, deviceInfo });
 
       console.log("Successfully registered push token with backend");
     } catch (err) {

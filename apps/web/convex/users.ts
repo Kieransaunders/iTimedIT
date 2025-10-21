@@ -148,3 +148,69 @@ export const updateUserSettings = mutation({
     }
   },
 });
+
+/**
+ * Register or update an Expo push token for mobile notifications
+ */
+export const registerExpoPushToken = mutation({
+  args: {
+    token: v.string(),
+    deviceInfo: v.optional(v.object({
+      platform: v.optional(v.string()),
+      deviceName: v.optional(v.string()),
+      osVersion: v.optional(v.string()),
+      appVersion: v.optional(v.string()),
+    })),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
+
+    // Check if this token already exists for this user
+    const existingToken = await ctx.db
+      .query("expoPushTokens")
+      .withIndex("byToken", (q) => q.eq("token", args.token))
+      .filter((q) => q.eq(q.field("userId"), userId))
+      .first();
+
+    const now = Date.now();
+
+    if (existingToken) {
+      // Update existing token
+      await ctx.db.patch(existingToken._id, {
+        lastUsedAt: now,
+        isActive: true,
+        ...(args.deviceInfo && { deviceInfo: args.deviceInfo }),
+      });
+
+      console.log("Updated existing Expo push token for user:", userId);
+      return { success: true, tokenId: existingToken._id };
+    } else {
+      // Deactivate any old tokens for this user (only keep the latest)
+      const oldTokens = await ctx.db
+        .query("expoPushTokens")
+        .withIndex("byUser", (q) => q.eq("userId", userId))
+        .filter((q) => q.eq(q.field("isActive"), true))
+        .collect();
+
+      for (const oldToken of oldTokens) {
+        await ctx.db.patch(oldToken._id, { isActive: false });
+      }
+
+      // Create new token
+      const tokenId = await ctx.db.insert("expoPushTokens", {
+        userId,
+        token: args.token,
+        deviceInfo: args.deviceInfo,
+        createdAt: now,
+        lastUsedAt: now,
+        isActive: true,
+      });
+
+      console.log("Registered new Expo push token for user:", userId);
+      return { success: true, tokenId };
+    }
+  },
+});

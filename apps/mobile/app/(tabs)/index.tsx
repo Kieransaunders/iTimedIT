@@ -131,26 +131,46 @@ export default function Index() {
     const actionIdentifier = notificationResponse.actionIdentifier;
     const data = notificationResponse.notification.request.content.data;
 
+    console.log("Notification action received:", { type: data?.type, actionIdentifier });
+
     if (data?.type === "timer-running") {
       if (actionIdentifier === "stop-timer") {
         // Stop the timer from lock screen notification
         handleStopTimer();
       }
-    } else if (data?.type === "timer-interrupt") {
+    } else if (data?.type === "timer-interrupt" || data?.type === "interrupt") {
       if (actionIdentifier === "continue") {
         handleAcknowledgeInterrupt(true);
       } else if (actionIdentifier === "stop") {
         handleAcknowledgeInterrupt(false);
       }
-    } else if (data?.type === "pomodoro-break") {
+    } else if (data?.type === "budget-warning" || data?.type === "budget_warning") {
+      // Budget warning alert
+      if (actionIdentifier === "stop") {
+        handleStopTimer();
+      } else {
+        // Default tap - show toast with budget info
+        showInfoToast(`Budget warning: ${data?.projectName || 'Project'} is approaching its limit`);
+      }
+    } else if (data?.type === "overrun") {
+      // Budget overrun alert
+      if (actionIdentifier === "stop") {
+        handleStopTimer();
+      } else {
+        // Default tap - show toast with overrun info
+        showInfoToast(`Budget exceeded: ${data?.projectName || 'Project'} has exceeded its limit`);
+      }
+    } else if (data?.type === "pomodoro-break" || data?.type === "break_start" || data?.type === "break_reminder") {
       if (actionIdentifier === "start-break") {
         // User acknowledged the break - no action needed, backend handles it
         console.log("User started break");
+        showInfoToast("Break time! Take a moment to rest.");
       }
-    } else if (data?.type === "pomodoro-complete") {
+    } else if (data?.type === "pomodoro-complete" || data?.type === "break_complete") {
       if (actionIdentifier === "continue-work") {
         // User wants to continue working - navigate to timer screen
         console.log("User wants to continue working");
+        showInfoToast("Break complete! Ready to work?");
       }
     }
   }, [notificationResponse]);
