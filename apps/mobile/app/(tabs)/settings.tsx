@@ -422,6 +422,9 @@ export default function SettingsScreen() {
               </Text>
               <Ionicons name="open-outline" size={16} color={colors.primary} />
             </TouchableOpacity>
+            <Text style={[styles.advancedSettingsDescription, { color: colors.textSecondary }]}>
+              Quiet hours, email/SMS alerts, team management, and more
+            </Text>
 
             <TouchableOpacity
               onPress={handleSignOut}
@@ -1069,8 +1072,30 @@ const styles = StyleSheet.create({
       fontSize: 16,
       marginTop: 4,
     },
+    advancedSettingsButton: {
+      marginTop: 16,
+      paddingHorizontal: 20,
+      paddingVertical: 12,
+      borderRadius: 8,
+      borderWidth: 2,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+    },
+    advancedSettingsButtonText: {
+      fontWeight: '600',
+      fontSize: 16,
+    },
+    advancedSettingsDescription: {
+      fontSize: 13,
+      textAlign: 'center',
+      marginTop: 8,
+      paddingHorizontal: 16,
+      lineHeight: 18,
+    },
     signOutButton: {
-      marginTop: 24,
+      marginTop: 12,
       paddingHorizontal: 24,
       paddingVertical: 12,
       borderRadius: 8,

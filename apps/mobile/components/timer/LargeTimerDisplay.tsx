@@ -152,7 +152,11 @@ export function LargeTimerDisplay({
   };
 
   // Use the budget utilities for consistent budget display
-  const budgetRemainingText = formatBudgetRemaining(project);
+  // Pass current elapsed time for real-time budget countdown
+  const budgetRemainingText = formatBudgetRemaining(
+    project,
+    isRunning ? elapsedTime : 0
+  );
 
   return (
     <View style={styles.container}>

@@ -106,6 +106,83 @@ npx convex dashboard     # Open Convex dashboard
 npx convex logs          # View function logs
 ```
 
+## Mobile-Web Feature Division Strategy
+
+### Philosophy: Minimal Mobile, Full-Featured Web
+
+The mobile and web apps share the same Convex backend but serve **different purposes**:
+
+**Mobile App = Field Worker** (Quick time tracking on-the-go)
+- ✅ Start/stop/reset timers
+- ✅ View projects, clients, and time entries
+- ✅ Create basic projects and clients (quick forms)
+- ✅ Manual time entry (add/edit/delete)
+- ✅ Timer interrupts and Pomodoro mode
+- ✅ Push notifications and lock screen timer
+- ✅ Basic settings (sounds, intervals, Pomodoro)
+- ❌ Complex editing → Redirect to web
+- ❌ Advanced filtering/reporting → Redirect to web
+- ❌ Team management → Redirect to web
+
+**Web App = Office Manager** (Detailed management and analytics)
+- ✅ All mobile features PLUS:
+- ✅ Edit project details (name, rate, budget, client assignment)
+- ✅ Edit client details (name, color, notes)
+- ✅ Advanced entry filtering (project/client/category/date range)
+- ✅ Category management (create/delete)
+- ✅ Team collaboration (invites, member management, roles)
+- ✅ Advanced settings (quiet hours, DND, email/SMS fallbacks)
+- ✅ Reporting and analytics dashboards
+- ✅ Data export (CSV)
+
+### Mobile → Web Redirect Pattern
+
+**Long-Press Context Menus** (implemented):
+```typescript
+// apps/mobile/components/projects/ProjectCard.tsx
+onLongPress={() => {
+  Alert.alert(project.name, "What would you like to do?", [
+    { text: "Edit in Web App", onPress: () => openWebApp(`/projects/${project._id}`) },
+    { text: "Start Timer", onPress: onStartTimer },
+    { text: "Cancel", style: "cancel" },
+  ]);
+}}
+```
+
+**Advanced Settings Button** (implemented):
+```typescript
+// apps/mobile/app/(tabs)/settings.tsx
+<TouchableOpacity onPress={() => openWebApp('/settings')}>
+  <Text>Advanced Settings</Text>
+  <Text>Quiet hours, email/SMS alerts, team management, and more</Text>
+</TouchableOpacity>
+```
+
+**CompanionAppGuidance Component** (implemented):
+```typescript
+// Used on Projects, Clients, Entries screens
+<CompanionAppGuidance
+  context="projects"
+  hasData={projects.length > 0}
+/>
+// Automatically shows contextual banners guiding users to web for advanced features
+```
+
+### Benefits of This Approach
+
+1. **Faster Mobile Development** - Focus on core timer functionality, no need to rebuild complex forms
+2. **Better UX** - Mobile optimized for quick actions, web optimized for detailed management
+3. **Easier Maintenance** - Less code duplication, single source of truth in web app
+4. **Clear User Expectations** - Users understand what each platform is for
+5. **Instant Sync** - Changes on web immediately visible in mobile (shared Convex backend)
+
+### Implementation Locations
+
+- **Long-press menus**: `apps/mobile/components/projects/ProjectCard.tsx`, `apps/mobile/components/clients/ClientPickerModal.tsx`
+- **Advanced Settings link**: `apps/mobile/app/(tabs)/settings.tsx`
+- **Guidance banners**: `apps/mobile/components/common/CompanionAppGuidance.tsx`
+- **Web app opener utility**: `apps/mobile/components/WebAppPrompt.tsx` (`openWebApp()` function)
+
 ## Key Architecture Decisions
 
 ### Component Usage Verification (CRITICAL)

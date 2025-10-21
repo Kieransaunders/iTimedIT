@@ -539,6 +539,30 @@ export function ModernDashboard({
   const totalSeconds = Math.floor(totalElapsedMs / 1000);
   const earnedAmount = currentProject && !isBreakTimer ? (totalSeconds / 3600) * currentProject.hourlyRate : 0;
 
+  // Calculate real-time budget remaining by subtracting current elapsed time
+  const realTimeBudgetRemaining = useMemo(() => {
+    if (!projectStats || !runningTimer || isBreakTimer) return null;
+
+    if (runningTimer.project?.budgetType === "hours") {
+      // Subtract current elapsed seconds from time remaining (in hours)
+      const remainingSeconds = (projectStats.timeRemaining * 3600) - totalSeconds;
+      return {
+        type: "hours" as const,
+        remaining: remainingSeconds,
+        isNearLimit: projectStats.isNearBudgetLimit
+      };
+    } else if (runningTimer.project?.budgetType === "amount") {
+      // Subtract earned amount from budget remaining
+      const remaining = projectStats.budgetRemaining - earnedAmount;
+      return {
+        type: "amount" as const,
+        remaining,
+        isNearLimit: projectStats.isNearBudgetLimit
+      };
+    }
+    return null;
+  }, [projectStats, runningTimer, isBreakTimer, totalSeconds, earnedAmount]);
+
   const primeSoundIfEnabled = useCallback(() => {
     if (soundPreferenceEnabled) {
       enableSounds();
@@ -1550,18 +1574,16 @@ export function ModernDashboard({
         </div>
 
         {/* Time/Allocation Remaining Display */}
-        {runningTimer && projectStats && (
+        {runningTimer && projectStats && realTimeBudgetRemaining && (
           <div className="text-center mb-8">
-            {projectStats.timeRemaining > 0 || projectStats.budgetRemaining > 0 ? (
+            {realTimeBudgetRemaining.remaining > 0 ? (
               <div className="text-lg text-gray-700 dark:text-gray-300">
-                {runningTimer.project?.budgetType === "hours" && projectStats.timeRemaining > 0 ? (
-                  <>Time remaining: <span className={`font-bold ${projectStats.isNearBudgetLimit ? "text-amber-400" : "text-green-400"}`}>{formatBudgetTime(projectStats.timeRemaining * 3600)}</span></>
-                ) : runningTimer.project?.budgetType === "amount" && projectStats.budgetRemaining > 0 ? (
-                  <>Amount remaining: <span className={`font-bold ${projectStats.isNearBudgetLimit ? "text-amber-400" : "text-green-400"}`}>{formatCurrencyWithSymbol(projectStats.budgetRemaining)}</span></>
+                {realTimeBudgetRemaining.type === "hours" ? (
+                  <>Time remaining: <span className={`font-bold ${realTimeBudgetRemaining.isNearLimit ? "text-amber-400" : "text-green-400"}`}>{formatBudgetTime(realTimeBudgetRemaining.remaining)}</span></>
                 ) : (
-                  <span className="font-bold text-red-400">⚠️ Budget exceeded</span>
+                  <>Amount remaining: <span className={`font-bold ${realTimeBudgetRemaining.isNearLimit ? "text-amber-400" : "text-green-400"}`}>{formatCurrencyWithSymbol(realTimeBudgetRemaining.remaining)}</span></>
                 )}
-                {projectStats.isNearBudgetLimit && (
+                {realTimeBudgetRemaining.isNearLimit && (
                   <div className="text-sm text-amber-600 dark:text-amber-400 mt-1 animate-pulse">
                     ⚠️ Approaching budget limit
                   </div>

@@ -28,11 +28,60 @@ Unified commands - run scripts across all workspaces from root
 
 ## Highlights
 
-- Realtime timer control with push notifications for stop/snooze/switch actions.
-- Modern dashboard with utilization KPIs, project health summaries, and recent entries.
-- Rich client and project management pages with filtering, exports, and drilldowns.
-- Workspace switching, invites, and profile settings powered by Convex Auth.
-- Built-in dark mode, toast feedback, and progressive enhancements.
+- **Dual Platform**: Web app for management & reporting, mobile app for on-the-go time tracking
+- Realtime timer control with push notifications for stop/snooze/switch actions
+- Modern dashboard with utilization KPIs, project health summaries, and recent entries
+- Rich client and project management pages with filtering, exports, and drilldowns
+- Workspace switching, invites, and profile settings powered by Convex Auth
+- Built-in dark mode, toast feedback, and progressive enhancements
+- **Shared Backend**: Both apps use the same Convex backend for instant data sync
+
+## Mobile vs. Web: Feature Division
+
+iTimedIT follows a **minimal mobile, full-featured web** strategy:
+
+### 📱 Mobile App (React Native + Expo)
+
+Focus: Quick time tracking on-the-go
+
+**Core Features**:
+
+- Start/stop/reset timers with lock screen display
+- Pomodoro mode with break notifications
+- Timer interrupts with configurable grace periods
+- View projects, clients, and time entries
+- Create basic projects and clients
+- Manual time entry (add/edit/delete)
+- Push notifications (Expo)
+- Basic settings (sounds, intervals, Pomodoro)
+
+**Redirects to Web** (long-press or buttons):
+
+- Edit projects/clients → Long-press card → "Edit in Web App"
+- Advanced settings → "Advanced Settings" button in Settings
+- Team management, reporting, advanced filtering
+
+### 💻 Web App (React + Vite)
+
+Focus: Comprehensive management and analytics
+
+**All Mobile Features PLUS**:
+
+- Edit project/client details (name, rate, budget, notes)
+- Advanced entry filtering (project/client/category/date range)
+- Category management (create/delete custom categories)
+- Team collaboration (invites, member management, roles)
+- Advanced settings (quiet hours, DND, email/SMS fallbacks)
+- Reporting and analytics dashboards
+- Data export (CSV)
+- Project/client analytics and KPIs
+
+**Why this approach?**
+
+- **Faster mobile development** - Focus on core timer functionality
+- **Better UX** - Each platform optimized for its use case
+- **Easier maintenance** - Single source of truth for complex features
+- **Instant sync** - Shared Convex backend keeps both apps in sync
 
 ## Quick start see install guide.md for cursor instructions
 

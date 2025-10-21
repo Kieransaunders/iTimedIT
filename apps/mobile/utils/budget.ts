@@ -100,33 +100,57 @@ export function calculateBudgetStatus(project: Project | null | undefined): Budg
  * Format budget remaining for display
  *
  * @param project - Project with budget data
+ * @param currentTimerSeconds - Current running timer seconds (optional, for real-time display)
  * @returns Formatted string like "2.5h left" or "$150 left"
  */
-export function formatBudgetRemaining(project: Project | null | undefined): string {
-  if (!project || !project.budgetRemaining) {
+export function formatBudgetRemaining(
+  project: Project | null | undefined,
+  currentTimerSeconds: number = 0
+): string {
+  if (!project) {
     return "";
   }
 
-  const budgetInfo = calculateBudgetStatus(project);
+  // Calculate budget info with current timer included
+  const totalSeconds = (project.totalSeconds ?? 0) + currentTimerSeconds;
+  const totalHours = totalSeconds / 3600;
+  const totalAmount = totalHours * project.hourlyRate;
 
-  if (budgetInfo.status === "none") {
+  let budgetRemaining = 0;
+  let hasBudget = false;
+
+  if (project.budgetType === "hours" && project.budgetHours) {
+    hasBudget = true;
+    const budgetSeconds = project.budgetHours * 3600;
+    budgetRemaining = budgetSeconds - totalSeconds;
+  } else if (project.budgetType === "amount" && project.budgetAmount) {
+    hasBudget = true;
+    budgetRemaining = project.budgetAmount - totalAmount;
+  }
+
+  if (!hasBudget) {
     return "";
   }
 
-  if (budgetInfo.isOverBudget) {
+  // Format based on whether over budget or not
+  const isOverBudget = budgetRemaining < 0;
+
+  if (isOverBudget) {
     if (project.budgetType === "hours") {
-      const overHours = Math.abs(budgetInfo.budgetRemaining / 3600);
+      const overHours = Math.abs(budgetRemaining / 3600);
       return `${overHours.toFixed(1)}h over`;
     } else {
-      return `$${Math.abs(budgetInfo.budgetRemaining).toFixed(0)} over`;
+      return `$${Math.abs(budgetRemaining).toFixed(0)} over`;
     }
   }
 
   if (project.budgetType === "hours") {
-    const hoursRemaining = budgetInfo.budgetRemaining / 3600;
-    return `${hoursRemaining.toFixed(1)}h left`;
+    const hoursRemaining = budgetRemaining / 3600;
+    const minutes = Math.floor((hoursRemaining % 1) * 60);
+    const hours = Math.floor(hoursRemaining);
+    return hours > 0 ? `${hours}h ${minutes}m left` : `${minutes}m left`;
   } else {
-    return `$${budgetInfo.budgetRemaining.toFixed(0)} left`;
+    return `$${budgetRemaining.toFixed(0)} left`;
   }
 }
 
