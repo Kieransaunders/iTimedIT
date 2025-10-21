@@ -1,6 +1,6 @@
 "use node";
 
-import { action, internalQuery, internalMutation } from "./_generated/server";
+import { action } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 
@@ -14,7 +14,7 @@ export const sendExpoPushNotification = action({
     title: v.string(),
     body: v.string(),
     data: v.optional(v.any()),
-    sound: v.optional(v.union(v.literal("default"), v.literal(null))),
+    sound: v.optional(v.union(v.literal("default"), v.null())),
     badge: v.optional(v.number()),
     categoryId: v.optional(v.string()),
     priority: v.optional(v.union(
@@ -32,7 +32,7 @@ export const sendExpoPushNotification = action({
     errors?: Array<{ token: string; error: string }>;
   }> => {
     // Get active Expo push tokens for this user
-    const tokens = await ctx.runQuery(internal.expoPushActions.getActiveExpoPushTokens, {
+    const tokens = await ctx.runQuery(internal.expoPushTokens.getActiveExpoPushTokens, {
       userId: args.userId,
     });
 
@@ -92,7 +92,7 @@ export const sendExpoPushNotification = action({
       if (result.status === "ok") {
         sentCount++;
         // Update last used timestamp
-        await ctx.runMutation(internal.expoPushActions.updateTokenLastUsed, {
+        await ctx.runMutation(internal.expoPushTokens.updateTokenLastUsed, {
           tokenId: tokenData._id,
         });
       } else {
@@ -105,7 +105,7 @@ export const sendExpoPushNotification = action({
         // Deactivate token if it's invalid
         if (result.details?.error === "DeviceNotRegistered") {
           console.log("Deactivating invalid Expo push token:", tokenData._id);
-          await ctx.runMutation(internal.expoPushActions.deactivateToken, {
+          await ctx.runMutation(internal.expoPushTokens.deactivateToken, {
             tokenId: tokenData._id,
           });
         }
@@ -159,42 +159,3 @@ async function sendToExpoPushService(messages: any[]): Promise<any[]> {
     }));
   }
 }
-
-/**
- * Internal query to get active Expo push tokens for a user
- */
-export const getActiveExpoPushTokens = internalQuery({
-  args: { userId: v.id("users") },
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("expoPushTokens")
-      .withIndex("byUserActive", (q) =>
-        q.eq("userId", args.userId).eq("isActive", true)
-      )
-      .collect();
-  },
-});
-
-/**
- * Internal mutation to update token last used timestamp
- */
-export const updateTokenLastUsed = internalMutation({
-  args: { tokenId: v.id("expoPushTokens") },
-  handler: async (ctx, args) => {
-    await ctx.db.patch(args.tokenId, {
-      lastUsedAt: Date.now(),
-    });
-  },
-});
-
-/**
- * Internal mutation to deactivate an invalid token
- */
-export const deactivateToken = internalMutation({
-  args: { tokenId: v.id("expoPushTokens") },
-  handler: async (ctx, args) => {
-    await ctx.db.patch(args.tokenId, {
-      isActive: false,
-    });
-  },
-});

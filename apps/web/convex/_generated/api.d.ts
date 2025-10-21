@@ -14,6 +14,8 @@ import type * as categories from "../categories.js";
 import type * as clients from "../clients.js";
 import type * as crons from "../crons.js";
 import type * as entries from "../entries.js";
+import type * as expoPushActions from "../expoPushActions.js";
+import type * as expoPushTokens from "../expoPushTokens.js";
 import type * as fallbackNotifications from "../fallbackNotifications.js";
 import type * as http from "../http.js";
 import type * as interrupts from "../interrupts.js";
@@ -56,6 +58,8 @@ declare const fullApi: ApiFromModules<{
   clients: typeof clients;
   crons: typeof crons;
   entries: typeof entries;
+  expoPushActions: typeof expoPushActions;
+  expoPushTokens: typeof expoPushTokens;
   fallbackNotifications: typeof fallbackNotifications;
   http: typeof http;
   interrupts: typeof interrupts;

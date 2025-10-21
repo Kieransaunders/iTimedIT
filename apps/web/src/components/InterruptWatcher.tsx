@@ -20,20 +20,20 @@ import { toast } from "sonner";
 import { enableSounds, playBreakStartSound } from "../lib/sounds";
 
 export function InterruptWatcher() {
-  const runningTimer = useQuery(api.timer.getRunningTimer);
-  const userSettings = useQuery(api.timer.getUserSettings);
+  const runningTimer = useQuery(api.timer.getRunningTimer, {});
+  const userSettings = useQuery(api.users.getUserSettings);
   const notificationPrefs = useQuery(api.pushNotifications.getNotificationPrefs);
   const ackInterrupt = useMutation(api.timer.ackInterrupt);
 
   // Track if we've already alerted for this interrupt
-  const lastInterruptTimeRef = useRef<number | null>(null);
+  const lastInterruptTimeRef = useRef<number | undefined>(undefined);
   const notificationShownRef = useRef(false);
 
   useEffect(() => {
     // Check if there's an active interrupt
     if (!runningTimer?.awaitingInterruptAck) {
       // Reset tracking when interrupt is cleared
-      lastInterruptTimeRef.current = null;
+      lastInterruptTimeRef.current = undefined;
       notificationShownRef.current = false;
       return;
     }
@@ -92,8 +92,8 @@ export function InterruptWatcher() {
       duration: gracePeriod * 1000,
       action: {
         label: "Continue",
-        onClick: async () => {
-          await ackInterrupt({ continue: true });
+        onClick: () => {
+          ackInterrupt({ continue: true });
         },
       },
     });
@@ -128,7 +128,7 @@ export function InterruptWatcher() {
 async function showBrowserNotification(
   projectName: string,
   gracePeriod: number,
-  ackInterrupt: (args: { continue: boolean }) => Promise<void>
+  ackInterrupt: (args: { continue: boolean }) => void
 ) {
   // Check if browser supports notifications
   if (!("Notification" in window)) {
@@ -160,17 +160,12 @@ async function showBrowserNotification(
     tag: "timer-interrupt", // Reuse notification slot
     requireInteraction: true, // Keep notification until user interacts
     silent: false, // Play system sound
-    vibrate: [200, 100, 200], // Vibration pattern for mobile
-    actions: [
-      { action: "continue", title: "Continue" },
-      { action: "stop", title: "Stop Timer" },
-    ] as any, // TypeScript doesn't recognize actions in constructor
   });
 
   // Handle notification click
-  notification.onclick = async () => {
+  notification.onclick = () => {
     window.focus();
-    await ackInterrupt({ continue: true });
+    ackInterrupt({ continue: true });
     notification.close();
   };
 

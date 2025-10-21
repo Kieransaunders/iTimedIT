@@ -22,11 +22,16 @@ export default defineConfig(({ mode }) => ({
         "/terms",
       ],
     }),
-    sentryVitePlugin({
-      org: "serenity-dev",
-      project: "itimedit",
-      authToken: process.env.SENTRY_AUTH_TOKEN,
-    }),
+    // Only include Sentry plugin if auth token is configured
+    ...(process.env.SENTRY_AUTH_TOKEN
+      ? [
+          sentryVitePlugin({
+            org: "serenity-dev",
+            project: "itimedit",
+            authToken: process.env.SENTRY_AUTH_TOKEN,
+          }),
+        ]
+      : []),
     ...(mode === "production"
       ? [visualizer({ filename: "dist/stats.html" })]
       : []),
