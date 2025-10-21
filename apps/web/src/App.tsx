@@ -77,7 +77,7 @@ function UnauthenticatedViewWrapper() {
 }
 
 function AuthenticatedApp() {
-  const [currentPage, setCurrentPage] = useState<AppPage>("dashboard");
+  const [currentPage, setCurrentPage] = useState<AppPage>("timer");
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [pushSwitchRequest, setPushSwitchRequest] = useState<any | null>(null);
   const [currentWorkspace, setCurrentWorkspace] = useState<"personal" | "work">("work");
@@ -132,8 +132,8 @@ function AuthenticatedApp() {
       toast.success("Welcome to iTimedIT", {
         description: `Signed in as ${loggedInUser.email}`,
       });
-      // Navigate to dashboard after successful sign-in
-      setCurrentPage("dashboard");
+      // Navigate to timer after successful sign-in
+      setCurrentPage("timer");
     }
   }, [loggedInUser, workspaceInitialized]);
 
@@ -162,7 +162,7 @@ function AuthenticatedApp() {
             break;
           case "switch":
             await stopTimerMutation({ sourceOverride: "manual" });
-            setCurrentPage("modern");
+            setCurrentPage("timer");
             setPushSwitchRequest(data || { from: "notification" });
             toast.info("Select a project to switch to", {
               description: "Project picker opened from push notification",
@@ -240,7 +240,7 @@ function AuthenticatedApp() {
             </div>
             {/* Desktop Navigation */}
             <nav className="hidden md:flex gap-4">
-              <NavButton icon={<DashboardIcon />} label="Dashboard" isActive={currentPage === "dashboard"} onClick={() => setCurrentPage("dashboard")} />
+              <NavButton icon={<TimerIcon />} label="Timer" isActive={currentPage === "timer"} onClick={() => setCurrentPage("timer")} />
               <NavButton icon={<ClientsIcon />} label="Clients" isActive={currentPage === "clients"} onClick={() => setCurrentPage("clients")} />
               <NavButton icon={<ProjectsIcon />} label="Projects" isActive={currentPage === "projects"} onClick={() => setCurrentPage("projects")} />
               <NavButton icon={<EntriesIcon />} label="Entries" isActive={currentPage === "entries"} onClick={() => setCurrentPage("entries")} />
@@ -261,7 +261,7 @@ function AuthenticatedApp() {
         </header>
         <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-20 md:pb-8">
           <div className="max-w-7xl mx-auto">
-            {currentPage === "dashboard" && (
+            {currentPage === "timer" && (
               <ModernDashboard
                 pushSwitchRequest={pushSwitchRequest}
                 onPushSwitchHandled={() => setPushSwitchRequest(null)}
@@ -303,8 +303,8 @@ function AuthenticatedApp() {
                         category: undefined,
                         pomodoroEnabled: false
                       });
-                      setCurrentPage("dashboard");
-                      toast.success("Timer started! Switched to dashboard.");
+                      setCurrentPage("timer");
+                      toast.success("Timer started! Switched to timer.");
                     } catch (error) {
                       toast.error("Failed to start timer");
                     }
@@ -322,17 +322,17 @@ function AuthenticatedApp() {
         {/* Mobile Bottom Navigation */}
         <nav className="md:hidden fixed bottom-0 left-0 right-0 z-20 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-t border-gray-200 dark:border-gray-700 shadow-lg">
           <div className="flex items-center justify-around py-2">
-            <BottomNavButton 
-              icon={<DashboardIcon />} 
-              label="Dashboard" 
-              isActive={currentPage === "dashboard"} 
-              onClick={() => setCurrentPage("dashboard")} 
+            <BottomNavButton
+              icon={<TimerIcon />}
+              label="Timer"
+              isActive={currentPage === "timer"}
+              onClick={() => setCurrentPage("timer")}
             />
-            <BottomNavButton 
-              icon={<ClientsIcon />} 
-              label="Clients" 
-              isActive={currentPage === "clients"} 
-              onClick={() => setCurrentPage("clients")} 
+            <BottomNavButton
+              icon={<ClientsIcon />}
+              label="Clients"
+              isActive={currentPage === "clients"}
+              onClick={() => setCurrentPage("clients")}
             />
             <BottomNavButton
               icon={<ProjectsIcon />}
@@ -694,11 +694,10 @@ function getInviteTokenFromLocation(): string | null {
 }
 
 // Icon components
-function DashboardIcon() {
+function TimerIcon() {
   return (
     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-full h-full">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" />
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5a2 2 0 012-2h4a2 2 0 012 2v6H8V5z" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
   );
 }
