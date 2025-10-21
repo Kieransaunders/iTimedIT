@@ -22,7 +22,7 @@ import { enableSounds, playBreakStartSound } from "../lib/sounds";
 export function InterruptWatcher() {
   const runningTimer = useQuery(api.timer.getRunningTimer);
   const userSettings = useQuery(api.timer.getUserSettings);
-  const notificationPrefs = useQuery(api.pushNotifications.getNotificationPreferences);
+  const notificationPrefs = useQuery(api.pushNotifications.getNotificationPrefs);
   const ackInterrupt = useMutation(api.timer.ackInterrupt);
 
   // Track if we've already alerted for this interrupt
