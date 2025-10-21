@@ -33,6 +33,31 @@ export const sendTimerAlert = action({
     }>;
     totalSubscriptions?: number;
   }> => {
+    // Send to mobile devices via Expo Push Service
+    try {
+      const categoryId = getCategoryIdForAlertType(args.alertType);
+      const channelId = getChannelIdForAlertType(args.alertType);
+
+      await ctx.runAction(api.expoPushActions.sendExpoPushNotification, {
+        userId: args.userId,
+        title: args.title,
+        body: args.body,
+        data: {
+          type: args.alertType,
+          projectName: args.projectName,
+          clientName: args.clientName,
+          ...args.data,
+        },
+        categoryId,
+        channelId,
+        priority: args.alertType === "interrupt" || args.alertType === "overrun" ? "high" : "default",
+        sound: "default",
+      });
+    } catch (error) {
+      console.error("Failed to send Expo push notification:", error);
+      // Continue to web push even if Expo fails
+    }
+
     // Get user notification preferences
     const prefs = await ctx.runQuery(internal.pushNotifications.getNotificationPrefsForUser, {
       userId: args.userId,
@@ -234,5 +259,42 @@ function getActionsForAlertType(alertType: string) {
         { action: 'stop', title: 'Stop Timer', icon: '/icons/stop.svg' },
         { action: 'snooze', title: 'Snooze 5min', icon: '/icons/snooze.svg' },
       ];
+  }
+}
+
+/**
+ * Get mobile notification category ID for alert type
+ * These match the categories defined in mobile app notification setup
+ */
+function getCategoryIdForAlertType(alertType: string): string {
+  switch (alertType) {
+    case 'interrupt':
+      return 'timer-interrupt';
+    case 'break_reminder':
+    case 'break_start':
+      return 'pomodoro-break';
+    case 'break_complete':
+      return 'pomodoro-complete';
+    case 'budget_warning':
+    case 'overrun':
+      return 'budget-alert';
+    default:
+      return 'default';
+  }
+}
+
+/**
+ * Get Android notification channel ID for alert type
+ * These match the channels defined in mobile app notification setup
+ */
+function getChannelIdForAlertType(alertType: string): string {
+  switch (alertType) {
+    case 'interrupt':
+      return 'timer-interrupts';
+    case 'budget_warning':
+    case 'overrun':
+      return 'budget-alerts';
+    default:
+      return 'default';
   }
 }

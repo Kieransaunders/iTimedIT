@@ -234,6 +234,23 @@ const applicationTables = {
     updatedAt: v.number(),
   })
     .index("byUser", ["userId"]),
+
+  expoPushTokens: defineTable({
+    userId: v.id("users"),
+    token: v.string(),
+    deviceInfo: v.optional(v.object({
+      platform: v.optional(v.string()), // "ios" | "android"
+      deviceName: v.optional(v.string()),
+      osVersion: v.optional(v.string()),
+      appVersion: v.optional(v.string()),
+    })),
+    createdAt: v.number(),
+    lastUsedAt: v.optional(v.number()),
+    isActive: v.boolean(),
+  })
+    .index("byUser", ["userId"])
+    .index("byToken", ["token"])
+    .index("byUserActive", ["userId", "isActive"]),
 };
 
 export default defineSchema({
