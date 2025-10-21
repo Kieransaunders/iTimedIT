@@ -5,13 +5,21 @@ import { OrganizationManagementCard } from "./OrganizationManagementCard";
 import { SignOutButton } from "../SignOutButton";
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { ColorPicker } from "./ui/ColorPicker";
 import { DEFAULT_WORKSPACE_COLOR } from "../lib/workspace-colors";
 import { WorkspaceCard, CreateWorkspaceCard } from "./ui/WorkspaceCard";
 import { useQuery } from "convex/react";
 import { Settings, LayoutDashboard, Calendar, Mail, User as UserIcon } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "./ui/dialog";
 
 export type AppPage =
   | "timer"
@@ -44,6 +52,14 @@ export function ProfilePage({
 
   // Get project counts for each workspace
   const allProjects = useQuery(api.projects.listAll, { includeArchived: false }) ?? [];
+
+  // Reset form when dialog closes
+  useEffect(() => {
+    if (!showCreateForm) {
+      setWorkspaceName("");
+      setWorkspaceColor(DEFAULT_WORKSPACE_COLOR);
+    }
+  }, [showCreateForm]);
 
   const handleCreateWorkspace = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -228,27 +244,15 @@ export function ProfilePage({
         )}
       </section>
 
-      {/* Create Workspace Form (Expandable) */}
-      {showCreateForm && (
-        <section className="bg-white dark:bg-gray-900/70 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm p-6 sm:p-8">
-          <header className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Create New Workspace</h2>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                Create a new workspace to organize your projects and collaborate with your team.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setShowCreateForm(false)}
-              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-              title="Close"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </header>
+      {/* Create Workspace Dialog */}
+      <Dialog open={showCreateForm} onOpenChange={setShowCreateForm}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Create New Workspace</DialogTitle>
+            <DialogDescription>
+              Create a new workspace to organize your projects and collaborate with your team.
+            </DialogDescription>
+          </DialogHeader>
           <form onSubmit={handleCreateWorkspace} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
@@ -261,6 +265,7 @@ export function ProfilePage({
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary focus:border-primary"
                 placeholder="e.g., Acme Corporation, Freelance Projects, Marketing Team"
                 maxLength={100}
+                autoFocus
                 required
               />
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
@@ -275,7 +280,7 @@ export function ProfilePage({
               helpText="Pick a color to help identify your workspace"
             />
 
-            <div className="flex gap-2 justify-end">
+            <DialogFooter>
               <button
                 type="button"
                 onClick={() => setShowCreateForm(false)}
@@ -299,10 +304,10 @@ export function ProfilePage({
                   </>
                 )}
               </button>
-            </div>
+            </DialogFooter>
           </form>
-        </section>
-      )}
+        </DialogContent>
+      </Dialog>
 
       <OrganizationManagementCard />
     </div>
