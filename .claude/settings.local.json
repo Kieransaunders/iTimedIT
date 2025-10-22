@@ -24,7 +24,8 @@
       "Read(//var/folders/fz/tf99g_hs5f9bqb61cs2lbtn80000gp/T/TemporaryItems/NSIRD_screencaptureui_BrO1nD/**)",
       "Read(//Users/MrZang/Desktop/**)",
       "Bash(npx convex env:*)",
-      "mcp__convex__data"
+      "mcp__convex__data",
+      "Read(//c/Users/OMG/Downloads/**)"
     ],
     "deny": [],
     "ask": []

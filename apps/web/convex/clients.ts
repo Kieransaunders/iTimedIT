@@ -56,10 +56,9 @@ export const list = query({
         let lastActivity = 0;
         const monthlyData: { [key: string]: { amount: number; seconds: number } } = {};
         const categoryData: { [key: string]: { amount: number; seconds: number } } = {};
-        let completedProjectsCount = 0;
         let totalBudgetHours = 0;
         let totalBudgetAmount = 0;
-        
+
         for (const project of projects) {
           // Track budget allocations
           if (project.budgetType === "hours" && project.budgetHours) {
@@ -81,7 +80,7 @@ export const list = query({
             if (entry.seconds && entry.stoppedAt) {
               const hours = entry.seconds / 3600;
               const amount = hours * project.hourlyRate;
-              
+
               totalAmount += amount;
               totalSeconds += entry.seconds;
               lastActivity = Math.max(lastActivity, entry.stoppedAt);
@@ -103,11 +102,6 @@ export const list = query({
               categoryData[category].seconds += entry.seconds;
             }
           }
-
-          // Check if project is completed (has time entries and is not active)
-          if (timeEntries.length > 0) {
-            completedProjectsCount++;
-          }
         }
 
         // Calculate health metrics
@@ -125,10 +119,10 @@ export const list = query({
           // Basic totals
           totalAmountSpent: totalAmount,
           totalTimeSpent: totalSeconds,
-          
+
           // Project metrics
           activeProjectsCount: projects.length,
-          completedProjectsCount,
+          completedProjectsCount: archivedProjects.length,
           archivedProjectsCount: archivedProjects.length,
           totalProjectsCount: projects.length + archivedProjects.length,
           

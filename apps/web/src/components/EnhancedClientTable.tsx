@@ -11,6 +11,7 @@ interface ClientData {
   totalTimeSpent: number;
   activeProjectsCount: number;
   completedProjectsCount: number;
+  totalProjectsCount: number;
   lastActivityAt: number | null;
   daysSinceLastActivity: number | null;
   status: 'active' | 'inactive' | 'at-risk';
@@ -226,7 +227,7 @@ export function EnhancedClientTable({
                     </span>
                     <span className="text-xs text-gray-400">/</span>
                     <span className="text-sm text-gray-500 dark:text-gray-400">
-                      {client.completedProjectsCount}
+                      {client.totalProjectsCount}
                     </span>
                   </button>
                 </td>
