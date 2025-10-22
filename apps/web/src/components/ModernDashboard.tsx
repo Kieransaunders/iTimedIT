@@ -38,6 +38,8 @@ import { useCurrency } from "../hooks/useCurrency";
 import { updateTimerTitle, clearTimerTitle, setPageVisibility } from "../lib/attention";
 import { updateTimerFavicon, clearTimerFavicon, type FaviconState } from "../lib/favicon";
 import { SoundSelectionModal } from "./SoundSelectionModal";
+import { PictureInPictureTimer } from "./PictureInPictureTimer";
+import type { PiPTimerState } from "../lib/pip";
 
 interface ModernDashboardProps {
   pushSwitchRequest?: any | null;
@@ -538,6 +540,45 @@ export function ModernDashboard({
 
   const totalSeconds = Math.floor(totalElapsedMs / 1000);
   const earnedAmount = currentProject && !isBreakTimer ? (totalSeconds / 3600) * currentProject.hourlyRate : 0;
+
+  // PiP timer state
+  const pipTimerState = useMemo((): PiPTimerState => {
+    if (!currentProject) {
+      return {
+        elapsedMs: 0,
+        projectName: "",
+        isRunning: false,
+      };
+    }
+
+    let isBudgetWarning = false;
+    let isBudgetOverrun = false;
+
+    if (projectStats && runningTimer && !isBreakTimer) {
+      const budgetRemaining = projectStats.budgetRemaining;
+      const budgetTotal = projectStats.budgetTotal;
+
+      if (budgetRemaining !== undefined && budgetTotal !== undefined && budgetTotal > 0) {
+        const percentRemaining = (budgetRemaining / budgetTotal) * 100;
+        isBudgetOverrun = budgetRemaining <= 0;
+        isBudgetWarning = !isBudgetOverrun && percentRemaining < 10;
+      }
+    }
+
+    return {
+      elapsedMs: totalElapsedMs,
+      projectName: currentProject.name,
+      clientName: currentProject.client?.name,
+      isRunning: timerState.running,
+      isInterrupt: runningTimer?.awaitingInterruptAck,
+      interruptSecondsLeft: runningTimer?.awaitingInterruptAck && runningTimer.interruptShownAt && userSettings?.gracePeriod
+        ? Math.max(0, Math.ceil((userSettings.gracePeriod * 1000 - (now - runningTimer.interruptShownAt)) / 1000))
+        : undefined,
+      isBudgetWarning,
+      isBudgetOverrun,
+      projectColor: currentProject.color,
+    };
+  }, [currentProject, totalElapsedMs, timerState.running, runningTimer, projectStats, isBreakTimer, now, userSettings?.gracePeriod]);
 
   // Calculate real-time budget remaining by subtracting current elapsed time
   const realTimeBudgetRemaining = useMemo(() => {
@@ -1523,41 +1564,49 @@ export function ModernDashboard({
             
             {/* Timer Controls */}
             {!isBreakTimer && (
-              <div className="flex items-center justify-center gap-4 mt-6">
-                <button
-                  className="inline-flex items-center justify-center px-8 py-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white focus-visible:ring-[#F85E00] dark:focus-visible:ring-offset-gray-900 text-white font-medium"
-                  style={{
-                    backgroundColor: timerState.running ? "#ef4444" : currentProject.color,
-                  }}
-                  onClick={toggleTimer}
-                  aria-pressed={timerState.running}
-                  aria-label={timerState.running ? "Stop timer" : "Start timer"}
-                >
-                  {timerState.running ? (
-                    <>
-                      <Square className="w-5 h-5 mr-2" aria-hidden="true" />
-                      Stop
-                    </>
-                  ) : (
-                    <>
-                      <Play className="w-5 h-5 mr-2" aria-hidden="true" />
-                      Start
-                    </>
-                  )}
-                </button>
-                
-                <button
-                  className="inline-flex items-center justify-center px-8 py-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white focus-visible:ring-slate-400 dark:focus-visible:ring-offset-gray-900 bg-white/80 dark:bg-gray-700/80 hover:bg-white dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white font-medium border border-gray-200/50 dark:border-gray-600/50 backdrop-blur-sm"
-                  onClick={async () => {
-                    if (timerState.running) {
-                      await resetTimer();
-                      toast.success("Timer reset");
-                    }
-                  }}
-                  aria-label="Reset timer"
-                >
-                  Reset
-                </button>
+              <div className="flex flex-col items-center gap-4 mt-6">
+                <div className="flex items-center justify-center gap-4">
+                  <button
+                    className="inline-flex items-center justify-center px-8 py-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white focus-visible:ring-[#F85E00] dark:focus-visible:ring-offset-gray-900 text-white font-medium"
+                    style={{
+                      backgroundColor: timerState.running ? "#ef4444" : currentProject.color,
+                    }}
+                    onClick={toggleTimer}
+                    aria-pressed={timerState.running}
+                    aria-label={timerState.running ? "Stop timer" : "Start timer"}
+                  >
+                    {timerState.running ? (
+                      <>
+                        <Square className="w-5 h-5 mr-2" aria-hidden="true" />
+                        Stop
+                      </>
+                    ) : (
+                      <>
+                        <Play className="w-5 h-5 mr-2" aria-hidden="true" />
+                        Start
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    className="inline-flex items-center justify-center px-8 py-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white focus-visible:ring-slate-400 dark:focus-visible:ring-offset-gray-900 bg-white/80 dark:bg-gray-700/80 hover:bg-white dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white font-medium border border-gray-200/50 dark:border-gray-600/50 backdrop-blur-sm"
+                    onClick={async () => {
+                      if (timerState.running) {
+                        await resetTimer();
+                        toast.success("Timer reset");
+                      }
+                    }}
+                    aria-label="Reset timer"
+                  >
+                    Reset
+                  </button>
+                </div>
+
+                {/* Picture-in-Picture Button */}
+                <PictureInPictureTimer
+                  timerState={pipTimerState}
+                  disabled={!timerState.running}
+                />
               </div>
             )}
           </div>
