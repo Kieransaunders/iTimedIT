@@ -106,6 +106,7 @@ export function ClientsPage({
   const [selectedClientId, setSelectedClientId] = useState<Id<"clients"> | null>(null);
   const [name, setName] = useState("");
   const [note, setNote] = useState("");
+  const [websiteUrl, setWebsiteUrl] = useState("");
   const [street, setStreet] = useState("");
   const [city, setCity] = useState("");
   const [country, setCountry] = useState("");
@@ -273,15 +274,17 @@ export function ClientsPage({
           id: editingClient._id,
           name,
           note,
+          websiteUrl: websiteUrl || undefined,
           address,
           color,
         });
       } else {
-        await createClient({ name, note, address, color });
+        await createClient({ name, note, websiteUrl: websiteUrl || undefined, address, color });
       }
 
       setName("");
       setNote("");
+      setWebsiteUrl("");
       setStreet("");
       setCity("");
       setCountry("");
@@ -303,6 +306,7 @@ export function ClientsPage({
     setEditingClient(client);
     setName(client.name);
     setNote(client.note || "");
+    setWebsiteUrl(client.websiteUrl || "");
     setStreet(client.address?.street || "");
     setCity(client.address?.city || "");
     setCountry(client.address?.country || "");
@@ -459,6 +463,19 @@ export function ClientsPage({
               />
             </div>
             <div>
+              <label htmlFor="websiteUrl" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Website URL (optional)
+              </label>
+              <input
+                type="url"
+                id="websiteUrl"
+                value={websiteUrl}
+                onChange={(e) => setWebsiteUrl(e.target.value)}
+                placeholder="https://example.com"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-timer bg-white dark:bg-gray-700/50 text-gray-900 dark:text-gray-100"
+              />
+            </div>
+            <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Address (optional)
               </label>
@@ -609,6 +626,7 @@ export function ClientsPage({
                   setEditingClient(null);
                   setName("");
                   setNote("");
+                  setWebsiteUrl("");
                   setStreet("");
                   setCity("");
                   setCountry("");

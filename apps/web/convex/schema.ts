@@ -63,6 +63,7 @@ const applicationTables = {
     ownerId: v.optional(v.id("users")),
     name: v.string(),
     note: v.optional(v.string()),
+    websiteUrl: v.optional(v.string()),
     address: v.optional(v.object({
       street: v.optional(v.string()),
       city: v.optional(v.string()),

@@ -507,6 +507,129 @@ export const migrateWorkspaceTypes = internalMutation({
   },
 });
 
+export const deleteAllDevelopmentData = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const counts = {
+      runningTimers: 0,
+      timeEntries: 0,
+      categories: 0,
+      projects: 0,
+      clients: 0,
+      invitations: 0,
+      memberships: 0,
+      organizations: 0,
+      userSettings: 0,
+      imports: 0,
+      pushSubscriptions: 0,
+      expoPushTokens: 0,
+      notificationPrefs: 0,
+    };
+
+    // Delete in order to respect foreign key relationships
+
+    // 1. Delete running timers
+    const runningTimers = await ctx.db.query("runningTimers").collect();
+    for (const timer of runningTimers) {
+      await ctx.db.delete(timer._id);
+      counts.runningTimers++;
+    }
+
+    // 2. Delete time entries
+    const timeEntries = await ctx.db.query("timeEntries").collect();
+    for (const entry of timeEntries) {
+      await ctx.db.delete(entry._id);
+      counts.timeEntries++;
+    }
+
+    // 3. Delete categories
+    const categories = await ctx.db.query("categories").collect();
+    for (const category of categories) {
+      await ctx.db.delete(category._id);
+      counts.categories++;
+    }
+
+    // 4. Delete projects
+    const projects = await ctx.db.query("projects").collect();
+    for (const project of projects) {
+      await ctx.db.delete(project._id);
+      counts.projects++;
+    }
+
+    // 5. Delete clients
+    const clients = await ctx.db.query("clients").collect();
+    for (const client of clients) {
+      await ctx.db.delete(client._id);
+      counts.clients++;
+    }
+
+    // 6. Delete invitations
+    const invitations = await ctx.db.query("invitations").collect();
+    for (const invitation of invitations) {
+      await ctx.db.delete(invitation._id);
+      counts.invitations++;
+    }
+
+    // 7. Delete memberships
+    const memberships = await ctx.db.query("memberships").collect();
+    for (const membership of memberships) {
+      await ctx.db.delete(membership._id);
+      counts.memberships++;
+    }
+
+    // 8. Delete organizations
+    const organizations = await ctx.db.query("organizations").collect();
+    for (const org of organizations) {
+      await ctx.db.delete(org._id);
+      counts.organizations++;
+    }
+
+    // 9. Delete user settings
+    const userSettings = await ctx.db.query("userSettings").collect();
+    for (const settings of userSettings) {
+      await ctx.db.delete(settings._id);
+      counts.userSettings++;
+    }
+
+    // 10. Delete imports
+    const imports = await ctx.db.query("imports").collect();
+    for (const importDoc of imports) {
+      await ctx.db.delete(importDoc._id);
+      counts.imports++;
+    }
+
+    // 11. Delete push subscriptions
+    const pushSubscriptions = await ctx.db.query("pushSubscriptions").collect();
+    for (const sub of pushSubscriptions) {
+      await ctx.db.delete(sub._id);
+      counts.pushSubscriptions++;
+    }
+
+    // 12. Delete expo push tokens
+    const expoPushTokens = await ctx.db.query("expoPushTokens").collect();
+    for (const token of expoPushTokens) {
+      await ctx.db.delete(token._id);
+      counts.expoPushTokens++;
+    }
+
+    // 13. Delete notification preferences
+    const notificationPrefs = await ctx.db.query("notificationPrefs").collect();
+    for (const pref of notificationPrefs) {
+      await ctx.db.delete(pref._id);
+      counts.notificationPrefs++;
+    }
+
+    const totalDeleted = Object.values(counts).reduce((sum, count) => sum + count, 0);
+
+    return {
+      success: true,
+      totalDeleted,
+      counts,
+      message: `Successfully deleted all ${totalDeleted} documents from development database`,
+    };
+  },
+});
+
 async function backfillLegacyData(
   ctx: MutationCtx,
   membership: MembershipContext
