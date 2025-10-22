@@ -288,7 +288,7 @@ export function Settings({ onNavigate }: { onNavigate?: (page: AppPage) => void 
       });
 
       setTimeout(() => {
-        onNavigate?.("dashboard");
+        onNavigate?.("clients");
       }, 1500);
     } catch (error) {
       toast.error("Failed to save settings", {
