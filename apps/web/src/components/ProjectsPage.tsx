@@ -6,7 +6,7 @@ import { notifyMutationError } from "../lib/notifyMutationError";
 import { useOrganization } from "../lib/organization-context";
 import { WorkspaceHeader, WorkspaceType } from "./WorkspaceSwitcher";
 import { useCurrency } from "../hooks/useCurrency";
-import { Briefcase } from "lucide-react";
+import { Briefcase, Trash2 } from "lucide-react";
 import { ProjectFilters, defaultFilters } from "./ProjectFilters";
 
 interface ProjectsPageProps {
@@ -62,9 +62,14 @@ export function ProjectsPage({
       : api.projects.create
   );
   const updateProject = useMutation(
-    currentWorkspace === "personal" 
+    currentWorkspace === "personal"
       ? api.personalProjects.updatePersonal
       : api.projects.update
+  );
+  const deleteProject = useMutation(
+    currentWorkspace === "personal"
+      ? api.personalProjects.deletePersonal
+      : api.projects.deleteProject
   );
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -153,6 +158,34 @@ export function ProjectsPage({
     } catch (error) {
       notifyMutationError(error, {
         fallbackMessage: "Unable to unarchive project. Please try again.",
+        unauthorizedMessage: "You need owner or admin access to manage projects.",
+      });
+    }
+  };
+
+  const handleDelete = async (projectId: Id<"projects">) => {
+    const project = projects?.find(p => p._id === projectId);
+    if (!project) return;
+
+    // Check if project has time entries before showing confirmation
+    if (project.totalHours && project.totalHours > 0) {
+      alert(
+        `Cannot delete "${project.name}" because it has time entries (${project.totalHoursFormatted}).\n\nPlease delete all time entries first or archive the project instead.`
+      );
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Are you sure you want to delete "${project.name}"? This action cannot be undone.`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      await deleteProject({ id: projectId });
+    } catch (error) {
+      notifyMutationError(error, {
+        fallbackMessage: "Unable to delete project. Please try again.",
         unauthorizedMessage: "You need owner or admin access to manage projects.",
       });
     }
@@ -523,12 +556,19 @@ export function ProjectsPage({
                           </button>
                           <button
                             onClick={() => handleArchive(project._id)}
-                            className="p-1.5 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-all"
+                            className="p-1.5 text-orange-600 hover:text-orange-900 dark:text-orange-400 dark:hover:text-orange-300 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-md transition-all"
                             title="Archive Project"
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8l4 4 4-4m6-1v11a2 2 0 01-2 2H7a2 2 0 01-2-2V7a2 2 0 012-2h10a2 2 0 012 2z" />
                             </svg>
+                          </button>
+                          <button
+                            onClick={() => handleDelete(project._id)}
+                            className="p-1.5 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-all"
+                            title="Delete Project"
+                          >
+                            <Trash2 className="w-4 h-4" />
                           </button>
                         </>
                       )}
@@ -552,6 +592,13 @@ export function ProjectsPage({
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l4-4 4 4m6 1V5a2 2 0 00-2-2H7a2 2 0 00-2 2v11a2 2 0 002 2h10a2 2 0 002-2z" />
                             </svg>
+                          </button>
+                          <button
+                            onClick={() => handleDelete(project._id)}
+                            className="p-1.5 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-all"
+                            title="Delete Project"
+                          >
+                            <Trash2 className="w-4 h-4" />
                           </button>
                         </>
                       )}
@@ -687,12 +734,19 @@ export function ProjectsPage({
                     </button>
                     <button
                       onClick={() => handleArchive(project._id)}
-                      className="flex-1 p-2 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-all"
+                      className="flex-1 p-2 text-orange-600 hover:text-orange-900 dark:text-orange-400 dark:hover:text-orange-300 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-md transition-all"
                       title="Archive Project"
                     >
                       <svg className="w-4 h-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8l4 4 4-4m6-1v11a2 2 0 01-2 2H7a2 2 0 01-2-2V7a2 2 0 012-2h10a2 2 0 012 2z" />
                       </svg>
+                    </button>
+                    <button
+                      onClick={() => handleDelete(project._id)}
+                      className="flex-1 p-2 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-all"
+                      title="Delete Project"
+                    >
+                      <Trash2 className="w-4 h-4 mx-auto" />
                     </button>
                   </>
                 ) : (
@@ -715,6 +769,13 @@ export function ProjectsPage({
                       <svg className="w-4 h-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l4-4 4 4m6 1V5a2 2 0 00-2-2H7a2 2 0 00-2 2v11a2 2 0 002 2h10a2 2 0 002-2z" />
                       </svg>
+                    </button>
+                    <button
+                      onClick={() => handleDelete(project._id)}
+                      className="flex-1 p-2 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-all"
+                      title="Delete Project"
+                    >
+                      <Trash2 className="w-4 h-4 mx-auto" />
                     </button>
                   </>
                 )}

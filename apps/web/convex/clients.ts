@@ -401,3 +401,30 @@ export const update = mutation({
     });
   },
 });
+
+export const deleteClient = mutation({
+  args: {
+    id: v.id("clients"),
+  },
+  handler: async (ctx, args) => {
+    const { organizationId } = await requireMembershipWithRole(ctx, ["owner", "admin"]);
+
+    const client = await ctx.db.get(args.id);
+    if (!client || client.organizationId !== organizationId) {
+      throw new Error("Client not found");
+    }
+
+    // Check for dependent projects
+    const projects = await ctx.db
+      .query("projects")
+      .withIndex("byClient", (q) => q.eq("clientId", args.id))
+      .collect();
+
+    if (projects.length > 0) {
+      throw new Error("Cannot delete client with existing projects. Please delete or reassign projects first.");
+    }
+
+    // Delete the client
+    await ctx.db.delete(args.id);
+  },
+});

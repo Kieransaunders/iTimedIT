@@ -250,3 +250,33 @@ export const getPersonal = query({
     return client;
   },
 });
+
+export const deletePersonal = mutation({
+  args: {
+    id: v.id("clients"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
+
+    const client = await ctx.db.get(args.id);
+    if (!client || client.ownerId !== userId || client.workspaceType !== "personal") {
+      throw new Error("Personal client not found");
+    }
+
+    // Check for dependent projects
+    const projects = await ctx.db
+      .query("projects")
+      .withIndex("byClient", (q) => q.eq("clientId", args.id))
+      .collect();
+
+    if (projects.length > 0) {
+      throw new Error("Cannot delete client with existing projects. Please delete or reassign projects first.");
+    }
+
+    // Delete the client
+    await ctx.db.delete(args.id);
+  },
+});

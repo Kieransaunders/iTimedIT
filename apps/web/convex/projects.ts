@@ -285,6 +285,33 @@ export const update = mutation({
   },
 });
 
+export const deleteProject = mutation({
+  args: {
+    id: v.id("projects"),
+  },
+  handler: async (ctx, args) => {
+    const { organizationId } = await requireMembershipWithRole(ctx, ["owner", "admin"]);
+
+    const project = await ctx.db.get(args.id);
+    if (!project || project.organizationId !== organizationId) {
+      throw new Error("Project not found");
+    }
+
+    // Check for time entries
+    const timeEntries = await ctx.db
+      .query("timeEntries")
+      .withIndex("byProject", (q) => q.eq("projectId", args.id))
+      .first();
+
+    if (timeEntries) {
+      throw new Error("Cannot delete project with existing time entries. Please delete all time entries first or archive the project instead.");
+    }
+
+    // Delete the project
+    await ctx.db.delete(args.id);
+  },
+});
+
 export const getStats = query({
   args: {
     projectId: v.id("projects"),

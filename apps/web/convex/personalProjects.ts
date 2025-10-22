@@ -214,6 +214,36 @@ export const updatePersonal = mutation({
   },
 });
 
+export const deletePersonal = mutation({
+  args: {
+    id: v.id("projects"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
+
+    const project = await ctx.db.get(args.id);
+    if (!project || project.ownerId !== userId || project.workspaceType !== "personal") {
+      throw new Error("Personal project not found");
+    }
+
+    // Check for time entries
+    const timeEntries = await ctx.db
+      .query("timeEntries")
+      .withIndex("byProject", (q) => q.eq("projectId", args.id))
+      .first();
+
+    if (timeEntries) {
+      throw new Error("Cannot delete project with existing time entries. Please delete all time entries first or archive the project instead.");
+    }
+
+    // Delete the project
+    await ctx.db.delete(args.id);
+  },
+});
+
 export const getStatsPersonal = query({
   args: {
     projectId: v.id("projects"),

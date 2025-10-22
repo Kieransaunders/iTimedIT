@@ -147,6 +147,11 @@ export function ClientsPage({
       ? api.personalClients.updatePersonal
       : api.clients.update
   );
+  const deleteClient = useMutation(
+    currentWorkspace === "personal"
+      ? api.personalClients.deletePersonal
+      : api.clients.deleteClient
+  );
   const createProject = useMutation(
     currentWorkspace === "personal"
       ? api.personalProjects.createPersonal
@@ -332,6 +337,34 @@ export function ClientsPage({
     } catch (error) {
       notifyMutationError(error, {
         fallbackMessage: "Unable to unarchive client. Please try again.",
+        unauthorizedMessage: "You need owner or admin access to manage clients.",
+      });
+    }
+  };
+
+  const handleDelete = async (clientId: Id<"clients">) => {
+    const client = clients?.find(c => c._id === clientId);
+    if (!client) return;
+
+    // Check if client has projects before showing confirmation
+    if (client.totalProjectsCount > 0) {
+      alert(
+        `Cannot delete "${client.name}" because it has ${client.totalProjectsCount} project(s).\n\nPlease delete or reassign all projects before deleting this client.`
+      );
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Are you sure you want to delete "${client.name}"? This action cannot be undone.`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      await deleteClient({ id: clientId });
+    } catch (error) {
+      notifyMutationError(error, {
+        fallbackMessage: "Unable to delete client. Please try again.",
         unauthorizedMessage: "You need owner or admin access to manage clients.",
       });
     }
@@ -650,6 +683,7 @@ export function ClientsPage({
           onEditClient={handleEdit}
           onArchiveClient={handleArchive}
           onUnarchiveClient={handleUnarchive}
+          onDeleteClient={handleDelete}
           onCreateProject={handleCreateProject}
           onClientSelect={handleClientSelect}
           onViewProjects={onViewProjects}

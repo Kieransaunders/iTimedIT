@@ -1,5 +1,5 @@
 import { Badge } from "./ui/badge";
-import { ArrowDown, ArrowUp, ArrowUpDown, Edit2, Archive, Plus, RotateCcw, Building2 } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Edit2, Archive, Plus, RotateCcw, Building2, Trash2 } from "lucide-react";
 import { useCurrency } from "../hooks/useCurrency";
 
 interface ClientData {
@@ -30,6 +30,7 @@ interface EnhancedClientTableProps {
   onEditClient: (client: ClientData) => void;
   onArchiveClient: (clientId: string) => void;
   onUnarchiveClient?: (clientId: string) => void;
+  onDeleteClient: (clientId: string) => void;
   onCreateProject: (clientId: string) => void;
   onClientSelect?: (clientId: string) => void;
   onViewProjects?: (clientId: string) => void;
@@ -42,6 +43,7 @@ export function EnhancedClientTable({
   onEditClient,
   onArchiveClient,
   onUnarchiveClient,
+  onDeleteClient,
   onCreateProject,
   onClientSelect,
   onViewProjects
@@ -257,7 +259,7 @@ export function EnhancedClientTable({
                     {client.status === 'active' ? (
                       <button
                         onClick={() => onArchiveClient(client._id)}
-                        className="group relative p-1.5 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-all"
+                        className="group relative p-1.5 text-orange-600 hover:text-orange-900 dark:text-orange-400 dark:hover:text-orange-300 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-md transition-all"
                         title="Archive Client"
                       >
                         <Archive className="w-4 h-4" />
@@ -273,6 +275,13 @@ export function EnhancedClientTable({
                         </button>
                       )
                     )}
+                    <button
+                      onClick={() => onDeleteClient(client._id)}
+                      className="group relative p-1.5 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-all"
+                      title="Delete Client"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 </td>
               </tr>
