@@ -161,6 +161,7 @@ const applicationTables = {
     pomodoroSessionStartedAt: v.optional(v.number()),
     category: v.optional(v.string()),
     endedAt: v.optional(v.number()),
+    startedFrom: v.optional(v.union(v.literal("web"), v.literal("mobile"))),
   })
     .index("byOrganization", ["organizationId"])
     .index("byOrgUser", ["organizationId", "userId"])

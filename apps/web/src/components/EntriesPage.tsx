@@ -235,7 +235,7 @@ export function EntriesPage() {
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Project</label>
+                <label className="text-sm font-medium text-foreground">Project</label>
                 <select
                   value={manualEntryForm.projectId}
                   onChange={(event) =>
@@ -255,7 +255,7 @@ export function EntriesPage() {
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Date</label>
+                  <label className="text-sm font-medium text-foreground">Date</label>
                   <Input
                     type="date"
                     value={manualEntryForm.date}
@@ -268,7 +268,7 @@ export function EntriesPage() {
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Start Time</label>
+                  <label className="text-sm font-medium text-foreground">Start Time</label>
                   <Input
                     type="time"
                     value={manualEntryForm.startTime}
@@ -278,7 +278,7 @@ export function EntriesPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">End Time</label>
+                  <label className="text-sm font-medium text-foreground">End Time</label>
                   <Input
                     type="time"
                     value={manualEntryForm.endTime}
@@ -291,7 +291,7 @@ export function EntriesPage() {
 
               {categories && categories.length > 0 && (
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Category (optional)</label>
+                  <label className="text-sm font-medium text-foreground">Category (optional)</label>
                   <select
                     value={manualEntryForm.category}
                     onChange={(event) =>
@@ -310,7 +310,7 @@ export function EntriesPage() {
               )}
 
               <div className="space-y-2">
-                <label className="text-sm font-medium">Note (optional)</label>
+                <label className="text-sm font-medium text-foreground">Note (optional)</label>
                 <textarea
                   value={manualEntryForm.note}
                   onChange={(event) =>

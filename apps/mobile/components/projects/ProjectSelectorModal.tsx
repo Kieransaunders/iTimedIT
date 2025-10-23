@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
     ActivityIndicator,
     FlatList,
@@ -44,7 +44,6 @@ export function ProjectSelectorModal({
   selectedProject,
   onSelect,
   onClose,
-  workspaceType,
 }: ProjectSelectorModalProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [showCreateProject, setShowCreateProject] = useState(false);
@@ -52,9 +51,21 @@ export function ProjectSelectorModal({
   const [isCreatingProject, setIsCreatingProject] = useState(false);
   const [isCreatingClient, setIsCreatingClient] = useState(false);
 
-  const { projects, isLoading, createProject } = useProjects({ searchTerm, workspaceType });
+  const { projects, isLoading, createProject, currentWorkspace } = useProjects({ searchTerm });
   const { clients, createClient } = useClients();
   const { colors: themeColors } = useTheme();
+
+  // Debug logging
+  useEffect(() => {
+    if (visible) {
+      console.log('ProjectSelectorModal visible:', {
+        projectsCount: projects.length,
+        isLoading,
+        currentWorkspace,
+        searchTerm,
+      });
+    }
+  }, [visible, projects, isLoading, currentWorkspace, searchTerm]);
 
   const [newProjectForm, setNewProjectForm] = useState({
     name: "",
@@ -154,7 +165,7 @@ export function ProjectSelectorModal({
       return;
     }
     // Only require client for team workspace
-    if (workspaceType === "work" && !newProjectForm.clientId) {
+    if (currentWorkspace === "work" && !newProjectForm.clientId) {
       Toast.show({
         type: "error",
         text1: "Please select a client",
@@ -227,7 +238,7 @@ export function ProjectSelectorModal({
     <Modal
       visible={visible}
       animationType="slide"
-      presentationStyle="pageSheet"
+      presentationStyle="overFullScreen"
       onRequestClose={handleClose}
     >
       <SafeAreaView style={styles.container}>
@@ -296,6 +307,7 @@ export function ProjectSelectorModal({
               </View>
             ) : (
               <FlatList
+                style={{ flex: 1 }}
                 data={projects}
                 keyExtractor={(item) => item._id}
                 renderItem={({ item }) => (
@@ -424,7 +436,7 @@ export function ProjectSelectorModal({
               </View>
 
               {/* Only show client field for team workspace */}
-              {workspaceType === "work" && (
+              {currentWorkspace === "work" && (
                 <View style={styles.formField}>
                   <Text style={styles.formLabel}>Client *</Text>
                   <View style={styles.clientPickerContainer}>
@@ -599,14 +611,14 @@ export function ProjectSelectorModal({
                     styles.submitButton,
                     (isCreatingProject ||
                      !newProjectForm.name.trim() ||
-                     (workspaceType === "work" && !newProjectForm.clientId)) &&
+                     (currentWorkspace === "work" && !newProjectForm.clientId)) &&
                       styles.submitButtonDisabled,
                   ]}
                   onPress={handleProjectCreated}
                   disabled={
                     isCreatingProject ||
                     !newProjectForm.name.trim() ||
-                    (workspaceType === "work" && !newProjectForm.clientId)
+                    (currentWorkspace === "work" && !newProjectForm.clientId)
                   }
                   accessible={true}
                   accessibilityLabel="Create project"

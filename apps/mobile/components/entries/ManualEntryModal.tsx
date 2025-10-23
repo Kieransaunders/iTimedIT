@@ -285,16 +285,18 @@ export function ManualEntryModal({
         )}
       </Modal>
 
-      {/* Project Selector Modal */}
-      <ProjectSelectorModal
-        visible={showProjectSelector}
-        selectedProject={selectedProject}
-        onClose={() => setShowProjectSelector(false)}
-        onSelect={(project) => {
-          setSelectedProject(project);
-          setShowProjectSelector(false);
-        }}
-      />
+      {/* Project Selector Modal - Rendered outside to avoid modal-on-modal */}
+      {showProjectSelector && (
+        <ProjectSelectorModal
+          visible={showProjectSelector}
+          selectedProject={selectedProject}
+          onClose={() => setShowProjectSelector(false)}
+          onSelect={(project) => {
+            setSelectedProject(project);
+            setShowProjectSelector(false);
+          }}
+        />
+      )}
     </>
   );
 }

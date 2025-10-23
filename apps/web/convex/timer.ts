@@ -80,6 +80,7 @@ export const start = mutation({
     projectId: v.id("projects"),
     category: v.optional(v.string()),
     pomodoroEnabled: v.optional(v.boolean()),
+    startedFrom: v.optional(v.union(v.literal("web"), v.literal("mobile"))),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -164,6 +165,7 @@ export const start = mutation({
       pomodoroCompletedCycles: pomodoroEnabledSetting ? 0 : undefined,
       pomodoroSessionStartedAt: pomodoroEnabledSetting ? now : undefined,
       category: args.category,
+      startedFrom: args.startedFrom,
     });
 
     // Schedule interrupt check if enabled

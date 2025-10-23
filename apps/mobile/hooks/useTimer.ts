@@ -13,6 +13,7 @@ import { useOrganization } from "@/contexts/OrganizationContext";
 import { NetworkErrorHandler, NetworkErrorState } from "@/utils/networkErrorHandler";
 import { timerNotificationService } from "@/services/timerNotification";
 import { shouldRequestBatteryOptimization, requestBatteryOptimizationExemption } from "@/services/batteryOptimization";
+import { scheduleLocalNotification } from "@/services/notifications";
 
 export interface UseTimerReturn {
   runningTimer: RunningTimer | null;
@@ -63,6 +64,8 @@ export function useTimer(): UseTimerReturn {
   const prevInterruptRef = useRef<boolean>(false);
   const prevPomodoroPhaseRef = useRef<"work" | "break" | undefined>();
   const prevWorkspaceRef = useRef<"personal" | "work">(currentWorkspace);
+  const timerIdRef = useRef<string | null>(null);
+  const notifiedWebTimerRef = useRef<string | null>(null);
 
   // Convex queries and mutations
   // Note: getRunningTimer accepts workspaceType to filter results by workspace
@@ -221,30 +224,60 @@ export function useTimer(): UseTimerReturn {
   /**
    * Start timer notification when timer is running
    * Stop notification when timer stops
+   * Only triggers when the timer ID changes to avoid infinite loops
    */
   useEffect(() => {
-    if (runningTimer && runningTimer.project) {
-      // Start lock screen notification
-      timerNotificationService.startTimerNotification(
-        runningTimer.project,
-        runningTimer.startedAt
-      ).catch((error) => {
-        console.error("Failed to start timer notification:", error);
-      });
-    } else {
-      // Stop lock screen notification
+    const currentTimerId = runningTimer?._id;
+    const previousTimerId = timerIdRef.current;
+
+    // Timer started or changed (new timer ID)
+    if (currentTimerId && currentTimerId !== previousTimerId) {
+      if (runningTimer?.project) {
+        timerNotificationService.startTimerNotification(
+          runningTimer.project,
+          runningTimer.startedAt
+        ).catch((error) => {
+          console.error("Failed to start timer notification:", error);
+        });
+      }
+      timerIdRef.current = currentTimerId;
+    }
+    // Timer stopped (no timer ID but had one before)
+    else if (!currentTimerId && previousTimerId) {
       timerNotificationService.stopTimerNotification().catch((error) => {
         console.error("Failed to stop timer notification:", error);
       });
+      timerIdRef.current = null;
+    }
+  }, [runningTimer?._id]);
+
+  /**
+   * Detect when timer is started from web and show notification
+   */
+  useEffect(() => {
+    const currentTimerId = runningTimer?._id;
+    const startedFrom = (runningTimer as any)?.startedFrom;
+
+    // New timer detected that was started from web
+    if (currentTimerId && currentTimerId !== notifiedWebTimerRef.current && startedFrom === "web") {
+      // Show banner notification
+      scheduleLocalNotification(
+        "Timer Started on Web",
+        `${runningTimer?.project?.name || "A project"} timer is now running`,
+        { type: "web-timer-started", projectId: runningTimer?.projectId }
+      ).catch((error) => {
+        console.error("Failed to show web timer notification:", error);
+      });
+
+      // Mark as notified to avoid duplicate notifications
+      notifiedWebTimerRef.current = currentTimerId;
     }
 
-    // Cleanup on unmount
-    return () => {
-      if (!runningTimer) {
-        timerNotificationService.stopTimerNotification().catch(console.error);
-      }
-    };
-  }, [runningTimer?.project, runningTimer?.startedAt]);
+    // Reset when timer stops
+    if (!currentTimerId) {
+      notifiedWebTimerRef.current = null;
+    }
+  }, [runningTimer?._id, (runningTimer as any)?.startedFrom, runningTimer?.project?.name]);
 
   /**
    * Start a timer for the selected project
@@ -263,6 +296,7 @@ export function useTimer(): UseTimerReturn {
             projectId,
             category,
             pomodoroEnabled: pomodoroEnabled ?? timerMode === "pomodoro",
+            startedFrom: "mobile",
           });
 
           // Check if we should request battery optimization exemption (Android only)

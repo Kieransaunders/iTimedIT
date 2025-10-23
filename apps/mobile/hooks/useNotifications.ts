@@ -147,15 +147,22 @@ export function useNotifications(): UseNotificationsReturn {
 
     // Default behavior: show in-app alert
     const { title, body, data } = notification.request.content;
-    
+
+    // SKIP ALERTS FOR TIMER-RUNNING NOTIFICATIONS
+    // Timer updates every 3-5 seconds and should NOT show as popup alerts
+    if (data?.type === "timer-running" ||
+        notification.request.content.categoryIdentifier === "timer-running") {
+      return; // Silent - no alert
+    }
+
     // Determine alert buttons based on notification type
     let buttons: any[] = [{ text: "OK", style: "default" }];
-    
+
     if (data?.type === "budget-warning" || data?.type === "budget-overrun") {
       buttons = [
         { text: "Dismiss", style: "cancel" },
-        { 
-          text: "View Project", 
+        {
+          text: "View Project",
           style: "default",
           onPress: () => router.push("/projects")
         }
@@ -167,14 +174,14 @@ export function useNotifications(): UseNotificationsReturn {
     } else if (data?.type === "pomodoro-complete") {
       buttons = [
         { text: "Dismiss", style: "cancel" },
-        { 
-          text: "Continue", 
+        {
+          text: "Continue",
           style: "default",
           onPress: () => router.push("/")
         }
       ];
     }
-    
+
     if (Platform.OS === 'ios') {
       // On iOS, show an alert for foreground notifications
       Alert.alert(

@@ -340,6 +340,7 @@ export function ModernDashboard({
   // Handle Pomodoro phase transitions and sound notifications
   const [previousPhase, setPreviousPhase] = useState<string | null>(null);
   const [previousBreakTimer, setPreviousBreakTimer] = useState<boolean>(false);
+  const notifiedMobileTimerRef = useRef<string | null>(null);
   
   useEffect(() => {
     if (!runningTimer?.pomodoroEnabled) return;
@@ -642,10 +643,11 @@ export function ModernDashboard({
     } else {
       primeSoundIfEnabled();
       await ensurePushRegistered(true);
-      await startTimer({ 
-        projectId: currentProject._id, 
+      await startTimer({
+        projectId: currentProject._id,
         category: selectedCategory || undefined,
-        pomodoroEnabled: timerMode === "pomodoro"
+        pomodoroEnabled: timerMode === "pomodoro",
+        startedFrom: "web"
       });
     }
   }, [currentProject, timerState.running, startTimer, stopTimer, ensurePushRegistered, selectedCategory, timerMode, primeSoundIfEnabled]);
@@ -661,10 +663,11 @@ export function ModernDashboard({
       setCurrentProjectId(projectId);
       primeSoundIfEnabled();
       await ensurePushRegistered(true);
-      await startTimer({ 
-        projectId, 
+      await startTimer({
+        projectId,
         category: selectedCategory || undefined,
-        pomodoroEnabled: timerMode === "pomodoro"
+        pomodoroEnabled: timerMode === "pomodoro",
+        startedFrom: "web"
       });
     }
   }, [currentProjectId, timerState.running, ensurePushRegistered, startTimer, selectedCategory, timerMode, primeSoundIfEnabled]);
@@ -675,10 +678,11 @@ export function ModernDashboard({
     setCurrentProjectId(pendingProjectId);
     primeSoundIfEnabled();
     await ensurePushRegistered(false);
-    await startTimer({ 
-      projectId: pendingProjectId, 
+    await startTimer({
+      projectId: pendingProjectId,
       category: selectedCategory || undefined,
-      pomodoroEnabled: timerMode === "pomodoro"
+      pomodoroEnabled: timerMode === "pomodoro",
+      startedFrom: "web"
     });
     setShowProjectSwitchModal(false);
     setPendingProjectId(null);
@@ -688,10 +692,11 @@ export function ModernDashboard({
     await stopTimer();
     setCurrentProjectId(projectId);
     await ensurePushRegistered(false);
-    await startTimer({ 
-      projectId, 
+    await startTimer({
+      projectId,
       category: selectedCategory || undefined,
-      pomodoroEnabled: timerMode === "pomodoro"
+      pomodoroEnabled: timerMode === "pomodoro",
+      startedFrom: "web"
     });
   }, [stopTimer, startTimer, ensurePushRegistered, selectedCategory, timerMode]);
 
@@ -1012,6 +1017,29 @@ export function ModernDashboard({
       window.removeEventListener('resize', updateScrollIndicators);
     };
   }, [projectsWithColors]);
+
+  // Detect when timer is started from mobile and show notification
+  useEffect(() => {
+    const currentTimerId = runningTimer?._id;
+    const startedFrom = (runningTimer as any)?.startedFrom;
+
+    // New timer detected that was started from mobile
+    if (currentTimerId && currentTimerId !== notifiedMobileTimerRef.current && startedFrom === "mobile") {
+      // Show toast notification (browser notifications would require permission)
+      toast.info("Timer Started on Mobile", {
+        description: `${runningTimer?.project?.name || "A project"} timer is now running`,
+        duration: 4000,
+      });
+
+      // Mark as notified to avoid duplicate notifications
+      notifiedMobileTimerRef.current = currentTimerId;
+    }
+
+    // Reset when timer stops
+    if (!currentTimerId) {
+      notifiedMobileTimerRef.current = null;
+    }
+  }, [runningTimer?._id, (runningTimer as any)?.startedFrom, runningTimer?.project?.name]);
 
   if (isLoading) {
     return (
@@ -1908,7 +1936,7 @@ export function ModernDashboard({
                     <div className="space-y-4 py-4">
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <label className="text-sm font-medium">Date</label>
+                          <label className="text-sm font-medium text-foreground">Date</label>
                           <Input
                             type="date"
                             value={manualEntryForm.date}
@@ -1919,7 +1947,7 @@ export function ModernDashboard({
                       
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <label className="text-sm font-medium">Start Time</label>
+                          <label className="text-sm font-medium text-foreground">Start Time</label>
                           <Input
                             type="time"
                             value={manualEntryForm.startTime}
@@ -1927,7 +1955,7 @@ export function ModernDashboard({
                           />
                         </div>
                         <div className="space-y-2">
-                          <label className="text-sm font-medium">End Time</label>
+                          <label className="text-sm font-medium text-foreground">End Time</label>
                           <Input
                             type="time"
                             value={manualEntryForm.endTime}
@@ -1938,7 +1966,7 @@ export function ModernDashboard({
                       
                       {categories && categories.length > 0 && (
                         <div className="space-y-2">
-                          <label className="text-sm font-medium">Category (optional)</label>
+                          <label className="text-sm font-medium text-foreground">Category (optional)</label>
                           <select
                             value={manualEntryForm.category}
                             onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setManualEntryForm(prev => ({ ...prev, category: e.target.value }))}
@@ -1953,9 +1981,9 @@ export function ModernDashboard({
                           </select>
                         </div>
                       )}
-                      
+
                       <div className="space-y-2">
-                        <label className="text-sm font-medium">Note (optional)</label>
+                        <label className="text-sm font-medium text-foreground">Note (optional)</label>
                         <textarea
                           placeholder="What did you work on?"
                           value={manualEntryForm.note}

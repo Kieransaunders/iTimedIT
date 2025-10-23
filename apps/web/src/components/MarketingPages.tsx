@@ -90,7 +90,7 @@ function MarketingLayout({
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-6 py-5">
           <div className="flex items-center gap-3">
-            <img src="/iconnectit.png" alt="iTimedIT" className="h-10 w-10" />
+            <img src="/icon.png" alt="iTimedIT" className="h-10 w-10" />
             <div>
               <p className="text-xl font-semibold text-slate-800">iTimedIT</p>
               <p className="text-sm text-slate-500">Effortless professional time tracking</p>

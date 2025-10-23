@@ -119,7 +119,7 @@ export function ProjectDetailPage({ projectId, onBackToProjects }: ProjectDetail
               <div className="space-y-4 py-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Date</label>
+                    <label className="text-sm font-medium text-foreground">Date</label>
                     <Input
                       type="date"
                       value={manualEntryForm.date}
@@ -127,10 +127,10 @@ export function ProjectDetailPage({ projectId, onBackToProjects }: ProjectDetail
                     />
                   </div>
                 </div>
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Start Time</label>
+                    <label className="text-sm font-medium text-foreground">Start Time</label>
                     <Input
                       type="time"
                       value={manualEntryForm.startTime}
@@ -138,7 +138,7 @@ export function ProjectDetailPage({ projectId, onBackToProjects }: ProjectDetail
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">End Time</label>
+                    <label className="text-sm font-medium text-foreground">End Time</label>
                     <Input
                       type="time"
                       value={manualEntryForm.endTime}
@@ -146,10 +146,10 @@ export function ProjectDetailPage({ projectId, onBackToProjects }: ProjectDetail
                     />
                   </div>
                 </div>
-                
+
                 {categories && categories.length > 0 && (
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Category (optional)</label>
+                    <label className="text-sm font-medium text-foreground">Category (optional)</label>
                     <select
                       value={manualEntryForm.category}
                       onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setManualEntryForm(prev => ({ ...prev, category: e.target.value }))}
@@ -164,9 +164,9 @@ export function ProjectDetailPage({ projectId, onBackToProjects }: ProjectDetail
                     </select>
                   </div>
                 )}
-                
+
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Note (optional)</label>
+                  <label className="text-sm font-medium text-foreground">Note (optional)</label>
                   <textarea
                     placeholder="What did you work on?"
                     value={manualEntryForm.note}

@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
-import { requireMembership, maybeMembership, ensureMembershipWithRole, requireMembershipWithRole } from "./orgContext";
+import { requireMembership, maybeMembership, ensureMembership, ensureMembershipWithRole, requireMembershipWithRole } from "./orgContext";
 
 export const list = query({
   args: {
@@ -334,10 +334,7 @@ export const create = mutation({
     workspaceType: v.optional(v.union(v.literal("personal"), v.literal("work"))),
   },
   handler: async (ctx, args) => {
-    const { organizationId, userId } = await ensureMembershipWithRole(ctx, [
-      "owner",
-      "admin",
-    ]);
+    const { organizationId, userId } = await ensureMembership(ctx);
 
     return await ctx.db.insert("clients", {
       organizationId,

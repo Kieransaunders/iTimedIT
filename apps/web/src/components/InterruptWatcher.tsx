@@ -155,8 +155,8 @@ async function showBrowserNotification(
   // Create notification
   const notification = new Notification("Timer Interruption", {
     body: `Still working on ${projectName}? Auto-stop in ${gracePeriod}s`,
-    icon: "/iconnectit.png",
-    badge: "/iconnectit.png",
+    icon: "/icon.png",
+    badge: "/icon.png",
     tag: "timer-interrupt", // Reuse notification slot
     requireInteraction: true, // Keep notification until user interacts
     silent: false, // Play system sound

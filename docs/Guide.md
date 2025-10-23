@@ -54,7 +54,16 @@ Build mobile: npm run build:mobile
 Run tests: npm run test
 Lint all: npm run lint
 
+### Mobile app commands in apps/mobile
+npm start           # Start Expo dev server
+npx expo start --clear
+npx expo run:ios    # This is best Run on iOS simulator
+npx expo run:andriod
+npx expo prebuild.   # Generate native projects
 
+If you made a big change run 
+npx expo prebuild --clean
+npx expo run:ios
 
 
 ###  To deploy to: http://itimedit.com/

@@ -19,6 +19,7 @@ import { EmptyStateCard, WebAppPrompt, openWebApp } from "@/components";
 import { WorkspaceBadge } from "@/components/common/WorkspaceBadge";
 import { TipsBottomSheet, useTipsBottomSheet } from "@/components/common/TipsBottomSheet";
 import { FloatingActionButton } from "@/components/common/FloatingActionButton";
+import { WebTimerBadge } from "@/components/timer/WebTimerBadge";
 import { QuickActionMenu } from "@/components/common/QuickActionMenu";
 import { CreateProjectModal } from "@/components/projects/CreateProjectModal";
 import { CreateClientModal } from "@/components/clients/CreateClientModal";
@@ -265,12 +266,34 @@ export default function Index() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Today's Summary Card - Above carousels */}
-        <TodaySummaryCard
-          todaysTotalSeconds={elapsedTime}
-          entriesCount={0}
-          topProject={selectedProject}
-          todaysEarnings={0}
+        {/* Large Timer Display - at top for visibility */}
+        <View style={styles.timerDisplayContainer}>
+          <View style={styles.timerHeader}>
+            <WorkspaceBadge size="medium" />
+            <WebTimerBadge visible={(runningTimer as any)?.startedFrom === "web"} />
+          </View>
+          <LargeTimerDisplay
+            elapsedTime={elapsedTime}
+            project={runningTimer?.project || selectedProject}
+            isRunning={isTimerRunning}
+            isNearBudget={false}
+            isOverBudget={false}
+            startedAt={runningTimer?.startedAt}
+          />
+        </View>
+
+        {/* Timer Controls - Start and Reset buttons */}
+        <TimerControls
+          isRunning={isTimerRunning}
+          onStart={handleStartTimer}
+          onStop={handleStopTimer}
+          onReset={handleResetTimer}
+          disabled={!canStartTimer && !isTimerRunning}
+          loading={isStarting || isStopping}
+          projectColor={
+            (runningTimer?.project || selectedProject)?.client?.color ||
+            (runningTimer?.project || selectedProject)?.color
+          }
         />
 
         {/* Project Carousels - Sliding panels like web dashboard */}
@@ -285,7 +308,7 @@ export default function Index() {
                 onToggleFavorite={toggleFavorite}
                 onQuickStart={(project) => {
                   setSelectedProject(project);
-                  handleStartTimer();
+                  // Don't auto-start - let user manually start via controls
                 }}
                 isFavorite={isFavorite}
                 sectionTitle="⚡ Recent Projects"
@@ -301,7 +324,7 @@ export default function Index() {
                 onToggleFavorite={toggleFavorite}
                 onQuickStart={(project) => {
                   setSelectedProject(project);
-                  handleStartTimer();
+                  // Don't auto-start - let user manually start via controls
                 }}
                 isFavorite={isFavorite}
                 sectionTitle="👤 Personal Projects"
@@ -317,7 +340,7 @@ export default function Index() {
                 onToggleFavorite={toggleFavorite}
                 onQuickStart={(project) => {
                   setSelectedProject(project);
-                  handleStartTimer();
+                  // Don't auto-start - let user manually start via controls
                 }}
                 isFavorite={isFavorite}
                 sectionTitle="💼 Work Projects"
@@ -346,36 +369,7 @@ export default function Index() {
           {/* TODO: Add Change Sound button */}
         </View>
 
-        {/* Large Timer Display - matching web dashboard */}
-        <View style={styles.timerDisplayContainer}>
-          <View style={styles.timerHeader}>
-            <WorkspaceBadge size="medium" />
-          </View>
-          <LargeTimerDisplay
-            elapsedTime={elapsedTime}
-            project={runningTimer?.project || selectedProject}
-            isRunning={isTimerRunning}
-            isNearBudget={false}
-            isOverBudget={false}
-            startedAt={runningTimer?.startedAt}
-          />
-        </View>
-
-        {/* Timer Controls - Start and Reset buttons */}
-        <TimerControls
-          isRunning={isTimerRunning}
-          onStart={handleStartTimer}
-          onStop={handleStopTimer}
-          onReset={handleResetTimer}
-          disabled={!canStartTimer && !isTimerRunning}
-          loading={isStarting || isStopping}
-          projectColor={
-            (runningTimer?.project || selectedProject)?.client?.color ||
-            (runningTimer?.project || selectedProject)?.color
-          }
-        />
-
-        {/* Category Selector - below timer controls */}
+        {/* Category Selector - below mode toggle */}
         <View style={styles.selectorContainer}>
           <View style={styles.categoryHeader}>
             <Text style={[styles.categoryLabel, { color: colors.textPrimary }]}>Category</Text>
@@ -388,6 +382,16 @@ export default function Index() {
             onSelect={setSelectedCategory}
             disabled={isTimerRunning}
             containerStyle={styles.categoryDropdown}
+          />
+        </View>
+
+        {/* Today's Summary Card - At bottom, dimmed */}
+        <View style={styles.summaryContainer}>
+          <TodaySummaryCard
+            todaysTotalSeconds={elapsedTime}
+            entriesCount={0}
+            topProject={selectedProject}
+            todaysEarnings={0}
           />
         </View>
       </ScrollView>
@@ -524,6 +528,7 @@ const styles = StyleSheet.create({
   timerHeader: {
     alignItems: "center",
     marginBottom: spacing.md,
+    gap: spacing.sm,
   },
   emptyStateContainer: {
     paddingHorizontal: spacing.lg,
@@ -558,5 +563,11 @@ const styles = StyleSheet.create({
   tipsButtonText: {
     fontSize: 12,
     fontWeight: "500",
+  },
+  summaryContainer: {
+    opacity: 0.5,
+    paddingHorizontal: spacing.lg,
+    marginTop: spacing.xl,
+    marginBottom: spacing.md,
   },
 });

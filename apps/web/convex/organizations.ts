@@ -174,8 +174,8 @@ export const setActiveOrganization = mutation({
         userId,
         organizationId: args.organizationId,
         interruptEnabled: true,
-        interruptInterval: 0.0833 as const,
-        gracePeriod: 5 as const,
+        interruptInterval: 45,
+        gracePeriod: 60,
         budgetWarningEnabled: true,
         budgetWarningThresholdHours: 1.0,
         budgetWarningThresholdAmount: 50.0,
@@ -317,8 +317,8 @@ export const createWorkspace = mutation({
         userId,
         organizationId,
         interruptEnabled: true,
-        interruptInterval: 0.0833 as const,
-        gracePeriod: 5 as const,
+        interruptInterval: 45,
+        gracePeriod: 60,
         budgetWarningEnabled: true,
         budgetWarningThresholdHours: 1.0,
         budgetWarningThresholdAmount: 50.0,
@@ -503,6 +503,34 @@ export const migrateWorkspaceTypes = internalMutation({
       migratedProjects,
       skippedClients,
       skippedProjects,
+    };
+  },
+});
+
+export const fixInterruptIntervals = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    // Fix all user settings with debug interrupt interval (0.0833 = 5 seconds)
+    // to production default (45 minutes)
+    const allSettings = await ctx.db.query("userSettings").collect();
+    let fixedCount = 0;
+
+    for (const settings of allSettings) {
+      // Check if interrupt interval is the debug value (0.0833 minutes = ~5 seconds)
+      if (settings.interruptInterval === 0.0833) {
+        await ctx.db.patch(settings._id, {
+          interruptInterval: 45, // 45 minutes - reasonable default
+          gracePeriod: 60, // 60 seconds - reasonable default
+        });
+        fixedCount++;
+      }
+    }
+
+    return {
+      success: true,
+      totalSettings: allSettings.length,
+      fixedCount,
+      message: `Fixed ${fixedCount} user settings from debug mode (5 sec) to production (45 min)`,
     };
   },
 });
