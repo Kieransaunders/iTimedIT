@@ -1,21 +1,24 @@
 import DateTimePicker from "@react-native-community/datetimepicker";
 import React, { useState } from "react";
 import {
+    ActivityIndicator,
+    FlatList,
     Modal,
     Platform,
     ScrollView,
     StyleSheet,
     Text,
+    TextInput,
     TouchableOpacity,
     View,
 } from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Id } from "../../convex/_generated/dataModel";
 import { useCategories } from "../../hooks/useCategories";
 import { useEntries } from "../../hooks/useEntries";
 import { useProjects } from "../../hooks/useProjects";
 import { formatDateTime, formatDuration } from "../../utils/formatters";
 import { colors, spacing, typography } from "../../utils/theme";
-import { ProjectSelectorModal } from "../projects";
 import { Button, Input } from "../ui";
 
 interface ManualEntryModalProps {
@@ -29,7 +32,8 @@ export function ManualEntryModal({
   onClose,
   onSuccess,
 }: ManualEntryModalProps) {
-  const { projects } = useProjects();
+  const [projectSearchTerm, setProjectSearchTerm] = useState("");
+  const { projects, isLoading: isLoadingProjects } = useProjects({ searchTerm: projectSearchTerm });
   const { categories } = useCategories();
   const { createManualEntry } = useEntries();
 
@@ -85,7 +89,15 @@ export function ManualEntryModal({
 
   const handleCancel = () => {
     setError(null);
+    setShowProjectSelector(false);
+    setProjectSearchTerm("");
     onClose();
+  };
+
+  const handleProjectSelect = (project: any) => {
+    setSelectedProject(project);
+    setShowProjectSelector(false);
+    setProjectSearchTerm("");
   };
 
   return (
@@ -111,7 +123,7 @@ export function ManualEntryModal({
               <Text style={styles.label}>Project *</Text>
               <TouchableOpacity
                 style={styles.selector}
-                onPress={() => setShowProjectSelector(true)}
+                onPress={() => setShowProjectSelector(!showProjectSelector)}
               >
                 <Text
                   style={[
@@ -121,7 +133,100 @@ export function ManualEntryModal({
                 >
                   {selectedProject?.name || "Select a project"}
                 </Text>
+                <MaterialCommunityIcons
+                  name={showProjectSelector ? "chevron-up" : "chevron-down"}
+                  size={24}
+                  color={colors.textSecondary}
+                />
               </TouchableOpacity>
+
+              {/* Inline Project Picker */}
+              {showProjectSelector && (
+                <View style={styles.inlinePickerContainer}>
+                  {/* Search Input */}
+                  <View style={styles.searchContainer}>
+                    <MaterialCommunityIcons
+                      name="magnify"
+                      size={20}
+                      color={colors.textSecondary}
+                      style={styles.searchIcon}
+                    />
+                    <TextInput
+                      style={styles.searchInput}
+                      placeholder="Search projects..."
+                      placeholderTextColor={colors.textSecondary}
+                      value={projectSearchTerm}
+                      onChangeText={setProjectSearchTerm}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                    />
+                  </View>
+
+                  {/* Project List */}
+                  <View style={styles.projectListContainer}>
+                    {isLoadingProjects ? (
+                      <View style={styles.loadingContainer}>
+                        <ActivityIndicator size="small" color={colors.primary} />
+                        <Text style={styles.loadingText}>Loading...</Text>
+                      </View>
+                    ) : projects.length === 0 ? (
+                      <View style={styles.emptyContainer}>
+                        <MaterialCommunityIcons
+                          name="folder-outline"
+                          size={32}
+                          color={colors.textSecondary}
+                        />
+                        <Text style={styles.emptyText}>
+                          {projectSearchTerm
+                            ? "No projects found"
+                            : "No projects yet"}
+                        </Text>
+                      </View>
+                    ) : (
+                      <FlatList
+                        data={projects}
+                        keyExtractor={(item) => item._id}
+                        renderItem={({ item }) => (
+                          <TouchableOpacity
+                            style={[
+                              styles.projectItem,
+                              selectedProject?._id === item._id &&
+                                styles.projectItemSelected,
+                            ]}
+                            onPress={() => handleProjectSelect(item)}
+                          >
+                            <View style={styles.projectItemContent}>
+                              <Text
+                                style={[
+                                  styles.projectItemText,
+                                  selectedProject?._id === item._id &&
+                                    styles.projectItemTextSelected,
+                                ]}
+                              >
+                                {item.name}
+                              </Text>
+                              {item.client && (
+                                <Text style={styles.projectClientText}>
+                                  {item.client.name}
+                                </Text>
+                              )}
+                            </View>
+                            {selectedProject?._id === item._id && (
+                              <MaterialCommunityIcons
+                                name="check"
+                                size={20}
+                                color={colors.primary}
+                              />
+                            )}
+                          </TouchableOpacity>
+                        )}
+                        style={styles.projectList}
+                        nestedScrollEnabled
+                      />
+                    )}
+                  </View>
+                </View>
+              )}
             </View>
 
             {/* Start Date/Time */}
@@ -188,6 +293,7 @@ export function ManualEntryModal({
                 multiline
                 numberOfLines={3}
                 style={styles.noteInput}
+                containerStyle={{ marginBottom: 0 }}
               />
             </View>
 
@@ -284,19 +390,6 @@ export function ManualEntryModal({
           </Modal>
         )}
       </Modal>
-
-      {/* Project Selector Modal - Rendered outside to avoid modal-on-modal */}
-      {showProjectSelector && (
-        <ProjectSelectorModal
-          visible={showProjectSelector}
-          selectedProject={selectedProject}
-          onClose={() => setShowProjectSelector(false)}
-          onSelect={(project) => {
-            setSelectedProject(project);
-            setShowProjectSelector(false);
-          }}
-        />
-      )}
     </>
   );
 }
@@ -344,13 +437,97 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     borderWidth: 1,
     borderColor: colors.border,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   selectorText: {
     ...typography.body,
     color: colors.textPrimary,
+    flex: 1,
   },
   placeholderText: {
     color: colors.textSecondary,
+  },
+  inlinePickerContainer: {
+    marginTop: spacing.sm,
+    backgroundColor: colors.surface,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: "hidden",
+  },
+  searchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  searchIcon: {
+    marginRight: spacing.sm,
+  },
+  searchInput: {
+    flex: 1,
+    ...typography.body,
+    color: colors.textPrimary,
+    paddingVertical: spacing.xs,
+  },
+  projectListContainer: {
+    maxHeight: 200,
+  },
+  projectList: {
+    maxHeight: 200,
+  },
+  loadingContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: spacing.lg,
+    gap: spacing.sm,
+  },
+  loadingText: {
+    ...typography.caption,
+    color: colors.textSecondary,
+  },
+  emptyContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: spacing.lg,
+    gap: spacing.sm,
+  },
+  emptyText: {
+    ...typography.body,
+    color: colors.textSecondary,
+  },
+  projectItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  projectItemSelected: {
+    backgroundColor: `${colors.primary}10`,
+  },
+  projectItemContent: {
+    flex: 1,
+  },
+  projectItemText: {
+    ...typography.body,
+    color: colors.textPrimary,
+  },
+  projectItemTextSelected: {
+    color: colors.primary,
+    fontWeight: "600",
+  },
+  projectClientText: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
   },
   durationDisplay: {
     backgroundColor: colors.surface,

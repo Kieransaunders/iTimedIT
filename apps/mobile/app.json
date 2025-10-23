@@ -13,10 +13,14 @@
     "assetBundlePatterns": [
       "**/*"
     ],
+    "plugins": [
+      "expo-live-activity"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.itimedit.app",
       "infoPlist": {
+        "NSSupportsLiveActivities": true,
         "UIBackgroundModes": [
           "fetch",
           "remote-notification"

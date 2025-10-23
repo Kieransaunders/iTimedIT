@@ -57,11 +57,40 @@ const defaultWorkspace = workMembership ? "work" : "personal";
 3. **Deployment**: The symlink is maintained in git, so deployments work correctly
 4. **No re-exports**: Mobile imports directly from `@/convex/_generated/api` (generated from web convex)
 
+## Timer Lock Screen Display
+
+The mobile app provides real-time timer updates on the lock screen with platform-specific implementations:
+
+### iOS 16.2+ (Live Activities)
+- Real-time timer updates on lock screen
+- Dynamic Island integration (iPhone 14 Pro+)
+- Tap to open app functionality
+- Better battery efficiency
+- **Requires**: Expo DevClient (rebuild with `npx expo prebuild --clean`)
+
+### iOS < 16.2 (Notifications)
+- Time-sensitive notifications with 5-second updates
+- Static display (no real-time updates)
+- Action buttons (Stop, View)
+
+### Android (Foreground Service)
+- Persistent foreground notification with 3-second updates
+- Cannot be dismissed (ongoing notification)
+- Action buttons (Stop, View)
+
+### Implementation
+- `services/liveActivityService.ts` - iOS Live Activities manager
+- `services/timerNotification.ts` - Platform-agnostic orchestrator
+- Automatic fallback for unsupported devices
+
+See [docs/LIVE_ACTIVITIES.md](docs/LIVE_ACTIVITIES.md) for detailed setup and troubleshooting.
+
 ## Differences from Web App
 
 While the backend is shared, the mobile app has:
 - Different UI components (React Native vs React Web)
 - Expo push notifications instead of web-push
+- iOS Live Activities for lock screen timer display
 - Google OAuth via PKCE flow (expo-auth-session)
 - Navigation via Expo Router instead of React Router
 - Styling via react-native-unistyles instead of Tailwind CSS

@@ -1,6 +1,7 @@
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 import type { Project } from "@/types/models";
+import { liveActivityService } from "./liveActivityService";
 
 /**
  * Notification ID for the persistent timer notification
@@ -11,8 +12,9 @@ const TIMER_NOTIFICATION_ID = "timer-running";
  * Timer Notification Service
  *
  * Handles lock screen timer display with platform-specific implementations:
+ * - iOS 16.2+: Live Activities with real-time updates and Dynamic Island
+ * - iOS < 16.2: Time-sensitive notification with 5-second updates
  * - Android: Foreground notification with 3-second updates
- * - iOS: Time-sensitive notification with 5-second updates
  */
 class TimerNotificationService {
   private notificationId: string | null = null;
@@ -25,6 +27,15 @@ class TimerNotificationService {
    */
   async startTimerNotification(project: Project, startedAt: number): Promise<void> {
     try {
+      // Check if Live Activities are supported (iOS 16.2+)
+      if (liveActivityService.isSupported()) {
+        // Use Live Activities for iOS 16.2+
+        await liveActivityService.startActivity(project, startedAt);
+        console.log("Timer Live Activity started for project:", project.name);
+        return; // Early return, don't use notifications
+      }
+
+      // Fallback to notifications for older iOS and Android
       // Store start time and project info
       this.startTime = startedAt;
       this.projectInfo = {
@@ -63,6 +74,15 @@ class TimerNotificationService {
    */
   async stopTimerNotification(): Promise<void> {
     try {
+      // Check if Live Activities are supported (iOS 16.2+)
+      if (liveActivityService.isSupported()) {
+        // Stop Live Activity
+        await liveActivityService.stopActivity();
+        console.log("Timer Live Activity stopped");
+        return; // Early return
+      }
+
+      // Fallback: Stop notifications
       // Stop periodic updates
       if (this.updateInterval) {
         clearInterval(this.updateInterval);
