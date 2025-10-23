@@ -21,7 +21,8 @@ Open new window in cursor and clone
 ### Make sure you are oin the web folder /apps/web
 ### Start new terminal window
 ### for syncing the database
-npx convex dev 
+### Important you must be on the latest branch / version so do a sync
+npx convex dev  (`npx convex dev` will prompt login in browser to convex if needed)
 npm run dev
 
 
@@ -40,7 +41,7 @@ claude mcp add playwright npx @playwright/mcp@latest
 Check MCP areinsalled by running claude and using the slash commands 
 /mcp
 
-then ask for thre tools to be used
+then ask for the tools to be used
 ex: Use your convex mcp tool to check the production db against my development db
 ex: add a schedule to convex using your tool to delete guest users after 24 hours 
 
@@ -59,25 +60,4 @@ Lint all: npm run lint
 ###  To deploy to: http://itimedit.com/
    Make sure you are in the /apps/web folder
 npx convex deploy
-
-
-
-
-Then 
-  npx convex dev
-  npm run dev
 The site should deploy in a few mins.
-
-
-
-
- 
-  
-  ```
-  ###  Frontend: http://localhost:5173 (backend runs via Convex cloud dev)
-
-### Prerequisites
-- Node.js 18+ (recommend 20 LTS)
-- npm 9+ (bundled with Node)
-- A Convex account (`npx convex dev` will prompt login in browser if needed)
-
