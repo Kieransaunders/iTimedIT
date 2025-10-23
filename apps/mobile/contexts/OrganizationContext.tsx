@@ -86,15 +86,18 @@ export function OrganizationProvider({
     loadWorkspacePreference();
   }, []);
 
-  // Auto-select first available workspace if no preference is set
+  // Auto-select workspace if no preference is set - prefer Work over Personal
   useEffect(() => {
     if (currentWorkspace === null && memberships && memberships.length > 0 && !hasSetDefaultRef.current) {
       hasSetDefaultRef.current = true;
 
-      // Default to first workspace in list
-      const firstMembership = memberships[0];
-      const isPersonal = firstMembership.organization?.isPersonalWorkspace === true;
-      const defaultWorkspace = isPersonal ? "personal" : "work";
+      // Prefer Work workspace over Personal
+      const workMembership = memberships.find(
+        m => m.organization?.workspaceType === "work" ||
+            (m.organization?.workspaceType === undefined && !m.organization?.isPersonalWorkspace)
+      );
+
+      const defaultWorkspace = workMembership ? "work" : "personal";
 
       setCurrentWorkspace(defaultWorkspace);
       storage.setItem(WORKSPACE_TYPE_KEY, defaultWorkspace).catch(console.error);

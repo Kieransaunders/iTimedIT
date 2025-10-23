@@ -14,31 +14,40 @@ This means:
 - No separate mobile-specific Convex functions exist
 - Changes to Convex functions affect both web and mobile apps
 
-## Personal Workspace Initialization
+## Workspace Initialization
 
-When a user authenticates, the mobile app automatically creates a "Personal Workspace" organization by calling `api.organizations.ensurePersonalWorkspace` in `app/_layout.tsx`.
+When a user authenticates, the mobile app automatically initializes workspaces:
+
+1. Backend creates both "Personal" and "Work" workspaces for new users
+2. Mobile app defaults to **Work workspace** via `OrganizationContext`
+3. Users can switch between workspaces using the workspace switcher UI
 
 This ensures:
 - Users can start using the app immediately after authentication
 - No "No active organization membership" errors occur
 - Queries return data instead of null/empty results
+- Work workspace is the default for professional time tracking
 
 ## Key Files
 
 ### `app/_layout.tsx`
-Handles automatic workspace initialization when user is authenticated:
+Wraps the app with `OrganizationProvider` which handles workspace initialization automatically:
 ```typescript
-const ensureWorkspace = useMutation(api.organizations.ensurePersonalWorkspace);
+<OrganizationProvider userId={user?._id ?? null}>
+  <Slot />
+</OrganizationProvider>
+```
 
-useEffect(() => {
-  if (isAuthenticated && !workspaceInitializedRef.current) {
-    workspaceInitializedRef.current = true;
-    ensureWorkspace().catch((error) => {
-      console.error("Failed to initialize workspace:", error);
-      workspaceInitializedRef.current = false;
-    });
-  }
-}, [isAuthenticated, ensureWorkspace]);
+### `contexts/OrganizationContext.tsx`
+Handles workspace initialization and defaults to Work workspace:
+```typescript
+// Prefer Work workspace over Personal when auto-selecting
+const workMembership = memberships.find(
+  m => m.organization?.workspaceType === "work" ||
+      (m.organization?.workspaceType === undefined && !m.organization?.isPersonalWorkspace)
+);
+
+const defaultWorkspace = workMembership ? "work" : "personal";
 ```
 
 ## Development Notes

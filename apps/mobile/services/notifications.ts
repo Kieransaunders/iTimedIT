@@ -114,6 +114,7 @@ export async function setupNotificationChannels(): Promise<void> {
       importance: Notifications.AndroidImportance.MAX,
       vibrationPattern: [0, 250, 250, 250],
       lightColor: "#9d4edd",
+      lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
     });
 
     await Notifications.setNotificationChannelAsync("timer-interrupts", {
@@ -121,6 +122,7 @@ export async function setupNotificationChannels(): Promise<void> {
       importance: Notifications.AndroidImportance.HIGH,
       vibrationPattern: [0, 250, 250, 250],
       lightColor: "#9d4edd",
+      lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
     });
 
     await Notifications.setNotificationChannelAsync("budget-alerts", {
@@ -128,6 +130,7 @@ export async function setupNotificationChannels(): Promise<void> {
       importance: Notifications.AndroidImportance.HIGH,
       vibrationPattern: [0, 250, 250, 250],
       lightColor: "#ff9f1c",
+      lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
     });
 
     // Timer foreground notification channel
@@ -144,13 +147,26 @@ export async function scheduleLocalNotification(
   data?: Record<string, any>,
   categoryIdentifier?: string
 ): Promise<string> {
+  const content: Notifications.NotificationContentInput = {
+    title,
+    body,
+    data,
+    sound: true, // Enable sound for better visibility
+    priority: Notifications.AndroidNotificationPriority.HIGH,
+  };
+
+  // Only include categoryIdentifier if it's provided
+  if (categoryIdentifier) {
+    content.categoryIdentifier = categoryIdentifier;
+  }
+
+  // Platform-specific settings for lock screen visibility
+  if (Platform.OS === "android") {
+    content.channelId = "default";
+  }
+
   return await Notifications.scheduleNotificationAsync({
-    content: {
-      title,
-      body,
-      data,
-      categoryIdentifier,
-    },
+    content,
     trigger: null, // Show immediately
   });
 }
