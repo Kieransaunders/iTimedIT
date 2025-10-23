@@ -2,7 +2,6 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import React, { useState } from "react";
 import {
     ActivityIndicator,
-    FlatList,
     Modal,
     Platform,
     ScrollView,
@@ -163,7 +162,10 @@ export function ManualEntryModal({
                   </View>
 
                   {/* Project List */}
-                  <View style={styles.projectListContainer}>
+                  <ScrollView
+                    style={styles.projectListContainer}
+                    nestedScrollEnabled
+                  >
                     {isLoadingProjects ? (
                       <View style={styles.loadingContainer}>
                         <ActivityIndicator size="small" color={colors.primary} />
@@ -183,48 +185,43 @@ export function ManualEntryModal({
                         </Text>
                       </View>
                     ) : (
-                      <FlatList
-                        data={projects}
-                        keyExtractor={(item) => item._id}
-                        renderItem={({ item }) => (
-                          <TouchableOpacity
-                            style={[
-                              styles.projectItem,
-                              selectedProject?._id === item._id &&
-                                styles.projectItemSelected,
-                            ]}
-                            onPress={() => handleProjectSelect(item)}
-                          >
-                            <View style={styles.projectItemContent}>
-                              <Text
-                                style={[
-                                  styles.projectItemText,
-                                  selectedProject?._id === item._id &&
-                                    styles.projectItemTextSelected,
-                                ]}
-                              >
-                                {item.name}
+                      projects.map((item) => (
+                        <TouchableOpacity
+                          key={item._id}
+                          style={[
+                            styles.projectItem,
+                            selectedProject?._id === item._id &&
+                              styles.projectItemSelected,
+                          ]}
+                          onPress={() => handleProjectSelect(item)}
+                        >
+                          <View style={styles.projectItemContent}>
+                            <Text
+                              style={[
+                                styles.projectItemText,
+                                selectedProject?._id === item._id &&
+                                  styles.projectItemTextSelected,
+                              ]}
+                            >
+                              {item.name}
+                            </Text>
+                            {item.client && (
+                              <Text style={styles.projectClientText}>
+                                {item.client.name}
                               </Text>
-                              {item.client && (
-                                <Text style={styles.projectClientText}>
-                                  {item.client.name}
-                                </Text>
-                              )}
-                            </View>
-                            {selectedProject?._id === item._id && (
-                              <MaterialCommunityIcons
-                                name="check"
-                                size={20}
-                                color={colors.primary}
-                              />
                             )}
-                          </TouchableOpacity>
-                        )}
-                        style={styles.projectList}
-                        nestedScrollEnabled
-                      />
+                          </View>
+                          {selectedProject?._id === item._id && (
+                            <MaterialCommunityIcons
+                              name="check"
+                              size={20}
+                              color={colors.primary}
+                            />
+                          )}
+                        </TouchableOpacity>
+                      ))
                     )}
-                  </View>
+                  </ScrollView>
                 </View>
               )}
             </View>
@@ -475,9 +472,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
   },
   projectListContainer: {
-    maxHeight: 200,
-  },
-  projectList: {
     maxHeight: 200,
   },
   loadingContainer: {
