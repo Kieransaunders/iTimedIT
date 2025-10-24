@@ -25,6 +25,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     bundleIdentifier: "com.itimedit.app",
     infoPlist: {
       UIBackgroundModes: ["fetch", "remote-notification", "processing"],
+      BGTaskSchedulerPermittedIdentifiers: ["timer-heartbeat-task"],
+      NSSupportsLiveActivities: true,
       CFBundleURLTypes: [
         {
           CFBundleURLSchemes: [
@@ -74,6 +76,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     "expo-background-fetch",
     "expo-task-manager",
     "expo-secure-store",
+    "expo-live-activity",
     [
       "expo-splash-screen",
       {
