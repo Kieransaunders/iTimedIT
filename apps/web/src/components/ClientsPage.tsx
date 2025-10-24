@@ -267,24 +267,33 @@ export function ClientsPage({
     e.preventDefault();
 
     try {
-      const address = street || city || country || postCode ? {
-        street: street || undefined,
-        city: city || undefined,
-        country: country || undefined,
-        postCode: postCode || undefined,
-      } : undefined;
+      // Only include address if at least one field has a value
+      let address: any = undefined;
+      if (street || city || country || postCode) {
+        address = {};
+        if (street) address.street = street;
+        if (city) address.city = city;
+        if (country) address.country = country;
+        if (postCode) address.postCode = postCode;
+      }
+
+      const clientData: any = {
+        name,
+        color,
+      };
+
+      // Only include optional fields if they have values
+      if (note) clientData.note = note;
+      if (websiteUrl) clientData.websiteUrl = websiteUrl;
+      if (address) clientData.address = address;
 
       if (editingClient) {
         await updateClient({
           id: editingClient._id,
-          name,
-          note,
-          websiteUrl: websiteUrl || undefined,
-          address,
-          color,
+          ...clientData,
         });
       } else {
-        await createClient({ name, note, websiteUrl: websiteUrl || undefined, address, color });
+        await createClient(clientData);
       }
 
       setName("");

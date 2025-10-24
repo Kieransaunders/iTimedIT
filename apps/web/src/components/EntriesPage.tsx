@@ -229,19 +229,19 @@ export function EntriesPage() {
               + Add Time Entry
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
+          <DialogContent className="sm:max-w-[425px] bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700">
             <DialogHeader>
               <DialogTitle>Add Manual Time Entry</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Project</label>
+                <label className="text-sm font-medium text-gray-900 dark:text-white">Project</label>
                 <select
                   value={manualEntryForm.projectId}
                   onChange={(event) =>
                     setManualEntryForm((prev) => ({ ...prev, projectId: event.target.value }))
                   }
-                  className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  className="w-full h-10 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 >
                   <option value="">Select a project...</option>
                   {projectOptions.map((project) => (
@@ -255,49 +255,52 @@ export function EntriesPage() {
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">Date</label>
+                  <label className="text-sm font-medium text-gray-900 dark:text-white">Date</label>
                   <Input
                     type="date"
                     value={manualEntryForm.date}
                     onChange={(event) =>
                       setManualEntryForm((prev) => ({ ...prev, date: event.target.value }))
                     }
+                    className="bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">Start Time</label>
+                  <label className="text-sm font-medium text-gray-900 dark:text-white">Start Time</label>
                   <Input
                     type="time"
                     value={manualEntryForm.startTime}
                     onChange={(event) =>
                       setManualEntryForm((prev) => ({ ...prev, startTime: event.target.value }))
                     }
+                    className="bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">End Time</label>
+                  <label className="text-sm font-medium text-gray-900 dark:text-white">End Time</label>
                   <Input
                     type="time"
                     value={manualEntryForm.endTime}
                     onChange={(event) =>
                       setManualEntryForm((prev) => ({ ...prev, endTime: event.target.value }))
                     }
+                    className="bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600"
                   />
                 </div>
               </div>
 
               {categories && categories.length > 0 && (
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">Category (optional)</label>
+                  <label className="text-sm font-medium text-gray-900 dark:text-white">Category (optional)</label>
                   <select
                     value={manualEntryForm.category}
                     onChange={(event) =>
                       setManualEntryForm((prev) => ({ ...prev, category: event.target.value }))
                     }
-                    className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    className="w-full h-10 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                   >
                     <option value="">Select category...</option>
                     {categories.map((category) => (
@@ -310,14 +313,14 @@ export function EntriesPage() {
               )}
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Note (optional)</label>
+                <label className="text-sm font-medium text-gray-900 dark:text-white">Note (optional)</label>
                 <textarea
                   value={manualEntryForm.note}
                   onChange={(event) =>
                     setManualEntryForm((prev) => ({ ...prev, note: event.target.value }))
                   }
                   placeholder="What did you work on?"
-                  className="w-full min-h-[96px] resize-none rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  className="w-full min-h-[96px] resize-none rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring placeholder:text-gray-500 dark:placeholder:text-gray-400"
                 />
               </div>
 

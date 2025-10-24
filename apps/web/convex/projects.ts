@@ -270,17 +270,16 @@ export const update = mutation({
       }
     }
 
-    const patchData: any = {};
-    if (args.clientId !== undefined) patchData.clientId = args.clientId;
-    if (args.name !== undefined) patchData.name = args.name;
-    if (args.hourlyRate !== undefined) patchData.hourlyRate = args.hourlyRate;
-    if (args.budgetType !== undefined) patchData.budgetType = args.budgetType;
-    if (args.budgetHours !== undefined) patchData.budgetHours = args.budgetHours;
-    if (args.budgetAmount !== undefined) patchData.budgetAmount = args.budgetAmount;
-    if (args.archived !== undefined) patchData.archived = args.archived;
-    if (args.workspaceType !== undefined) patchData.workspaceType = args.workspaceType;
-
-    await ctx.db.patch(args.id, patchData);
+    await ctx.db.patch(args.id, {
+      ...(args.clientId !== undefined && { clientId: args.clientId }),
+      ...(args.name !== undefined && { name: args.name }),
+      ...(args.hourlyRate !== undefined && { hourlyRate: args.hourlyRate }),
+      ...(args.budgetType !== undefined && { budgetType: args.budgetType }),
+      ...(args.budgetHours !== undefined && { budgetHours: args.budgetHours }),
+      ...(args.budgetAmount !== undefined && { budgetAmount: args.budgetAmount }),
+      ...(args.archived !== undefined && { archived: args.archived }),
+      ...(args.workspaceType !== undefined && { workspaceType: args.workspaceType }),
+    });
   },
 });
 
