@@ -1,5 +1,16 @@
 // Setup file for Jest tests
 
+// Mock Expo import.meta registry (required for Expo SDK 54+)
+global.__ExpoImportMetaRegistry = {
+  register: jest.fn(),
+  get: jest.fn(),
+};
+
+// Mock structuredClone if not available (required for Expo SDK 54+)
+if (typeof global.structuredClone === 'undefined') {
+  global.structuredClone = (obj) => JSON.parse(JSON.stringify(obj));
+}
+
 // Mock AsyncStorage
 jest.mock('@react-native-async-storage/async-storage', () => ({
   __esModule: true,
