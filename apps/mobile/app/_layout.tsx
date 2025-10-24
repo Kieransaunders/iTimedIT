@@ -6,6 +6,7 @@ import { lightTheme, darkTheme } from "@/utils/theme";
 import { ThemeProvider, useTheme } from "@/utils/ThemeContext";
 import { OrganizationProvider } from "@/contexts/OrganizationContext";
 import { OrganizationErrorBoundary } from "@/components/common/OrganizationErrorBoundary";
+import { AppErrorBoundary } from "@/components/common/AppErrorBoundary";
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import { Slot, useRouter, useSegments } from "expo-router";
 import { useEffect, useRef } from "react";
@@ -14,6 +15,35 @@ import Toast from "react-native-toast-message";
 import { UnistylesRegistry } from "react-native-unistyles";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { ErrorUtils } from "react-native";
+
+// Global error handlers to prevent silent crashes
+// Set up before any component rendering
+
+// Handle unhandled promise rejections
+const originalPromiseRejectionHandler = ErrorUtils.getGlobalHandler();
+ErrorUtils.setGlobalHandler((error, isFatal) => {
+  console.error("🚨 Global Error Handler:", error);
+  console.error("Is Fatal:", isFatal);
+  console.error("Stack:", error.stack);
+
+  // Call original handler if it exists
+  if (originalPromiseRejectionHandler) {
+    originalPromiseRejectionHandler(error, isFatal);
+  }
+});
+
+// Log unhandled promise rejections (additional safety net)
+if (typeof global.Promise !== "undefined") {
+  const originalRejection = global.Promise.prototype.catch;
+  // Track unhandled rejections via logging
+  if (typeof global.addEventListener === "function") {
+    global.addEventListener("unhandledrejection", (event: PromiseRejectionEvent) => {
+      console.error("🚨 Unhandled Promise Rejection:", event.reason);
+      console.error("Promise:", event.promise);
+    });
+  }
+}
 
 // Configure Unistyles with our themes
 UnistylesRegistry.addThemes({
@@ -77,17 +107,29 @@ function ProtectedLayout() {
 export default function RootLayout() {
   useEffect(() => {
     // Set up notification channels and categories on app start
-    setupNotificationChannels();
-    setupNotificationCategories();
+    // Wrap in async IIFE with error handling to prevent crashes
+    (async () => {
+      try {
+        await setupNotificationChannels();
+        await setupNotificationCategories();
+        console.log("Notification setup completed successfully");
+      } catch (error) {
+        // Log error but don't crash the app
+        console.error("Failed to setup notifications:", error);
+        console.warn("App will continue without notifications");
+      }
+    })();
   }, []);
 
   return (
-    <ThemeProvider>
-      <ConvexAuthProvider client={convexClient} storage={tokenStorage}>
-        <ProtectedLayout />
-        <Toast />
-      </ConvexAuthProvider>
-    </ThemeProvider>
+    <AppErrorBoundary>
+      <ThemeProvider>
+        <ConvexAuthProvider client={convexClient} storage={tokenStorage}>
+          <ProtectedLayout />
+          <Toast />
+        </ConvexAuthProvider>
+      </ThemeProvider>
+    </AppErrorBoundary>
   );
 }
 
