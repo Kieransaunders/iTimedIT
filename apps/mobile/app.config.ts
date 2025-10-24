@@ -14,6 +14,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   scheme: "itimeditapp",
   userInterfaceStyle: "dark",
   newArchEnabled: true,
+  owner: "iconnectit",
   splash: {
     image: "./assets/images/splash-icon.png",
     resizeMode: "contain",
@@ -32,6 +33,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
           ],
         },
       ],
+      ITSAppUsesNonExemptEncryption: false,
     },
   },
   android: {
@@ -92,7 +94,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   extra: {
     convexUrl: process.env.EXPO_PUBLIC_CONVEX_URL,
     eas: {
-      projectId: process.env.EXPO_PUBLIC_EAS_PROJECT_ID || "your-project-id",
+      projectId: "9765d9ef-1bbf-43eb-9200-6ecd31389a64",
     },
   },
 });
