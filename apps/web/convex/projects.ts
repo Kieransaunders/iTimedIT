@@ -240,7 +240,8 @@ export const update = mutation({
     workspaceType: v.optional(v.union(v.literal("personal"), v.literal("work"))),
   },
   handler: async (ctx, args) => {
-    const { organizationId } = await requireMembershipWithRole(ctx, ["owner", "admin"]);
+    // Allow all members to update projects (owner, admin, member)
+    const { organizationId } = await requireMembership(ctx);
 
     const project = await ctx.db.get(args.id);
     if (!project || project.organizationId !== organizationId) {
