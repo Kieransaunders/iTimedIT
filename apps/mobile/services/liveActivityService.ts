@@ -1,6 +1,8 @@
-import * as LiveActivity from "expo-live-activity";
 import { Platform } from "react-native";
 import type { Project } from "@/types/models";
+
+// Dynamic import type for expo-live-activity
+type LiveActivityModule = typeof import("expo-live-activity");
 
 /**
  * Live Activity Service
@@ -29,12 +31,53 @@ class LiveActivityService {
     color?: string;
     hourlyRate?: number
   } | null = null;
+  private liveActivityModule: LiveActivityModule | null = null;
+  private moduleLoadFailed: boolean = false;
+
+  /**
+   * Dynamically load the expo-live-activity module
+   * This prevents crashes if the module is not properly configured
+   */
+  private async loadLiveActivityModule(): Promise<LiveActivityModule | null> {
+    // Return cached module if already loaded
+    if (this.liveActivityModule) {
+      return this.liveActivityModule;
+    }
+
+    // Don't retry if loading previously failed
+    if (this.moduleLoadFailed) {
+      return null;
+    }
+
+    // Only attempt to load on iOS
+    if (Platform.OS !== "ios") {
+      return null;
+    }
+
+    try {
+      // Dynamic import to prevent crashes during module initialization
+      const module = await import("expo-live-activity");
+      this.liveActivityModule = module;
+      console.log("expo-live-activity module loaded successfully");
+      return module;
+    } catch (error) {
+      // Module failed to load - likely due to missing configuration or entitlements
+      console.warn("expo-live-activity failed to load. Live Activities will not be available.", error);
+      this.moduleLoadFailed = true;
+      return null;
+    }
+  }
 
   /**
    * Check if Live Activities are supported on this device
    */
   isSupported(): boolean {
     if (Platform.OS !== "ios") {
+      return false;
+    }
+
+    // If module load failed, Live Activities are not supported
+    if (this.moduleLoadFailed) {
       return false;
     }
 
@@ -54,6 +97,13 @@ class LiveActivityService {
     }
 
     try {
+      // Dynamically load the module
+      const LiveActivity = await this.loadLiveActivityModule();
+      if (!LiveActivity) {
+        console.log("Live Activity module not available, skipping");
+        return;
+      }
+
       // Store project info and start time
       this.startTime = startedAt;
       this.projectInfo = {
@@ -78,7 +128,7 @@ class LiveActivityService {
       console.log("Live Activity started:", this.activityId);
     } catch (error) {
       console.error("Failed to start Live Activity:", error);
-      throw error;
+      // Don't re-throw - gracefully degrade to fallback notification
     }
   }
 
@@ -91,6 +141,12 @@ class LiveActivityService {
     }
 
     try {
+      // Get the module (should already be loaded from startActivity)
+      const LiveActivity = await this.loadLiveActivityModule();
+      if (!LiveActivity) {
+        return;
+      }
+
       const state = this.createActivityState(elapsedSeconds);
       await LiveActivity.updateActivity(this.activityId, state);
     } catch (error) {
@@ -107,6 +163,14 @@ class LiveActivityService {
     }
 
     try {
+      // Get the module (should already be loaded from startActivity)
+      const LiveActivity = await this.loadLiveActivityModule();
+      if (!LiveActivity) {
+        // Just clean up local state
+        this.cleanupActivity();
+        return;
+      }
+
       // Stop periodic updates
       if (this.updateInterval) {
         clearInterval(this.updateInterval);
@@ -121,12 +185,25 @@ class LiveActivityService {
       console.log("Live Activity stopped");
 
       // Clear stored data
-      this.activityId = null;
-      this.startTime = 0;
-      this.projectInfo = null;
+      this.cleanupActivity();
     } catch (error) {
       console.error("Failed to stop Live Activity:", error);
+      // Clean up anyway
+      this.cleanupActivity();
     }
+  }
+
+  /**
+   * Clean up activity state
+   */
+  private cleanupActivity(): void {
+    if (this.updateInterval) {
+      clearInterval(this.updateInterval);
+      this.updateInterval = null;
+    }
+    this.activityId = null;
+    this.startTime = 0;
+    this.projectInfo = null;
   }
 
   /**
