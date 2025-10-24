@@ -8,8 +8,9 @@
  * - Collapsible with smooth animation
  */
 import { useState, useMemo, useCallback } from "react";
-import { ChevronDown, Clock, DollarSign } from "lucide-react";
+import { ChevronDown, Clock } from "lucide-react";
 import { cn } from "../lib/utils";
+import { useCurrency } from "../hooks/useCurrency";
 
 export type TimePeriod = "day" | "week" | "month" | "year";
 
@@ -68,20 +69,12 @@ function formatDuration(seconds: number): string {
   return `${hours}h ${minutes}m`;
 }
 
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount);
-}
-
 export function TodaySummaryCard({
   entries,
   totalSeconds,
   entriesCount,
 }: TodaySummaryCardProps) {
+  const { formatCurrency } = useCurrency();
   const [isExpanded, setIsExpanded] = useState(false);
   const [timePeriod, setTimePeriod] = useState<TimePeriod>("week");
 
@@ -314,11 +307,8 @@ export function TodaySummaryCard({
 
           {/* Earnings */}
           <div className="text-center">
-            <div className="flex items-center justify-center gap-1">
-              <DollarSign className="w-5 h-5 text-green-600 dark:text-green-500" />
-              <div className="text-base font-bold text-green-600 dark:text-green-500">
-                {formatCurrency(todaysEarnings)}
-              </div>
+            <div className="text-base font-bold text-green-600 dark:text-green-500">
+              {formatCurrency(todaysEarnings)}
             </div>
             <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
               Earned Today
