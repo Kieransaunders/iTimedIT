@@ -17,12 +17,12 @@ import { calculateBudgetStatus } from "@/utils/budget";
 import { warningTap } from "@/utils/haptics";
 import { EmptyStateCard, WebAppPrompt, openWebApp, WorkspaceSwitcher } from "@/components";
 import { TipsBottomSheet, useTipsBottomSheet } from "@/components/common/TipsBottomSheet";
-import { FloatingActionButton } from "@/components/common/FloatingActionButton";
 import { WebTimerBadge } from "@/components/timer/WebTimerBadge";
 import { QuickActionMenu } from "@/components/common/QuickActionMenu";
 import { CreateProjectModal } from "@/components/projects/CreateProjectModal";
 import { CreateClientModal } from "@/components/clients/CreateClientModal";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { Clock, User, Briefcase } from "lucide-react-native";
 import { spacing, borderRadius } from "@/utils/theme";
 import React, { useEffect, useState, useMemo, useRef } from "react";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
@@ -194,7 +194,6 @@ export default function Index() {
   }, [runningTimer?.awaitingInterruptAck]);
 
   const isTimerRunning = runningTimer !== null;
-  const canStartTimer = !isTimerRunning && selectedProject !== null;
 
   const handleStartTimer = async () => {
     // Validate we have projects in the database
@@ -290,7 +289,6 @@ export default function Index() {
         {/* Large Timer Display - at top for visibility */}
         <View style={styles.timerDisplayContainer}>
           <View style={styles.timerHeader}>
-            <WorkspaceSwitcher style={styles.workspaceSwitcher} />
             <WebTimerBadge visible={(runningTimer as any)?.startedFrom === "web"} />
           </View>
           <LargeTimerDisplay
@@ -303,22 +301,35 @@ export default function Index() {
           />
         </View>
 
-        {/* Timer Controls - Start and Reset buttons */}
+        {/* Mode Toggle - Compact under timer (only show if Pomodoro is enabled in settings) */}
+        {userSettings?.pomodoroEnabled && (
+          <View style={styles.modeContainerCompact}>
+            <SegmentedModeToggle
+              mode={timerMode}
+              onModeChange={setTimerMode}
+              disabled={isTimerRunning}
+            />
+          </View>
+        )}
+
+        {/* Timer Controls - Stop and Reset buttons (only visible when timer is running) */}
         <TimerControls
           isRunning={isTimerRunning}
-          onStart={handleStartTimer}
           onStop={handleStopTimer}
           onReset={handleResetTimer}
-          disabled={!canStartTimer && !isTimerRunning}
           loading={isStarting || isStopping}
-          projectColor={
-            (runningTimer?.project || selectedProject)?.client?.color ||
-            (runningTimer?.project || selectedProject)?.color
-          }
         />
 
-        {/* Project Carousels - Sliding panels like web dashboard */}
-        {projects.length > 0 ? (
+        {/* Today's Summary Card - Collapsible at top */}
+        <TodaySummaryCard
+          todaysTotalSeconds={elapsedTime}
+          entriesCount={0}
+          topProject={selectedProject}
+          todaysEarnings={0}
+        />
+
+        {/* Project Carousels - Only show when timer is NOT running */}
+        {!isTimerRunning && projects.length > 0 ? (
           <>
             {/* Recent Projects Carousel */}
             {recentProjects.length > 0 && (
@@ -327,6 +338,8 @@ export default function Index() {
                 selectedProject={selectedProject}
                 onSelectProject={setSelectedProject}
                 onToggleFavorite={toggleFavorite}
+                onAddPress={() => setShowQuickMenu(true)}
+                isTimerRunning={isTimerRunning}
                 onQuickStart={async (project) => {
                   setSelectedProject(project);
                   // Auto-start timer immediately when project card is pressed
@@ -344,7 +357,8 @@ export default function Index() {
                   }
                 }}
                 isFavorite={isFavorite}
-                sectionTitle="⚡ Recent Projects"
+                sectionTitle="Recent Projects"
+                sectionIcon={Clock}
               />
             )}
 
@@ -355,6 +369,8 @@ export default function Index() {
                 selectedProject={selectedProject}
                 onSelectProject={setSelectedProject}
                 onToggleFavorite={toggleFavorite}
+                onAddPress={() => setShowQuickMenu(true)}
+                isTimerRunning={isTimerRunning}
                 onQuickStart={async (project) => {
                   setSelectedProject(project);
                   // Auto-start timer immediately when project card is pressed
@@ -372,17 +388,20 @@ export default function Index() {
                   }
                 }}
                 isFavorite={isFavorite}
-                sectionTitle="👤 Personal Projects"
+                sectionTitle="Personal Projects"
+                sectionIcon={User}
               />
             )}
 
-            {/* Work Projects Carousel */}
+            {/* All Projects Carousel */}
             {workProjects.length > 0 && (
               <ProjectCarousel
                 projects={workProjects}
                 selectedProject={selectedProject}
                 onSelectProject={setSelectedProject}
                 onToggleFavorite={toggleFavorite}
+                onAddPress={() => setShowQuickMenu(true)}
+                isTimerRunning={isTimerRunning}
                 onQuickStart={async (project) => {
                   setSelectedProject(project);
                   // Auto-start timer immediately when project card is pressed
@@ -400,12 +419,15 @@ export default function Index() {
                   }
                 }}
                 isFavorite={isFavorite}
-                sectionTitle="💼 Work Projects"
+                sectionTitle="All Projects"
+                sectionIcon={Briefcase}
               />
             )}
           </>
-        ) : (
-          /* Show empty state hint if no projects exist */
+        ) : null}
+
+        {/* Show empty state hint if no projects exist and timer is not running */}
+        {!isTimerRunning && projects.length === 0 && (
           <View style={styles.emptyStateContainer}>
             <View style={[styles.emptyStateHint, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <MaterialCommunityIcons name="folder-plus-outline" size={32} color={colors.primary} />
@@ -414,52 +436,16 @@ export default function Index() {
                   No projects yet
                 </Text>
                 <Text style={[styles.emptyStateDescription, { color: colors.textSecondary }]}>
-                  Create your first project to start tracking time. Tap the + button below to get started!
+                  Create your first project to start tracking time. Use the + button in section headers to get started!
                 </Text>
               </View>
             </View>
           </View>
         )}
-
-        {/* Mode Toggle and Change Sound Button */}
-        <View style={styles.modeContainer}>
-          <SegmentedModeToggle
-            mode={timerMode}
-            onModeChange={setTimerMode}
-            disabled={isTimerRunning}
-          />
-          {/* TODO: Add Change Sound button */}
-        </View>
-
-        {/* Category Selector - below mode toggle */}
-        <View style={styles.selectorContainer}>
-          <View style={styles.categoryHeader}>
-            <Text style={[styles.categoryLabel, { color: colors.textPrimary }]}>Category</Text>
-            <TouchableOpacity onPress={() => {/* TODO: Navigate to category management */}}>
-              <Text style={[styles.manageLink, { color: colors.error }]}>Manage</Text>
-            </TouchableOpacity>
-          </View>
-          <CategorySelector
-            selectedCategory={selectedCategory}
-            onSelect={setSelectedCategory}
-            disabled={isTimerRunning}
-            containerStyle={styles.categoryDropdown}
-          />
-        </View>
-
-        {/* Today's Summary Card - At bottom, dimmed */}
-        <View style={styles.summaryContainer}>
-          <TodaySummaryCard
-            todaysTotalSeconds={elapsedTime}
-            entriesCount={0}
-            topProject={selectedProject}
-            todaysEarnings={0}
-          />
-        </View>
       </ScrollView>
 
-      {/* Tips Button - Replaces fixed footer */}
-      <View style={[styles.tipsButtonContainer, { backgroundColor: colors.background }]}>
+      {/* Tips Button - Bottom left */}
+      <View style={[styles.tipsButtonContainer, { backgroundColor: 'transparent' }]}>
         <TouchableOpacity
           onPress={() => setShowTipsSheet(true)}
           style={[styles.tipsButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
@@ -469,6 +455,11 @@ export default function Index() {
         >
           <Text style={[styles.tipsButtonText, { color: colors.textSecondary }]}>💡 Tips</Text>
         </TouchableOpacity>
+      </View>
+
+      {/* Floating Workspace Switcher - Bottom right */}
+      <View style={[styles.floatingWorkspace, { backgroundColor: 'transparent' }]}>
+        <WorkspaceSwitcher style={styles.workspaceSwitcherFloating} />
       </View>
 
       {/* Tips Bottom Sheet */}
@@ -493,8 +484,6 @@ export default function Index() {
         gracePeriodSeconds={userSettings?.gracePeriod ?? 60}
       />
 
-      {/* Floating Action Button */}
-      <FloatingActionButton onPress={() => setShowQuickMenu(true)} />
 
       {/* Quick Action Menu */}
       <QuickActionMenu
@@ -556,44 +545,23 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingVertical: spacing.lg,
-  },
-  selectorContainer: {
-    paddingHorizontal: spacing.lg,
-    marginBottom: spacing.md,
-  },
-  modeContainer: {
-    paddingHorizontal: spacing.lg,
-    marginBottom: spacing.lg,
-  },
-  categoryHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: spacing.sm,
-  },
-  categoryLabel: {
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  manageLink: {
-    fontSize: 14,
-    textDecorationLine: "underline",
-  },
-  categoryDropdown: {
-    marginBottom: 0,
+    paddingVertical: spacing.md,
+    paddingBottom: 80, // Extra padding for floating buttons
   },
   timerDisplayContainer: {
     paddingHorizontal: spacing.lg,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.xs,
+  },
+  modeContainerCompact: {
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+    alignItems: "center",
+    transform: [{ scale: 0.85 }], // Make it smaller
   },
   timerHeader: {
     alignItems: "center",
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
     gap: spacing.sm,
-  },
-  workspaceSwitcher: {
-    alignSelf: "center",
   },
   emptyStateContainer: {
     paddingHorizontal: spacing.lg,
@@ -621,26 +589,38 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   tipsButtonContainer: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: "rgba(0,0,0,0.05)",
+    position: "absolute",
+    bottom: spacing.md,
+    left: spacing.md,
+    zIndex: 100,
+  },
+  floatingWorkspace: {
+    position: "absolute",
+    bottom: spacing.md,
+    right: spacing.md,
+    zIndex: 100,
+  },
+  workspaceSwitcherFloating: {
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
   tipsButton: {
-    paddingVertical: spacing.xs,
+    paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.full,
     borderWidth: 1,
     alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
   tipsButtonText: {
     fontSize: 12,
     fontWeight: "500",
-  },
-  summaryContainer: {
-    opacity: 0.5,
-    paddingHorizontal: spacing.lg,
-    marginTop: spacing.xl,
-    marginBottom: spacing.md,
   },
 });

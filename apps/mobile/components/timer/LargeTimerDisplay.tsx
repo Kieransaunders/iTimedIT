@@ -247,7 +247,7 @@ const styles = StyleSheet.create({
   container: {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 40,
+    paddingVertical: 20,
   },
   timer: {
     fontWeight: "700",
@@ -266,7 +266,7 @@ const styles = StyleSheet.create({
     }),
   },
   projectInfo: {
-    marginTop: 16,
+    marginTop: 12,
     alignItems: "center",
   },
   projectName: {
@@ -281,7 +281,7 @@ const styles = StyleSheet.create({
   },
   startedText: {
     fontSize: 14,
-    marginTop: 8,
+    marginTop: 6,
     textAlign: "center",
     fontWeight: "500",
   },

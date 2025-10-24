@@ -53,14 +53,6 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="workspace"
-        options={{
-          title: "Workspace",
-          tabBarLabel: "Workspace",
-          tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="swap-horizontal" color={color} size={size} />,
-        }}
-      />
-      <Tabs.Screen
         name="entries"
         options={{
           title: "Entries",
@@ -74,6 +66,13 @@ export default function TabLayout() {
           title: "Settings",
           tabBarLabel: "Settings",
           tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="cog" color={color} size={size} />,
+        }}
+      />
+      {/* Workspace tab removed - workspace switcher now in settings tab */}
+      <Tabs.Screen
+        name="workspace"
+        options={{
+          href: null, // Hide from tab bar but keep route available
         }}
       />
       {/* Projects tab removed - project creation now available inline from timer screen */}

@@ -88,10 +88,9 @@ const CUSTOM_SOUNDS_DIR = `${FileSystem.documentDirectory}sounds/`;
 
 export interface SoundPreferences {
   enabled: boolean;
-  breakStartSound: string;
-  breakEndSound: string;
-  interruptSound: string;
-  overrunSound: string;
+  timerAlertSound: string; // Used for both interrupts and break start
+  breakEndSound: string;   // Only used when Pomodoro is enabled
+  overrunSound: string;    // Used for budget overrun alerts
 }
 
 export interface CustomSound {
@@ -104,9 +103,8 @@ class SoundManager {
   private sound: Audio.Sound | null = null;
   private preferences: SoundPreferences = {
     enabled: true,
-    breakStartSound: 'marimba',
+    timerAlertSound: 'times-up',
     breakEndSound: 'nailed-it',
-    interruptSound: 'times-up',
     overrunSound: 'alert',
   };
   private customSounds: CustomSound[] = [];
@@ -143,7 +141,21 @@ class SoundManager {
     try {
       const stored = await AsyncStorage.getItem(STORAGE_KEY);
       if (stored) {
-        this.preferences = JSON.parse(stored);
+        const parsed = JSON.parse(stored);
+
+        // Migrate from old format (breakStartSound + interruptSound) to new format (timerAlertSound)
+        if ('breakStartSound' in parsed || 'interruptSound' in parsed) {
+          this.preferences = {
+            enabled: parsed.enabled ?? true,
+            timerAlertSound: parsed.interruptSound || parsed.breakStartSound || 'times-up',
+            breakEndSound: parsed.breakEndSound || 'nailed-it',
+            overrunSound: parsed.overrunSound || 'alert',
+          };
+          // Save migrated preferences
+          await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(this.preferences));
+        } else {
+          this.preferences = parsed;
+        }
       }
     } catch (error) {
       console.error('Failed to load sound preferences:', error);
@@ -232,9 +244,8 @@ class SoundManager {
       // If this sound was selected in preferences, reset to default
       const prefs = this.getPreferences();
       const updates: Partial<SoundPreferences> = {};
-      if (prefs.breakStartSound === id) updates.breakStartSound = 'marimba';
+      if (prefs.timerAlertSound === id) updates.timerAlertSound = 'times-up';
       if (prefs.breakEndSound === id) updates.breakEndSound = 'nailed-it';
-      if (prefs.interruptSound === id) updates.interruptSound = 'times-up';
       if (prefs.overrunSound === id) updates.overrunSound = 'alert';
 
       if (Object.keys(updates).length > 0) {
@@ -298,9 +309,9 @@ class SoundManager {
     }
   }
 
-  // Play break start sound
+  // Play break start sound (uses timer alert sound)
   async playBreakStart(): Promise<void> {
-    await this.playSound(this.preferences.breakStartSound);
+    await this.playSound(this.preferences.timerAlertSound);
   }
 
   // Play break end sound
@@ -308,9 +319,9 @@ class SoundManager {
     await this.playSound(this.preferences.breakEndSound);
   }
 
-  // Play interrupt sound
+  // Play interrupt sound (uses timer alert sound)
   async playInterrupt(): Promise<void> {
-    await this.playSound(this.preferences.interruptSound);
+    await this.playSound(this.preferences.timerAlertSound);
   }
 
   // Play overrun sound

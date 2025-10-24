@@ -28,9 +28,10 @@ import Toast from "react-native-toast-message";
 import { useAuth } from "@/hooks/useAuth";
 import { getUserDisplayName, getUserInitials, getUserEmail, isAnonymousUser } from "@/utils/userUtils";
 import { useRouter } from "expo-router";
-import { OrganizationSelector, openWebApp } from "@/components";
+import { OrganizationSelector, openWebApp, WorkspaceSwitcher } from "@/components";
+import { useOrganization } from "@/contexts/OrganizationContext";
 
-type SoundType = 'breakStart' | 'breakEnd' | 'interrupt' | 'overrun';
+type SoundType = 'timerAlert' | 'breakEnd' | 'overrun';
 
 // Preset intervals in minutes
 const INTERRUPT_INTERVALS = [
@@ -65,16 +66,16 @@ export default function SettingsScreen() {
   const router = useRouter();
   const { colors } = useTheme();
   const currentMembership = useQuery(api.organizations.currentMembership);
+  const { currentWorkspace, activeOrganization } = useOrganization();
 
   const [preferences, setPreferences] = useState<SoundPreferences>({
     enabled: true,
-    breakStartSound: 'marimba',
+    timerAlertSound: 'times-up',
     breakEndSound: 'nailed-it',
-    interruptSound: 'times-up',
     overrunSound: 'alert',
   });
   const [modalVisible, setModalVisible] = useState(false);
-  const [selectedSoundType, setSelectedSoundType] = useState<SoundType>('breakStart');
+  const [selectedSoundType, setSelectedSoundType] = useState<SoundType>('timerAlert');
 
   const handleSignOut = () => {
     Alert.alert("Sign Out", "Are you sure you want to sign out?", [
@@ -215,12 +216,10 @@ export default function SettingsScreen() {
 
   const getModalTitle = (): string => {
     switch (selectedSoundType) {
-      case 'breakStart':
-        return 'Break Start Sound';
+      case 'timerAlert':
+        return 'Timer Alert Sound';
       case 'breakEnd':
         return 'Break End Sound';
-      case 'interrupt':
-        return 'Timer Interrupt Sound';
       case 'overrun':
         return 'Overrun Alert Sound';
     }
@@ -410,50 +409,53 @@ export default function SettingsScreen() {
                 Org ID: {currentMembership.organization._id}
               </Text>
             )}
-
-            {/* Advanced Settings Link */}
-            <TouchableOpacity
-              onPress={() => openWebApp('/settings')}
-              style={[styles.advancedSettingsButton, { backgroundColor: colors.surface, borderColor: colors.primary }]}
-            >
-              <Ionicons name="settings-outline" size={20} color={colors.primary} />
-              <Text style={[styles.advancedSettingsButtonText, { color: colors.primary }]}>
-                Advanced Settings
-              </Text>
-              <Ionicons name="open-outline" size={16} color={colors.primary} />
-            </TouchableOpacity>
-            <Text style={[styles.advancedSettingsDescription, { color: colors.textSecondary }]}>
-              Quiet hours, email/SMS alerts, team management, and more
-            </Text>
-
-            <TouchableOpacity
-              onPress={handleSignOut}
-              style={[styles.signOutButton, { backgroundColor: colors.error }]}
-            >
-              <Text style={styles.signOutButtonText}>
-                {isAnonymousUser(user) ? 'Exit Guest Mode' : 'Sign Out'}
-              </Text>
-            </TouchableOpacity>
           </View>
         )}
 
         <Text style={[styles.title, { color: colors.textPrimary }]}>Settings</Text>
 
-        {/* Organization Settings Section */}
+        {/* Workspace Settings Section */}
         <View style={[styles.section, { backgroundColor: colors.surface }]}>
           <View style={[styles.sectionHeader, { borderBottomColor: colors.border }]}>
             <Ionicons name="business-outline" size={24} color={colors.primary} />
-            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Organization</Text>
+            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Workspace</Text>
           </View>
 
-          <View style={[styles.settingItem, { borderBottomColor: colors.border }]}>
-            <View style={styles.settingInfo}>
-              <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>Current Organization</Text>
-              <OrganizationSelector 
-                showLabel={false}
-                compact={true}
-                style={{ marginTop: 8 }}
-              />
+          <View style={styles.settingInfo}>
+            <Text style={[styles.settingDescription, { color: colors.textSecondary, marginBottom: 16 }]}>
+              Switch between your personal and team workspaces
+            </Text>
+
+            <View style={[styles.workspaceSwitcherContainer, { marginBottom: 16 }]}>
+              <WorkspaceSwitcher />
+            </View>
+
+            {/* Current Workspace Info */}
+            <View style={[styles.workspaceInfoCard, { backgroundColor: colors.background, borderColor: colors.border, marginBottom: 12 }]}>
+              <Text style={[styles.workspaceInfoLabel, { color: colors.textSecondary }]}>CURRENT WORKSPACE</Text>
+              <Text style={[styles.workspaceInfoValue, { color: colors.textPrimary }]}>
+                {currentWorkspace === "personal" ? "Personal" : "Team"}
+              </Text>
+            </View>
+
+            {currentWorkspace === "work" && activeOrganization && (
+              <View style={[styles.workspaceInfoCard, { backgroundColor: colors.background, borderColor: colors.border, marginBottom: 12 }]}>
+                <Text style={[styles.workspaceInfoLabel, { color: colors.textSecondary }]}>ORGANIZATION</Text>
+                <Text style={[styles.workspaceInfoValue, { color: colors.textPrimary }]}>
+                  {activeOrganization.name}
+                </Text>
+              </View>
+            )}
+
+            {/* Workspace Descriptions */}
+            <View style={[styles.workspaceDescriptionContainer, { marginTop: 8 }]}>
+              <Text style={[styles.workspaceDescriptionTitle, { color: colors.textPrimary }]}>About Workspaces</Text>
+              <Text style={[styles.settingDescription, { color: colors.textSecondary, marginTop: 8 }]}>
+                <Text style={{ fontWeight: '600', color: colors.textPrimary }}>Personal Workspace:</Text> Your private workspace for individual projects and time tracking.
+              </Text>
+              <Text style={[styles.settingDescription, { color: colors.textSecondary, marginTop: 8 }]}>
+                <Text style={{ fontWeight: '600', color: colors.textPrimary }}>Team Workspace:</Text> Collaborate with your team members on shared projects and track time together.
+              </Text>
             </View>
           </View>
         </View>
@@ -481,23 +483,23 @@ export default function SettingsScreen() {
             />
           </View>
 
-          {/* Break Start Sound */}
+          {/* Timer Alert Sound */}
           <View style={[styles.settingItem, { borderBottomColor: colors.border }]}>
             <View style={styles.settingInfo}>
-              <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>Break Start Sound</Text>
+              <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>Timer Alert Sound</Text>
               <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
-                {getSoundName(preferences.breakStartSound)}
+                {getSoundName(preferences.timerAlertSound)}
               </Text>
             </View>
             <View style={styles.settingActions}>
               <TouchableOpacity
-                onPress={() => playTestSound(preferences.breakStartSound)}
+                onPress={() => playTestSound(preferences.timerAlertSound)}
                 style={styles.iconButton}
               >
                 <Ionicons name="play-circle-outline" size={24} color={colors.primary} />
               </TouchableOpacity>
               <TouchableOpacity
-                onPress={() => openSoundModal('breakStart')}
+                onPress={() => openSoundModal('timerAlert')}
                 style={styles.iconButton}
               >
                 <Ionicons name="chevron-forward" size={24} color={colors.textSecondary} />
@@ -505,53 +507,31 @@ export default function SettingsScreen() {
             </View>
           </View>
 
-          {/* Break End Sound */}
-          <View style={[styles.settingItem, { borderBottomColor: colors.border }]}>
-            <View style={styles.settingInfo}>
-              <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>Break End Sound</Text>
-              <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
-                {getSoundName(preferences.breakEndSound)}
-              </Text>
+          {/* Break End Sound - Only show when Pomodoro is enabled */}
+          {pomodoroEnabled && (
+            <View style={[styles.settingItem, { borderBottomColor: colors.border }]}>
+              <View style={styles.settingInfo}>
+                <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>Break End Sound</Text>
+                <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
+                  {getSoundName(preferences.breakEndSound)}
+                </Text>
+              </View>
+              <View style={styles.settingActions}>
+                <TouchableOpacity
+                  onPress={() => playTestSound(preferences.breakEndSound)}
+                  style={styles.iconButton}
+                >
+                  <Ionicons name="play-circle-outline" size={24} color={colors.primary} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => openSoundModal('breakEnd')}
+                  style={styles.iconButton}
+                >
+                  <Ionicons name="chevron-forward" size={24} color={colors.textSecondary} />
+                </TouchableOpacity>
+              </View>
             </View>
-            <View style={styles.settingActions}>
-              <TouchableOpacity
-                onPress={() => playTestSound(preferences.breakEndSound)}
-                style={styles.iconButton}
-              >
-                <Ionicons name="play-circle-outline" size={24} color={colors.primary} />
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => openSoundModal('breakEnd')}
-                style={styles.iconButton}
-              >
-                <Ionicons name="chevron-forward" size={24} color={colors.textSecondary} />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Timer Interrupt Sound */}
-          <View style={[styles.settingItem, { borderBottomColor: colors.border }]}>
-            <View style={styles.settingInfo}>
-              <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>Timer Interrupt Sound</Text>
-              <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
-                {getSoundName(preferences.interruptSound)}
-              </Text>
-            </View>
-            <View style={styles.settingActions}>
-              <TouchableOpacity
-                onPress={() => playTestSound(preferences.interruptSound)}
-                style={styles.iconButton}
-              >
-                <Ionicons name="play-circle-outline" size={24} color={colors.primary} />
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => openSoundModal('interrupt')}
-                style={styles.iconButton}
-              >
-                <Ionicons name="chevron-forward" size={24} color={colors.textSecondary} />
-              </TouchableOpacity>
-            </View>
-          </View>
+          )}
 
           {/* Overrun Alert Sound */}
           <View style={[styles.settingItem, { borderBottomColor: colors.border }]}>
@@ -810,6 +790,20 @@ export default function SettingsScreen() {
             <Ionicons name="chevron-forward" size={24} color={colors.textSecondary} />
           </TouchableOpacity>
         </View>
+
+        {/* Sign Out Button */}
+        {user && (
+          <View style={styles.signOutSection}>
+            <TouchableOpacity
+              onPress={handleSignOut}
+              style={[styles.signOutButton, { backgroundColor: colors.error }]}
+            >
+              <Text style={styles.signOutButtonText}>
+                {isAnonymousUser(user) ? 'Exit Guest Mode' : 'Sign Out'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </ScrollView>
 
       {/* Sound Selection Modal */}
@@ -1041,10 +1035,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     borderBottomWidth: 1,
   },
-    deleteButtonText: {
-      color: '#FFFFFF',
-      fontWeight: '600',
-    },
+  modalItemText: {
+    fontSize: 16,
+  },
+  deleteButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
     profileSection: {
       alignItems: 'center',
       paddingVertical: 32,
@@ -1094,15 +1091,48 @@ const styles = StyleSheet.create({
       paddingHorizontal: 16,
       lineHeight: 18,
     },
+    signOutSection: {
+      marginTop: spacing.xl,
+      paddingTop: spacing.xl,
+      alignItems: 'center',
+    },
     signOutButton: {
-      marginTop: 12,
-      paddingHorizontal: 24,
-      paddingVertical: 12,
+      paddingHorizontal: 48,
+      paddingVertical: 14,
       borderRadius: 8,
+      minWidth: 200,
+      alignItems: 'center',
     },
     signOutButtonText: {
       color: 'white',
       fontWeight: '600',
       fontSize: 16,
+    },
+    workspaceSwitcherContainer: {
+      alignItems: 'center',
+      paddingVertical: spacing.md,
+    },
+    workspaceInfoCard: {
+      padding: spacing.lg,
+      borderRadius: 8,
+      borderWidth: 1,
+      gap: 4,
+    },
+    workspaceInfoLabel: {
+      fontSize: 12,
+      fontWeight: '600',
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+    },
+    workspaceInfoValue: {
+      fontSize: 18,
+      fontWeight: '600',
+    },
+    workspaceDescriptionContainer: {
+      gap: spacing.xs,
+    },
+    workspaceDescriptionTitle: {
+      fontSize: 16,
+      fontWeight: '600',
     },
   });

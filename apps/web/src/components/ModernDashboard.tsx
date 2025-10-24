@@ -1,17 +1,17 @@
 /**
  * ModernDashboard - ACTIVE MAIN TIMER INTERFACE
- * 
+ *
  * This is the primary timer interface that users interact with in the application.
  * Used in: App.tsx (line 198) as the main dashboard component
- * 
+ *
  * Key Features:
  * - Modern purple gradient design with large timer display
  * - Project selection with client/project cards
- * - Timer start/stop functionality with category selection
+ * - Timer start/stop functionality
  * - Push notifications for interrupts and alerts
  * - Budget tracking and warnings
  * - Recent entries and project KPIs
- * 
+ *
  * DO NOT confuse with TimerCard.tsx - that component is unused legacy code.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -117,11 +117,7 @@ export function ModernDashboard({
   const [showInterruptModal, setShowInterruptModal] = useState(false);
   const [showProjectSwitchModal, setShowProjectSwitchModal] = useState(false);
   const [pendingProjectId, setPendingProjectId] = useState<Id<"projects"> | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState("");
-  const [showCategoryManager, setShowCategoryManager] = useState(false);
-  const [newCategoryName, setNewCategoryName] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
-  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [showCreateProject, setShowCreateProject] = useState(false);
   const [showCreateClient, setShowCreateClient] = useState(false);
@@ -145,12 +141,10 @@ export function ModernDashboard({
     date: new Date().toISOString().split('T')[0],
     startTime: '09:00',
     endTime: '10:00',
-    note: '',
-    category: ''
+    note: ''
   });
   const [isSubmittingManualEntry, setIsSubmittingManualEntry] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const categoryDropdownRef = useRef<HTMLDivElement>(null);
   const projectScrollRef = useRef<HTMLDivElement>(null);
 
   // Use appropriate API based on workspace type
@@ -167,10 +161,6 @@ export function ModernDashboard({
   const resetTimer = useMutation(api.timer.reset);
   const heartbeat = useMutation(api.timer.heartbeat);
   const requestInterrupt = useMutation(api.timer.requestInterrupt);
-  const categories = useQuery(api.categories.getCategories);
-  const initializeCategories = useMutation(api.categories.initializeDefaultCategories);
-  const createCategory = useMutation(api.categories.createCategory);
-  const deleteCategory = useMutation(api.categories.deleteCategory);
   const projectStats = useQuery(
     currentWorkspace === "personal" 
       ? api.personalProjects.getStatsPersonal
@@ -305,30 +295,6 @@ export function ModernDashboard({
       }
     }
   }, [runningTimer?.awaitingInterruptAck, soundPreferenceEnabled, userSettings?.notificationSound]);
-
-  // Initialize categories on first load
-  useEffect(() => {
-    if (categories?.length === 0) {
-      initializeCategories();
-    }
-  }, [categories, initializeCategories]);
-
-  // Set default category when categories are loaded
-  useEffect(() => {
-    if (categories && categories.length > 0 && !selectedCategory) {
-      const defaultCategory = categories.find(cat => cat.isDefault);
-      if (defaultCategory) {
-        setSelectedCategory(defaultCategory.name);
-      }
-    }
-  }, [categories]);
-
-  // Update selected category when timer is running
-  useEffect(() => {
-    if (runningTimer?.category) {
-      setSelectedCategory(runningTimer.category);
-    }
-  }, [runningTimer?.category]);
 
   // Update timer mode when timer is running
   useEffect(() => {
@@ -645,12 +611,11 @@ export function ModernDashboard({
       await ensurePushRegistered(true);
       await startTimer({
         projectId: currentProject._id,
-        category: selectedCategory || undefined,
         pomodoroEnabled: timerMode === "pomodoro",
         startedFrom: "web"
       });
     }
-  }, [currentProject, timerState.running, startTimer, stopTimer, ensurePushRegistered, selectedCategory, timerMode, primeSoundIfEnabled]);
+  }, [currentProject, timerState.running, startTimer, stopTimer, ensurePushRegistered, timerMode, primeSoundIfEnabled]);
 
   const switchProject = useCallback(async (projectId: Id<"projects">) => {
     if (projectId === currentProjectId) return;
@@ -665,12 +630,11 @@ export function ModernDashboard({
       await ensurePushRegistered(true);
       await startTimer({
         projectId,
-        category: selectedCategory || undefined,
         pomodoroEnabled: timerMode === "pomodoro",
         startedFrom: "web"
       });
     }
-  }, [currentProjectId, timerState.running, ensurePushRegistered, startTimer, selectedCategory, timerMode, primeSoundIfEnabled]);
+  }, [currentProjectId, timerState.running, ensurePushRegistered, startTimer, timerMode, primeSoundIfEnabled]);
 
   const handleStopAndSwitch = useCallback(async () => {
     if (!pendingProjectId) return;
@@ -680,13 +644,12 @@ export function ModernDashboard({
     await ensurePushRegistered(false);
     await startTimer({
       projectId: pendingProjectId,
-      category: selectedCategory || undefined,
       pomodoroEnabled: timerMode === "pomodoro",
       startedFrom: "web"
     });
     setShowProjectSwitchModal(false);
     setPendingProjectId(null);
-  }, [pendingProjectId, stopTimer, ensurePushRegistered, startTimer, selectedCategory, timerMode, primeSoundIfEnabled]);
+  }, [pendingProjectId, stopTimer, ensurePushRegistered, startTimer, timerMode, primeSoundIfEnabled]);
 
   const transferTimerToProject = useCallback(async (projectId: Id<"projects">) => {
     await stopTimer();
@@ -694,11 +657,10 @@ export function ModernDashboard({
     await ensurePushRegistered(false);
     await startTimer({
       projectId,
-      category: selectedCategory || undefined,
       pomodoroEnabled: timerMode === "pomodoro",
       startedFrom: "web"
     });
-  }, [stopTimer, startTimer, ensurePushRegistered, selectedCategory, timerMode]);
+  }, [stopTimer, startTimer, ensurePushRegistered, timerMode]);
 
   const handleTransferTimer = useCallback(async () => {
     if (!pendingProjectId) return;
@@ -706,38 +668,6 @@ export function ModernDashboard({
     setShowProjectSwitchModal(false);
     setPendingProjectId(null);
   }, [pendingProjectId, transferTimerToProject]);
-
-  const handleAddCategory = useCallback(async () => {
-    if (!newCategoryName.trim()) return;
-    const categoryName = newCategoryName.trim();
-    try {
-      await createCategory({ name: categoryName });
-      setNewCategoryName("");
-      setSelectedCategory(categoryName);
-      setShowCategoryManager(false);
-      toast.success(`Category "${categoryName}" added and selected`);
-    } catch (error) {
-      toast.error("Failed to add category");
-    }
-  }, [newCategoryName, createCategory]);
-
-  const handleDeleteCategory = useCallback(async (categoryId: string, categoryName: string) => {
-    if (categoryName === "General") {
-      toast.error("Cannot delete the General category");
-      return;
-    }
-    try {
-      await deleteCategory({ categoryId });
-      toast.success(`Category "${categoryName}" deleted`);
-      // Reset selected category if it was deleted
-      if (selectedCategory === categoryName) {
-        const generalCategory = categories?.find(cat => cat.name === "General");
-        setSelectedCategory(generalCategory?.name || "");
-      }
-    } catch (error) {
-      toast.error("Failed to delete category");
-    }
-  }, [deleteCategory, selectedCategory, categories]);
 
   const handleCancelSwitch = useCallback(() => {
     setShowProjectSwitchModal(false);
@@ -858,17 +788,15 @@ export function ModernDashboard({
         projectId: currentProject._id,
         startedAt: startDateTime.getTime(),
         stoppedAt: endDateTime.getTime(),
-        note: manualEntryForm.note || undefined,
-        category: manualEntryForm.category || undefined
+        note: manualEntryForm.note || undefined
       });
-      
+
       setShowManualEntryDialog(false);
       setManualEntryForm({
         date: new Date().toISOString().split('T')[0],
         startTime: '09:00',
         endTime: '10:00',
-        note: '',
-        category: ''
+        note: ''
       });
       
       const duration = Math.round((endDateTime.getTime() - startDateTime.getTime()) / (1000 * 60));
@@ -898,23 +826,6 @@ export function ModernDashboard({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [showDropdown]);
-
-  // Close category dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(event.target as Node)) {
-        setShowCategoryDropdown(false);
-      }
-    };
-
-    if (showCategoryDropdown) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [showCategoryDropdown]);
 
   useEffect(() => {
     if (!pushSwitchRequest) {
@@ -1481,48 +1392,50 @@ export function ModernDashboard({
           </div>
         </div>
 
-        {/* Timer Mode Toggle */}
-        <div className="flex justify-center mb-4">
-          <div className="bg-white/70 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-300/50 dark:border-gray-700/50 rounded-xl p-1 shadow-lg flex gap-2">
-            <div className="flex gap-1">
-              <button
-                onClick={() => setTimerMode("normal")}
-                disabled={timerState.running}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                  timerMode === "normal"
-                    ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
-                    : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
-                } ${timerState.running ? "opacity-50 cursor-not-allowed" : ""}`}
-              >
-                Normal
-              </button>
-              <button
-                onClick={() => setTimerMode("pomodoro")}
-                disabled={timerState.running}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                  timerMode === "pomodoro"
-                    ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
-                    : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
-                } ${timerState.running ? "opacity-50 cursor-not-allowed" : ""}`}
-              >
-                Pomodoro
-              </button>
-            </div>
-            <div className="flex items-center gap-2">
-              <SoundSelectionModal
-                onSelect={(sound) => {
-                  updateUserSettings({ notificationSound: sound });
-                }}
-                currentSound={userSettings?.notificationSound || ""}
-              />
-              {!soundPreferenceEnabled && (
-                <span className="text-xs text-amber-600 dark:text-amber-400">
-                  (Sounds disabled - enable in Settings)
-                </span>
-              )}
+        {/* Timer Mode Toggle - Only show if Pomodoro is enabled in settings */}
+        {userSettings?.pomodoroEnabled && (
+          <div className="flex justify-center mb-4">
+            <div className="bg-white/70 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-300/50 dark:border-gray-700/50 rounded-xl p-1 shadow-lg flex gap-2">
+              <div className="flex gap-1">
+                <button
+                  onClick={() => setTimerMode("normal")}
+                  disabled={timerState.running}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                    timerMode === "normal"
+                      ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
+                      : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
+                  } ${timerState.running ? "opacity-50 cursor-not-allowed" : ""}`}
+                >
+                  Normal
+                </button>
+                <button
+                  onClick={() => setTimerMode("pomodoro")}
+                  disabled={timerState.running}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                    timerMode === "pomodoro"
+                      ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
+                      : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
+                  } ${timerState.running ? "opacity-50 cursor-not-allowed" : ""}`}
+                >
+                  Pomodoro
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <SoundSelectionModal
+                  onSelect={(sound) => {
+                    updateUserSettings({ notificationSound: sound });
+                  }}
+                  currentSound={userSettings?.notificationSound || ""}
+                />
+                {!soundPreferenceEnabled && (
+                  <span className="text-xs text-amber-600 dark:text-amber-400">
+                    (Sounds disabled - enable in Settings)
+                  </span>
+                )}
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Timer Display */}
         <div className="flex flex-col items-center justify-center gap-4 mb-6 sm:mb-8">
@@ -1674,133 +1587,36 @@ export function ModernDashboard({
           </div>
         )}
 
-        {/* Category Selection */}
-        {!timerState.running && (
-          <div className="mb-6 sm:mb-8 w-full max-w-sm sm:max-w-md lg:max-w-lg">
-            <div className="flex items-center justify-between mb-2">
-              <label htmlFor="category" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Category
-              </label>
-              <button
-                onClick={() => setShowCategoryManager(!showCategoryManager)}
-                className="text-xs text-[#F85E00] hover:text-[#d14e00] underline"
-              >
-                {showCategoryManager ? 'Hide' : 'Manage'}
-              </button>
-            </div>
-            <div className="w-full relative" ref={categoryDropdownRef}>
-              <div 
-                className="bg-white/70 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-300/50 dark:border-gray-700/50 rounded-xl p-4 shadow-lg cursor-pointer"
-                onClick={() => setShowCategoryDropdown(!showCategoryDropdown)}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="text-gray-900 dark:text-white font-medium">
-                      {selectedCategory || "Select a category..."}
+        {/* Recent Work Projects Slider - Only when timer is not running */}
+        {!timerState.running && workProjects.length > 0 && (
+          <div className="mb-6 sm:mb-8 w-full max-w-4xl">
+            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 px-4">Recent Work Projects</h3>
+            <div className="relative">
+              <div className="flex gap-3 sm:gap-4 overflow-x-auto scroll-smooth pb-2 px-4">
+                {workProjects.slice(0, 3).map((project) => (
+                  <div
+                    key={project._id}
+                    className={cn(
+                      "bg-white/60 dark:bg-gray-800/30 backdrop-blur-sm border border-gray-300/50 dark:border-gray-700/50 rounded-xl p-4 cursor-pointer transition-all duration-200 hover:bg-gray-100/60 dark:hover:bg-gray-700/40 hover:scale-105 flex-shrink-0 w-64 sm:w-72",
+                      project._id === currentProjectId && "ring-2 ring-blue-400/50 dark:ring-blue-500/40"
+                    )}
+                    onClick={() => switchProject(project._id)}
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <span
+                        className="h-3 w-3 rounded-full"
+                        style={{ backgroundColor: project.color }}
+                      />
+                      <span className="font-medium text-gray-900 dark:text-white text-sm truncate">{project.name}</span>
+                    </div>
+                    <div className="text-gray-700 dark:text-gray-300 text-xs truncate font-medium">{project.client?.name || 'No Client'}</div>
+                    <div className="text-gray-600 dark:text-gray-400 text-xs mt-1">
+                      {formatCurrencyWithSymbol(project.hourlyRate)}/hr
                     </div>
                   </div>
-                  <svg 
-                    className={`w-4 h-4 text-gray-500 dark:text-gray-400 transition-transform ${showCategoryDropdown ? 'rotate-180' : ''}`} 
-                    fill="none" 
-                    stroke="currentColor" 
-                    viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </div>
+                ))}
               </div>
-              
-              {/* Category Dropdown */}
-              {showCategoryDropdown && (
-                <div className="absolute top-full left-0 right-0 mt-2 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border border-gray-300/50 dark:border-gray-700/50 rounded-xl shadow-lg z-50 max-h-60 overflow-y-auto">
-                  <div className="py-2">
-                    <div
-                      className="flex items-center gap-3 p-3 hover:bg-gray-100/50 dark:hover:bg-gray-700/50 cursor-pointer transition-colors text-gray-500 dark:text-gray-400"
-                      onClick={() => {
-                        setSelectedCategory("");
-                        setShowCategoryDropdown(false);
-                      }}
-                    >
-                      <div className="text-sm">Select a category...</div>
-                    </div>
-                    {categories?.map((category) => (
-                      <div
-                        key={category._id}
-                        className={`flex items-center gap-3 p-3 hover:bg-gray-100/50 dark:hover:bg-gray-700/50 cursor-pointer transition-colors ${
-                          selectedCategory === category.name ? "bg-[#F85E00]/10 text-[#F85E00]" : "text-gray-900 dark:text-white"
-                        }`}
-                        onClick={() => {
-                          setSelectedCategory(category.name);
-                          setShowCategoryDropdown(false);
-                        }}
-                      >
-                        <div className="flex-1">
-                          <div className="font-medium">{category.name}</div>
-                          {category.isDefault && (
-                            <div className="text-xs text-gray-500 dark:text-gray-400">(Default)</div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
-            
-            {/* Category Management */}
-            {showCategoryManager && (
-              <div className="mt-4 p-4 bg-white/70 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-300/50 dark:border-gray-700/50 rounded-xl shadow-lg">
-                <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Manage Categories</h4>
-
-                {/* Add new category */}
-                <div className="flex gap-2 mb-4">
-                  <input
-                    type="text"
-                    value={newCategoryName}
-                    onChange={(e) => setNewCategoryName(e.target.value)}
-                    placeholder="New category name..."
-                    className="flex-1 px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#F85E00] transition-shadow"
-                    onKeyPress={(e) => e.key === 'Enter' && handleAddCategory()}
-                  />
-                  <button
-                    onClick={handleAddCategory}
-                    disabled={!newCategoryName.trim()}
-                    className="px-4 py-2 bg-[#F85E00] text-white text-sm font-medium rounded-lg hover:bg-[#d14e00] disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm hover:shadow-md"
-                  >
-                    Add
-                  </button>
-                </div>
-
-                {/* Existing categories */}
-                <div className="space-y-2">
-                  {categories?.map((category) => (
-                    <div
-                      key={category._id}
-                      className="flex items-center justify-between p-3 bg-white/50 dark:bg-gray-700/30 border border-gray-200/50 dark:border-gray-600/50 rounded-lg hover:bg-white/80 dark:hover:bg-gray-700/50 transition-colors cursor-pointer group"
-                      onClick={() => {
-                        setSelectedCategory(category.name);
-                        setShowCategoryDropdown(false);
-                      }}
-                    >
-                      <span className="text-sm font-medium text-gray-900 dark:text-white">
-                        {category.name} {category.isDefault && <span className="text-xs text-gray-500 dark:text-gray-400">(Default)</span>}
-                      </span>
-                      {category.name !== "General" && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteCategory(category._id, category.name);
-                          }}
-                          className="px-2 py-1 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity rounded hover:bg-red-50 dark:hover:bg-red-900/20"
-                        >
-                          Delete
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         )}
 
@@ -1963,24 +1779,6 @@ export function ModernDashboard({
                           />
                         </div>
                       </div>
-                      
-                      {categories && categories.length > 0 && (
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium text-foreground">Category (optional)</label>
-                          <select
-                            value={manualEntryForm.category}
-                            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setManualEntryForm(prev => ({ ...prev, category: e.target.value }))}
-                            className="w-full h-10 px-3 py-2 border border-input bg-background text-foreground rounded-md shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                          >
-                            <option value="">Select category...</option>
-                            {categories.map(category => (
-                              <option key={category._id} value={category.name}>
-                                {category.name}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      )}
 
                       <div className="space-y-2">
                         <label className="text-sm font-medium text-foreground">Note (optional)</label>

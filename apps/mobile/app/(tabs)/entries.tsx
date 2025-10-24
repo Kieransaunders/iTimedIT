@@ -21,6 +21,9 @@ import { useTheme } from "../../utils/ThemeContext";
 import { WebRedirectBanner } from "../../components/common/WebRedirectBanner";
 import { CompanionAppGuidance } from "../../components/common/CompanionAppGuidance";
 import { Search, SlidersHorizontal, X, Check } from "lucide-react-native";
+import { useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
+import { Id } from "../../convex/_generated/dataModel";
 
 export default function EntriesScreen() {
   const { colors } = useTheme();
@@ -89,27 +92,48 @@ export default function EntriesScreen() {
     toDate
   );
 
-  // Get unique clients and projects from entries
-  const { clientOptions, projectOptions } = useMemo(() => {
+  // Get unique clients and projects from entries, plus recent projects
+  const { clientOptions, projectOptions, recentProjects, validProjectIds } = useMemo(() => {
     const clients = new Map<string, { _id: string; name: string }>();
     const projects = new Map<string, { _id: string; name: string; clientName?: string }>();
+    const projectLastUsed = new Map<string, number>();
+    const projectIds = new Set<string>();
 
     entries.forEach((entry) => {
       if (entry.client) {
         clients.set(entry.client._id, { _id: entry.client._id, name: entry.client.name });
       }
-      if (entry.project) {
-        projects.set(entry.project._id, {
-          _id: entry.projectId,
+      if (entry.project && entry.projectId) {
+        const projectId = entry.projectId;
+        projectIds.add(projectId);
+        projects.set(projectId, {
+          _id: projectId,
           name: entry.project.name,
           clientName: entry.client?.name
         });
+
+        // Track most recent usage
+        const entryTime = entry.startedAt || entry._creationTime;
+        if (!projectLastUsed.has(projectId) || entryTime > projectLastUsed.get(projectId)!) {
+          projectLastUsed.set(projectId, entryTime);
+        }
       }
     });
+
+    // Get top 5 most recently used projects
+    const sortedByRecent = Array.from(projects.values())
+      .sort((a, b) => {
+        const timeA = projectLastUsed.get(a._id) || 0;
+        const timeB = projectLastUsed.get(b._id) || 0;
+        return timeB - timeA;
+      })
+      .slice(0, 5);
 
     return {
       clientOptions: Array.from(clients.values()).sort((a, b) => a.name.localeCompare(b.name)),
       projectOptions: Array.from(projects.values()).sort((a, b) => a.name.localeCompare(b.name)),
+      recentProjects: sortedByRecent,
+      validProjectIds: projectIds,
     };
   }, [entries]);
 
@@ -124,9 +148,17 @@ export default function EntriesScreen() {
     return Array.from(categories).sort();
   }, [entries]);
 
-  // Filter entries
-  const filteredEntries = useMemo(() => {
-    return entries.filter((entry) => {
+  // Fetch selected project details for budget info (only if valid project ID)
+  const selectedProjectData = useQuery(
+    api.projects.get,
+    selectedProject !== "all" && validProjectIds.has(selectedProject)
+      ? { id: selectedProject as Id<"projects"> }
+      : "skip"
+  );
+
+  // Filter entries and calculate stats
+  const { filteredEntries, stats } = useMemo(() => {
+    const filtered = entries.filter((entry) => {
       // Client filter
       if (selectedClient !== "all" && entry.client?._id !== selectedClient) {
         return false;
@@ -178,7 +210,40 @@ export default function EntriesScreen() {
 
       return true;
     });
-  }, [entries, selectedClient, selectedProject, selectedCategory, fromDate, toDate, searchTerm]);
+
+    // Calculate stats
+    const totalSeconds = filtered.reduce((sum, entry) => sum + (entry.seconds || 0), 0);
+    const totalHours = Math.floor(totalSeconds / 3600);
+    const totalMinutes = Math.floor((totalSeconds % 3600) / 60);
+
+    // Calculate budget info if a project is selected
+    let budgetHours: number | null = null;
+    let remainingHours: number | null = null;
+    let remainingMinutes: number | null = null;
+
+    if (selectedProject !== "all" && selectedProjectData) {
+      if (selectedProjectData.budgetType === "hours" && selectedProjectData.budgetHours) {
+        budgetHours = selectedProjectData.budgetHours;
+        const totalHoursDecimal = totalSeconds / 3600;
+        const remaining = Math.max(0, budgetHours - totalHoursDecimal);
+        remainingHours = Math.floor(remaining);
+        remainingMinutes = Math.floor((remaining % 1) * 60);
+      }
+    }
+
+    return {
+      filteredEntries: filtered,
+      stats: {
+        count: filtered.length,
+        totalHours,
+        totalMinutes,
+        totalSeconds,
+        budgetHours,
+        remainingHours,
+        remainingMinutes,
+      },
+    };
+  }, [entries, selectedClient, selectedProject, selectedCategory, fromDate, toDate, searchTerm, selectedProjectData]);
 
   const renderEmpty = () => {
     if (isLoading) {
@@ -222,56 +287,84 @@ export default function EntriesScreen() {
       </View>
 
       {/* Companion App Guidance */}
-      <View style={styles.bannerContainer}>
-        <CompanionAppGuidance
-          context="entries"
-          hasData={entries.length > 0}
-        />
-      </View>
+      {!filtersActive && entries.length > 0 && (
+        <View style={styles.bannerContainer}>
+          <CompanionAppGuidance
+            context="entries"
+            hasData={entries.length > 0}
+          />
+        </View>
+      )}
 
-      {/* Filter Button */}
-      <View style={styles.filterContainer}>
-        <TouchableOpacity
-          style={[
-            styles.filterButton,
-            {
-              backgroundColor: colors.surface,
-              borderColor: colors.border
-            }
-          ]}
-          onPress={() => setShowFilterPanel(!showFilterPanel)}
-        >
-          <Search size={18} color={colors.textSecondary} />
-          <Text style={[styles.filterButtonText, { color: colors.textPrimary }]}>
-            Search & Filter
-          </Text>
-          {filtersActive && (
-            <View style={[styles.filterBadge, { backgroundColor: colors.primary }]}>
-              <Text style={styles.filterBadgeText}>!</Text>
+      {/* Stats & Filter Combined */}
+      {entries.length > 0 && (
+        <View style={styles.statsContainer}>
+          <View style={[styles.statsCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            {/* Stats Row */}
+            <View style={styles.statsRow}>
+              <View style={styles.statItem}>
+                <Text style={[styles.statValue, { color: colors.primary }]}>{stats.count}</Text>
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+                  {stats.count === 1 ? "ENTRY" : "ENTRIES"}
+                </Text>
+              </View>
+              <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
+              <View style={styles.statItem}>
+                <Text style={[styles.statValue, { color: colors.primary }]}>
+                  {stats.totalHours}h {stats.totalMinutes}m
+                </Text>
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>TOTAL TIME</Text>
+              </View>
+              {stats.remainingHours !== null && stats.remainingMinutes !== null && (
+                <>
+                  <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
+                  <View style={styles.statItem}>
+                    <Text style={[styles.statValue, { color: stats.remainingHours > 0 ? colors.success : colors.error }]}>
+                      {stats.remainingHours}h {stats.remainingMinutes}m
+                    </Text>
+                    <Text style={[styles.statLabel, { color: colors.textSecondary }]}>REMAINING</Text>
+                  </View>
+                </>
+              )}
             </View>
-          )}
-          <SlidersHorizontal size={18} color={colors.textSecondary} />
-        </TouchableOpacity>
 
-        {filtersActive && (
-          <TouchableOpacity
-            style={styles.clearFiltersButton}
-            onPress={resetFilters}
-          >
-            <Text style={[styles.clearFiltersText, { color: colors.primary }]}>
-              Clear all
-            </Text>
-          </TouchableOpacity>
-        )}
-      </View>
+            {/* Filter Button Row */}
+            <View style={styles.filterRow}>
+              <TouchableOpacity
+                style={[styles.filterButtonIntegrated, { backgroundColor: colors.background }]}
+                onPress={() => setShowFilterPanel(!showFilterPanel)}
+              >
+                <Search size={16} color={colors.textSecondary} />
+                <Text style={[styles.filterButtonText, { color: colors.textPrimary }]}>
+                  Search & Filter
+                </Text>
+                {filtersActive && (
+                  <View style={[styles.filterBadge, { backgroundColor: colors.error }]}>
+                    <Text style={styles.filterBadgeText}>!</Text>
+                  </View>
+                )}
+                <SlidersHorizontal size={16} color={colors.textSecondary} />
+              </TouchableOpacity>
+
+              {filtersActive && (
+                <TouchableOpacity
+                  style={styles.clearFiltersIcon}
+                  onPress={resetFilters}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <X size={18} color={colors.error} />
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        </View>
+      )}
 
       {/* Filter Panel */}
       {showFilterPanel && (
-        <ScrollView
-          style={[styles.filterPanel, { backgroundColor: colors.surface, borderColor: colors.border }]}
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.filterPanelHeader}>
+        <View style={[styles.filterPanel, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          {/* Sticky Header */}
+          <View style={[styles.filterPanelHeader, { borderBottomColor: colors.border }]}>
             <Text style={[styles.filterPanelTitle, { color: colors.textPrimary }]}>
               Search & Filter Entries
             </Text>
@@ -283,25 +376,41 @@ export default function EntriesScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Search Input */}
-          <View style={styles.filterField}>
-            <Text style={[styles.filterLabel, { color: colors.textPrimary }]}>Search</Text>
-            <View style={[styles.searchInputContainer, { backgroundColor: colors.background, borderColor: colors.border }]}>
-              <Search size={16} color={colors.textSecondary} />
-              <TextInput
-                style={[styles.searchInput, { color: colors.textPrimary }]}
-                placeholder="Search by project, client, note, or category"
-                placeholderTextColor={colors.textSecondary}
-                value={searchTerm}
-                onChangeText={setSearchTerm}
-              />
-              {searchTerm !== "" && (
-                <TouchableOpacity onPress={() => setSearchTerm("")}>
-                  <X size={16} color={colors.textSecondary} />
-                </TouchableOpacity>
-              )}
+          {/* Scrollable Content */}
+          <ScrollView
+            style={styles.filterPanelContent}
+            contentContainerStyle={styles.filterPanelScrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+
+          {/* Recent Projects */}
+          {recentProjects.length > 0 && (
+            <View style={styles.filterField}>
+              <Text style={[styles.filterLabel, { color: colors.textPrimary }]}>Recent Projects</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipContainer}>
+                {recentProjects.map((project) => (
+                  <TouchableOpacity
+                    key={project._id}
+                    style={[
+                      styles.chip,
+                      selectedProject === project._id && { backgroundColor: colors.primary },
+                      { borderColor: colors.border }
+                    ]}
+                    onPress={() => setSelectedProject(project._id)}
+                  >
+                    <Text style={[styles.chipText, selectedProject === project._id ? styles.chipTextActive : { color: colors.textPrimary }]}>
+                      {project.name}
+                    </Text>
+                    {project.clientName && (
+                      <Text style={[styles.chipSubtext, selectedProject === project._id ? styles.chipTextActive : { color: colors.textSecondary }]}>
+                        {project.clientName}
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
             </View>
-          </View>
+          )}
 
           {/* Client Filter */}
           {clientOptions.length > 0 && (
@@ -450,6 +559,26 @@ export default function EntriesScreen() {
             </View>
           </View>
 
+          {/* Search Input */}
+          <View style={styles.filterField}>
+            <Text style={[styles.filterLabel, { color: colors.textPrimary }]}>Search</Text>
+            <View style={[styles.searchInputContainer, { backgroundColor: colors.background, borderColor: colors.border }]}>
+              <Search size={16} color={colors.textSecondary} />
+              <TextInput
+                style={[styles.searchInput, { color: colors.textPrimary }]}
+                placeholder="Search by project, client, note, or category"
+                placeholderTextColor={colors.textSecondary}
+                value={searchTerm}
+                onChangeText={setSearchTerm}
+              />
+              {searchTerm !== "" && (
+                <TouchableOpacity onPress={() => setSearchTerm("")}>
+                  <X size={16} color={colors.textSecondary} />
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+
           {/* Filter Actions */}
           <View style={styles.filterActions}>
             <TouchableOpacity
@@ -468,7 +597,8 @@ export default function EntriesScreen() {
               <Text style={styles.applyButtonText}>Apply</Text>
             </TouchableOpacity>
           </View>
-        </ScrollView>
+          </ScrollView>
+        </View>
       )}
 
       <FlatList
@@ -541,65 +671,104 @@ const styles = StyleSheet.create({
   title: {
     ...typography.title,
   },
-  bannerContainer: {
+  statsContainer: {
     paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
     paddingBottom: spacing.md,
   },
-  filterContainer: {
+  statsCard: {
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: spacing.sm,
+  },
+  statsRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.md,
+    justifyContent: "space-around",
+    marginBottom: spacing.sm,
+  },
+  statItem: {
+    flex: 1,
+    alignItems: "center",
+  },
+  statValue: {
+    ...typography.heading,
+    fontSize: 18,
+    fontWeight: "600",
+    marginBottom: 2,
+  },
+  statLabel: {
+    ...typography.caption,
+    fontSize: 9,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  statDivider: {
+    width: 1,
+    height: 30,
+    marginHorizontal: spacing.sm,
+  },
+  filterRow: {
+    flexDirection: "row",
+    alignItems: "center",
     gap: spacing.sm,
   },
-  filterButton: {
+  filterButtonIntegrated: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
+    paddingVertical: spacing.sm,
     borderRadius: 8,
-    borderWidth: 1,
     gap: spacing.sm,
-    flex: 1,
   },
   filterButtonText: {
     ...typography.body,
     fontWeight: "500",
     fontSize: 14,
+    flex: 1,
   },
   filterBadge: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
     alignItems: "center",
     justifyContent: "center",
   },
   filterBadgeText: {
     color: "#fff",
-    fontSize: 12,
-    fontWeight: "600",
+    fontSize: 11,
+    fontWeight: "700",
   },
-  clearFiltersButton: {
-    paddingHorizontal: spacing.sm,
+  clearFiltersIcon: {
+    padding: spacing.xs,
   },
-  clearFiltersText: {
-    ...typography.caption,
-    fontWeight: "500",
-    textDecorationLine: "underline",
+  bannerContainer: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.md,
   },
   filterPanel: {
     marginHorizontal: spacing.lg,
     marginBottom: spacing.md,
-    padding: spacing.md,
     borderRadius: 12,
     borderWidth: 1,
-    maxHeight: 400,
+    height: 400,
+    maxHeight: 500,
   },
   filterPanelHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+  },
+  filterPanelContent: {
+  },
+  filterPanelScrollContent: {
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.md,
+    paddingHorizontal: spacing.md,
   },
   filterPanelTitle: {
     ...typography.body,
@@ -640,11 +809,17 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
     marginRight: spacing.sm,
+    alignItems: "center",
   },
   chipText: {
     ...typography.caption,
     fontSize: 13,
     fontWeight: "500",
+  },
+  chipSubtext: {
+    ...typography.caption,
+    fontSize: 11,
+    marginTop: 2,
   },
   chipTextActive: {
     color: "#ffffff",

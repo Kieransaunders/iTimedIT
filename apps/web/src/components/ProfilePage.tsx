@@ -1,7 +1,6 @@
 import type { Doc } from "../../convex/_generated/dataModel";
 import { getUserDisplayName, getUserEmail, getUserInitials, isAnonymousUser } from "../lib/user-utils";
 import { useOrganization } from "../lib/organization-context";
-import { OrganizationManagementCard } from "./OrganizationManagementCard";
 import { SignOutButton } from "../SignOutButton";
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
@@ -35,7 +34,7 @@ export function ProfilePage({
   onNavigate,
 }: {
   user: Doc<"users">;
-  onNavigate?: (page: AppPage) => void;
+  onNavigate?: (page: AppPage, options?: { settingsTab?: "timer" | "notifications" | "budget" | "team" }) => void;
 }) {
   const displayName = getUserDisplayName(user);
   const email = getUserEmail(user);
@@ -309,7 +308,27 @@ export function ProfilePage({
         </DialogContent>
       </Dialog>
 
-      <OrganizationManagementCard />
+      {/* Team Management Link Section */}
+      <section className="bg-white dark:bg-gray-900/70 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm p-6 sm:p-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex-1">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Team Management</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Manage team members, send invitations, and view organization settings.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => onNavigate?.("settings", { settingsTab: "team" })}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-transparent bg-primary text-white shadow-md hover:bg-primary/90 hover:shadow-lg transition-all"
+          >
+            Manage team
+          </button>
+        </div>
+        <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+          Team management has been moved to the settings page for better organization.
+        </p>
+      </section>
     </div>
   );
 }

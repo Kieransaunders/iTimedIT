@@ -6,70 +6,55 @@ import { StyleSheet, View } from "react-native";
 
 export interface TimerControlsProps {
   isRunning: boolean;
-  onStart: () => void;
   onStop: () => void;
   onReset: () => void;
-  disabled?: boolean;
   loading?: boolean;
   projectColor?: string;
 }
 
 /**
  * Timer control buttons component
- * Shows Start and Reset buttons side by side (matching web app)
+ * Shows Stop and Reset buttons only when timer is running
  */
 export function TimerControls({
   isRunning,
-  onStart,
   onStop,
   onReset,
-  disabled = false,
   loading = false,
-  projectColor = "#a855f7",
 }: TimerControlsProps) {
-  const startButtonStyle = projectColor
-    ? [styles.startButton, { backgroundColor: projectColor }]
-    : styles.startButton;
+  // Don't render anything if timer isn't running
+  if (!isRunning) {
+    return null;
+  }
 
   return (
     <View style={styles.container}>
-      <View style={styles.controlsContainer}>
-        {!isRunning ? (
-          <Button
-            onPress={onStart}
-            disabled={disabled}
-            loading={loading}
-            size="lg"
-            style={startButtonStyle}
-            icon={(props) => <MaterialCommunityIcons name="play" {...props} />}
-            accessibilityLabel="Start timer"
-            accessibilityHint="Starts tracking time for the selected project"
-          >
-            Start
-          </Button>
-        ) : (
-          <Button
-            onPress={onStop}
-            loading={loading}
-            size="lg"
-            style={styles.stopButton}
-            icon={(props) => <MaterialCommunityIcons name="square" size={16} {...props} />}
-            accessibilityLabel="Stop timer"
-            accessibilityHint="Stops the running timer and saves the time entry"
-          >
-            Stop
-          </Button>
-        )}
+      {/* Primary Action Row - Stop button */}
+      <View style={styles.primaryRow}>
+        <Button
+          onPress={onStop}
+          loading={loading}
+          size="lg"
+          style={styles.stopButton}
+          icon={(props) => <MaterialCommunityIcons name="square" size={16} {...props} />}
+          accessibilityLabel="Stop timer"
+          accessibilityHint="Stops the running timer and saves the time entry"
+        >
+          Stop
+        </Button>
+      </View>
+
+      {/* Secondary Action Row - Reset */}
+      <View style={styles.secondaryRow}>
         <Button
           onPress={onReset}
-          variant="secondary"
-          size="lg"
+          variant="ghost"
+          size="md"
           style={styles.resetButton}
+          icon={(props) => <MaterialCommunityIcons name="refresh" size={18} {...props} />}
           accessibilityLabel="Reset timer"
           accessibilityHint="Resets the current timer without saving an entry"
-        >
-          Reset
-        </Button>
+        />
       </View>
     </View>
   );
@@ -78,21 +63,23 @@ export function TimerControls({
 const styles = StyleSheet.create({
   container: {
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.sm,
+    gap: spacing.sm,
   },
-  controlsContainer: {
+  primaryRow: {
+    width: "100%",
+  },
+  secondaryRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.md,
-  },
-  startButton: {
-    flex: 1,
+    justifyContent: "center",
   },
   stopButton: {
-    flex: 1,
+    width: "100%",
     backgroundColor: "#ef4444", // Red color matching web app
   },
   resetButton: {
-    minWidth: 100,
+    minWidth: 44,
+    paddingHorizontal: spacing.sm,
   },
 });

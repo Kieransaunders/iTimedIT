@@ -392,9 +392,9 @@ describe('Workspace Integration Suite - Complete Functionality Test', () => {
     it('should show appropriate toast messages for workspace operations', () => {
       // Mock toast methods if they exist
       if (mockToastManager.workspaceSuccess) {
-        mockToastManager.workspaceSuccess('team', 'Data will refresh automatically.');
+        mockToastManager.workspaceSuccess('work', 'Data will refresh automatically.');
         expect(mockToastManager.workspaceSuccess).toHaveBeenCalledWith(
-          'team',
+          'work',
           'Data will refresh automatically.'
         );
       }

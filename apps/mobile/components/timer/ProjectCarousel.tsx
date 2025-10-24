@@ -16,6 +16,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { LucideIcon } from "lucide-react-native";
 import { Project } from "@/types/models";
 import { ProjectCard } from "./ProjectCard";
 import { borderRadius, spacing, typography } from "@/utils/theme";
@@ -36,7 +37,10 @@ export interface ProjectCarouselProps {
   onQuickStart?: (project: Project) => void;
   isFavorite?: (projectId: string) => boolean;
   sectionTitle: string;
+  sectionIcon?: LucideIcon;
   todaysTimeByProject?: Map<string, number>;
+  onAddPress?: () => void;
+  isTimerRunning?: boolean;
 }
 
 /**
@@ -44,7 +48,7 @@ export interface ProjectCarouselProps {
  * edge fade gradients, and collapsible section
  */
 export const ProjectCarousel = React.memo<ProjectCarouselProps>(
-  ({ projects, selectedProject, onSelectProject, onToggleFavorite, onQuickStart, isFavorite, sectionTitle, todaysTimeByProject }) => {
+  ({ projects, selectedProject, onSelectProject, onToggleFavorite, onQuickStart, isFavorite, sectionTitle, sectionIcon: SectionIcon, todaysTimeByProject, onAddPress, isTimerRunning = false }) => {
     const { colors } = useTheme();
     const styles = createStyles(colors);
 
@@ -96,10 +100,11 @@ export const ProjectCarousel = React.memo<ProjectCarouselProps>(
             onQuickStart={onQuickStart}
             isFavorite={isFavorite?.(item._id) ?? false}
             todaysTime={todaysSeconds}
+            isTimerRunning={isTimerRunning}
           />
         );
       },
-      [selectedProject, todaysTimeByProject, onSelectProject, onToggleFavorite, onQuickStart, isFavorite]
+      [selectedProject, todaysTimeByProject, onSelectProject, onToggleFavorite, onQuickStart, isFavorite, isTimerRunning]
     );
 
     // Get item layout for performance
@@ -154,24 +159,51 @@ export const ProjectCarousel = React.memo<ProjectCarouselProps>(
     return (
       <View style={styles.container}>
         {/* Section Header */}
-        <TouchableOpacity
-          style={styles.header}
-          onPress={toggleCollapse}
-          activeOpacity={0.7}
-          accessible={true}
-          accessibilityLabel={`${sectionTitle} section`}
-          accessibilityHint={`${isCollapsed ? "Expand" : "Collapse"} to ${isCollapsed ? "show" : "hide"} projects`}
-          accessibilityRole="button"
-        >
-          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>{sectionTitle}</Text>
-          <Animated.View style={chevronStyle}>
-            <MaterialCommunityIcons
-              name="chevron-down"
-              size={24}
-              color={colors.textSecondary}
-            />
-          </Animated.View>
-        </TouchableOpacity>
+        <View style={styles.headerContainer}>
+          <TouchableOpacity
+            style={styles.header}
+            onPress={toggleCollapse}
+            activeOpacity={0.7}
+            accessible={true}
+            accessibilityLabel={`${sectionTitle} section`}
+            accessibilityHint={`${isCollapsed ? "Expand" : "Collapse"} to ${isCollapsed ? "show" : "hide"} projects`}
+            accessibilityRole="button"
+          >
+            <View style={styles.headerLeft}>
+              {SectionIcon && <SectionIcon size={20} color={colors.textSecondary} />}
+              <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>{sectionTitle}</Text>
+            </View>
+            <Animated.View style={chevronStyle}>
+              <MaterialCommunityIcons
+                name="chevron-down"
+                size={24}
+                color={colors.textSecondary}
+              />
+            </Animated.View>
+          </TouchableOpacity>
+
+          {/* Add Button - subtle ghost style */}
+          {onAddPress && (
+            <TouchableOpacity
+              onPress={() => {
+                softTap();
+                onAddPress();
+              }}
+              style={styles.addButton}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel="Add new project"
+              accessibilityHint="Opens menu to create a new project"
+            >
+              <MaterialCommunityIcons
+                name="plus"
+                size={20}
+                color={colors.textSecondary}
+              />
+            </TouchableOpacity>
+          )}
+        </View>
 
         {/* Carousel Content */}
         {!isCollapsed && (
@@ -239,13 +271,29 @@ const createStyles = (colors: typeof import("@/utils/theme").lightColors) =>
     container: {
       marginBottom: spacing.lg,
     },
-    header: {
+    headerContainer: {
       flexDirection: "row",
       alignItems: "center",
-      justifyContent: "space-between",
       paddingHorizontal: spacing.lg,
       paddingVertical: spacing.sm,
       marginBottom: spacing.sm,
+    },
+    header: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    headerLeft: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.sm,
+    },
+    addButton: {
+      marginLeft: spacing.sm,
+      padding: spacing.xs,
+      borderRadius: borderRadius.sm,
+      backgroundColor: "transparent",
     },
     sectionTitle: {
       ...typography.heading,

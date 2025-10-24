@@ -19,7 +19,7 @@ import {
   Animated,
   TouchableOpacity,
 } from "react-native";
-import { Star, AlertCircle } from "lucide-react-native";
+import { Star, AlertCircle, Play } from "lucide-react-native";
 import { lightTap, mediumTap } from "@/utils/haptics";
 
 export interface ProjectCardProps {
@@ -39,6 +39,8 @@ export interface ProjectCardProps {
   onQuickStart?: (project: Project) => void;
   /** Callback for long press - shows quick action menu */
   onLongPress?: (project: Project) => void;
+  /** Whether timer is currently running (globally) */
+  isTimerRunning?: boolean;
 }
 
 /**
@@ -63,6 +65,7 @@ export function ProjectCard({
   onToggleFavorite,
   onQuickStart,
   onLongPress,
+  isTimerRunning = false,
 }: ProjectCardProps) {
   const { colors } = useTheme();
   const animatedScale = React.useRef(new Animated.Value(1)).current;
@@ -143,12 +146,12 @@ export function ProjectCard({
   }, [animatedScale, isActive]);
 
   const handlePress = useCallback(() => {
-    lightTap();
-    // If onQuickStart is provided, use it to auto-start timer on card press
-    // Otherwise fall back to onPress for simple selection
+    // Use stronger haptic feedback when starting timer
     if (onQuickStart) {
+      mediumTap(); // Stronger feedback for timer start
       onQuickStart(project);
     } else if (onPress) {
+      lightTap(); // Lighter feedback for selection only
       onPress(project);
     }
   }, [onPress, onQuickStart, project]);
@@ -209,6 +212,8 @@ export function ProjectCard({
       backgroundColor: getBackgroundGradientColor(projectColor),
     },
     isActive && (Platform.OS === "ios" ? shadows.lg : { elevation: 8 }),
+    // Dim non-active cards when timer is running
+    isTimerRunning && !isActive && { opacity: 0.6 },
   ];
 
   return (
@@ -238,6 +243,13 @@ export function ProjectCard({
         accessibilityState={{ selected: isActive }}
         accessibilityHint="Tap to select this project. Long press for quick actions"
       >
+        {/* Running Badge - Top Left (when timer is active for this project) */}
+        {isActive && isTimerRunning && (
+          <View style={[styles.runningBadge, { backgroundColor: projectColor }]}>
+            <Text style={styles.runningBadgeText}>⏱️ Running</Text>
+          </View>
+        )}
+
         {/* Favorite Star - Top Right */}
         {onToggleFavorite && (
           <TouchableOpacity
@@ -302,6 +314,15 @@ export function ProjectCard({
                 },
               ]}
             />
+          </View>
+        )}
+
+        {/* Play Icon Overlay - Only show when timer is not running */}
+        {!isTimerRunning && onQuickStart && (
+          <View style={styles.playIconContainer}>
+            <View style={[styles.playIconCircle, { backgroundColor: projectColor }]}>
+              <Play size={18} color="#ffffff" fill="#ffffff" />
+            </View>
           </View>
         )}
       </Pressable>
@@ -371,6 +392,24 @@ const styles = StyleSheet.create({
     ...typography.caption,
     fontWeight: "500",
   },
+  runningBadge: {
+    position: "absolute",
+    top: spacing.sm,
+    left: spacing.sm,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: borderRadius.sm,
+    zIndex: 10,
+    ...Platform.select({
+      ios: shadows.sm,
+      android: { elevation: 3 },
+    }),
+  },
+  runningBadgeText: {
+    color: "#ffffff",
+    fontSize: 12,
+    fontWeight: "700",
+  },
   budgetBadge: {
     position: "absolute",
     top: spacing.sm,
@@ -398,5 +437,22 @@ const styles = StyleSheet.create({
   budgetBar: {
     height: "100%",
     borderRadius: 2,
+  },
+  playIconContainer: {
+    position: "absolute",
+    bottom: spacing.sm,
+    right: spacing.sm,
+    zIndex: 5,
+  },
+  playIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    ...Platform.select({
+      ios: shadows.sm,
+      android: { elevation: 3 },
+    }),
   },
 });

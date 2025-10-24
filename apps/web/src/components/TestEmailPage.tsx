@@ -4,7 +4,7 @@ import { api } from "../../convex/_generated/api";
 import { toast } from "sonner";
 import type { AppPage } from "./ProfilePage";
 
-export function TestEmailPage({ onNavigate }: { onNavigate?: (page: AppPage) => void }) {
+export function TestEmailPage({ onNavigate }: { onNavigate?: (page: AppPage, options?: { settingsTab?: "timer" | "notifications" | "budget" | "team" }) => void }) {
   const [recipient, setRecipient] = useState("delivered@resend.dev");
   const [isSending, setIsSending] = useState(false);
   const [lastSentTo, setLastSentTo] = useState<string | null>(null);

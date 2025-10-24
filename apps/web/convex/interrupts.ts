@@ -175,6 +175,11 @@ export const sweep = action({
         continue;
       }
 
+      // Skip Pomodoro timers - they have their own work/break transitions
+      if (timer.pomodoroEnabled) {
+        continue;
+      }
+
       // Check for stale timers (no heartbeat for 5+ minutes)
       const heartbeatStale = now - timer.lastHeartbeatAt > 5 * 60 * 1000;
       if (heartbeatStale) {

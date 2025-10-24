@@ -149,7 +149,8 @@ export const start = mutation({
     }
 
     const now = Date.now();
-    const nextInterruptAt = interruptEnabled ? now + (interruptInterval * 60 * 1000) : undefined;
+    // Don't schedule interrupts for Pomodoro timers - they have their own work/break transitions
+    const nextInterruptAt = (interruptEnabled && !pomodoroEnabledSetting) ? now + (interruptInterval * 60 * 1000) : undefined;
     const pomodoroTransitionAt = pomodoroEnabledSetting ? now + pomodoroWorkMinutes * 60 * 1000 : undefined;
 
     // Create running timer

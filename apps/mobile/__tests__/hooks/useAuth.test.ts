@@ -52,7 +52,7 @@ describe('useAuth - Google OAuth Integration', () => {
           path: 'auth/callback'
         }) as string,
         scopes: ['openid', 'profile', 'email'],
-        convexSignIn: mockConvexSignIn,
+        convexSignIn: mockConvexSignIn as any,
       };
 
       new (GoogleAuthService as any)(config);
@@ -69,7 +69,7 @@ describe('useAuth - Google OAuth Integration', () => {
           path: 'auth/callback'
         }) as string,
         scopes: ['openid', 'profile', 'email'],
-        convexSignIn: mockConvexSignIn,
+        convexSignIn: mockConvexSignIn as any,
       };
 
       new (GoogleAuthService as any)(config);
@@ -86,7 +86,7 @@ describe('useAuth - Google OAuth Integration', () => {
         clientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID!,
         redirectUri: 'itimeditapp://auth/callback',
         scopes: ['openid', 'profile', 'email'],
-        convexSignIn: mockConvexSignIn,
+        convexSignIn: mockConvexSignIn as any,
       };
 
       new (GoogleAuthService as any)(config);
@@ -100,7 +100,7 @@ describe('useAuth - Google OAuth Integration', () => {
         clientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID!,
         redirectUri: 'itimeditapp://auth/callback',
         scopes: ['openid', 'profile', 'email'],
-        convexSignIn: mockConvexSignIn,
+        convexSignIn: mockConvexSignIn as any,
       };
 
       new (GoogleAuthService as any)(config);
@@ -129,7 +129,7 @@ describe('useAuth - Google OAuth Integration', () => {
         clientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID!,
         redirectUri: 'itimeditapp://auth/callback',
         scopes: ['openid', 'profile', 'email'],
-        convexSignIn: mockConvexSignIn,
+        convexSignIn: mockConvexSignIn as any,
       });
 
       const result = await googleAuth.signIn();
@@ -157,7 +157,7 @@ describe('useAuth - Google OAuth Integration', () => {
         clientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID!,
         redirectUri: 'itimeditapp://auth/callback',
         scopes: ['openid', 'profile', 'email'],
-        convexSignIn: mockConvexSignIn,
+        convexSignIn: mockConvexSignIn as any,
       });
 
       const result = await googleAuth.signIn();
@@ -195,7 +195,7 @@ describe('useAuth - Google OAuth Integration', () => {
         clientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID!,
         redirectUri: 'itimeditapp://auth/callback',
         scopes: ['openid', 'profile', 'email'],
-        convexSignIn: mockConvexSignIn,
+        convexSignIn: mockConvexSignIn as any,
       });
 
       const result = await googleAuth.signIn();
@@ -222,7 +222,7 @@ describe('useAuth - Google OAuth Integration', () => {
         clientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID!,
         redirectUri: 'itimeditapp://auth/callback',
         scopes: ['openid', 'profile', 'email'],
-        convexSignIn: mockConvexSignIn,
+        convexSignIn: mockConvexSignIn as any,
       });
 
       const result = await googleAuth.signIn();
@@ -247,7 +247,7 @@ describe('useAuth - Google OAuth Integration', () => {
         clientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID!,
         redirectUri: 'itimeditapp://auth/callback',
         scopes: ['openid', 'profile', 'email'],
-        convexSignIn: mockConvexSignIn,
+        convexSignIn: mockConvexSignIn as any,
       });
 
       const result = await googleAuth.signIn();
@@ -275,7 +275,7 @@ describe('useAuth - Google OAuth Integration', () => {
         clientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID!,
         redirectUri: 'itimeditapp://auth/callback',
         scopes: ['openid', 'profile', 'email'],
-        convexSignIn: mockConvexSignIn,
+        convexSignIn: mockConvexSignIn as any,
       });
 
       const result = await googleAuth.signIn();
@@ -299,7 +299,7 @@ describe('useAuth - Google OAuth Integration', () => {
         clientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID!,
         redirectUri: 'itimeditapp://auth/callback',
         scopes: ['openid', 'profile', 'email'],
-        convexSignIn: mockConvexSignIn,
+        convexSignIn: mockConvexSignIn as any,
       });
 
       const result = await googleAuth.signIn();
@@ -332,7 +332,7 @@ describe('useAuth - Google OAuth Integration', () => {
         clientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID!,
         redirectUri: 'itimeditapp://auth/callback',
         scopes: ['openid', 'profile', 'email'],
-        convexSignIn: mockConvexSignIn,
+        convexSignIn: mockConvexSignIn as any,
       });
 
       const result = await googleAuth.signIn();
@@ -364,7 +364,7 @@ describe('useAuth - Google OAuth Integration', () => {
         clientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID!,
         redirectUri: 'itimeditapp://auth/callback',
         scopes: ['openid', 'profile', 'email'],
-        convexSignIn: mockConvexSignIn,
+        convexSignIn: mockConvexSignIn as any,
       });
 
       const result = await googleAuth.signIn();
@@ -391,7 +391,7 @@ describe('useAuth - Google OAuth Integration', () => {
         clientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID!,
         redirectUri: 'itimeditapp://auth/callback',
         scopes: ['openid', 'profile', 'email'],
-        convexSignIn: mockConvexSignIn,
+        convexSignIn: mockConvexSignIn as any,
       });
 
       const result = await googleAuth.signIn();

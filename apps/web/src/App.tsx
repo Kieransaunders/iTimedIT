@@ -84,6 +84,7 @@ function AuthenticatedApp() {
   const [currentWorkspace, setCurrentWorkspace] = useState<"personal" | "work">("work");
   const [clientFilter, setClientFilter] = useState<string | null>(null);
   const [workspaceInitialized, setWorkspaceInitialized] = useState(false);
+  const [settingsTab, setSettingsTab] = useState<"timer" | "notifications" | "budget" | "team" | undefined>(undefined);
 
   const loggedInUser = useQuery(api.auth.loggedInUser);
   const { signOut } = useAuthActions();
@@ -95,6 +96,16 @@ function AuthenticatedApp() {
   const pushListenerCleanup = useRef<(() => void) | null>(null);
   const hasAnnouncedAuth = useRef<boolean>(false);
   const workspaceInitializedRef = useRef<boolean>(false);
+
+  // Navigation handler that supports settings tab
+  const handleNavigate = useCallback((page: AppPage, options?: { settingsTab?: "timer" | "notifications" | "budget" | "team" }) => {
+    setCurrentPage(page);
+    if (page === "settings" && options?.settingsTab) {
+      setSettingsTab(options.settingsTab);
+    } else {
+      setSettingsTab(undefined);
+    }
+  }, []);
 
   // Do not auto sign out if query returns null; allow session to establish post sign-in.
   // The <Authenticated>/<Unauthenticated> gates already handle rendering.
@@ -317,9 +328,9 @@ function AuthenticatedApp() {
               )
             )}
             {currentPage === "entries" && <EntriesPage />}
-            {currentPage === "settings" && <Settings onNavigate={setCurrentPage} />}
-            {currentPage === "profile" && <ProfilePage user={loggedInUser} onNavigate={setCurrentPage} />}
-            {currentPage === "testEmail" && <TestEmailPage onNavigate={setCurrentPage} />}
+            {currentPage === "settings" && <Settings onNavigate={handleNavigate} initialTab={settingsTab} />}
+            {currentPage === "profile" && <ProfilePage user={loggedInUser} onNavigate={handleNavigate} />}
+            {currentPage === "testEmail" && <TestEmailPage onNavigate={handleNavigate} />}
           </div>
         </main>
         
