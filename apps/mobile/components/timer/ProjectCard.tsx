@@ -19,7 +19,7 @@ import {
   Animated,
   TouchableOpacity,
 } from "react-native";
-import { Star, AlertCircle, Play } from "lucide-react-native";
+import { AlertCircle, Play } from "lucide-react-native";
 import { lightTap, mediumTap } from "@/utils/haptics";
 
 export interface ProjectCardProps {
@@ -31,10 +31,6 @@ export interface ProjectCardProps {
   onPress?: (project: Project) => void;
   /** Today's accumulated time in seconds (optional) */
   todaysTime?: number;
-  /** Whether this project is favorited */
-  isFavorite?: boolean;
-  /** Callback when favorite star is tapped */
-  onToggleFavorite?: (projectId: string) => void;
   /** Callback for quick start button */
   onQuickStart?: (project: Project) => void;
   /** Callback for long press - shows quick action menu */
@@ -61,8 +57,6 @@ export function ProjectCard({
   isActive = false,
   onPress,
   todaysTime,
-  isFavorite = false,
-  onToggleFavorite,
   onQuickStart,
   onLongPress,
   isTimerRunning = false,
@@ -129,10 +123,10 @@ export function ProjectCard({
 
   const handlePressIn = useCallback(() => {
     Animated.spring(animatedScale, {
-      toValue: 0.97,
+      toValue: 0.96, // Slightly more pronounced
       useNativeDriver: true,
-      friction: 8,
-      tension: 100,
+      friction: 10,
+      tension: 120,
     }).start();
   }, [animatedScale]);
 
@@ -163,15 +157,6 @@ export function ProjectCard({
     }
   }, [onLongPress, project]);
 
-  const handleToggleFavorite = useCallback((e: any) => {
-    // Stop event propagation to prevent card selection
-    e?.stopPropagation?.();
-    lightTap();
-    if (onToggleFavorite) {
-      onToggleFavorite(project._id);
-    }
-  }, [onToggleFavorite, project._id]);
-
   // Format today's time as "Xh Ym"
   const formatTodaysTime = (seconds: number): string => {
     const hours = Math.floor(seconds / 3600);
@@ -184,16 +169,6 @@ export function ProjectCard({
     return `$${amount.toFixed(0)}`;
   };
 
-  // Generate subtle gradient background color (10% opacity)
-  const getBackgroundGradientColor = (color: string): string => {
-    // Convert hex to rgba with 10% opacity
-    const hex = color.replace("#", "");
-    const r = parseInt(hex.substring(0, 2), 16);
-    const g = parseInt(hex.substring(2, 4), 16);
-    const b = parseInt(hex.substring(4, 6), 16);
-    return `rgba(${r}, ${g}, ${b}, 0.1)`;
-  };
-
   // Animated glow color for budget warnings
   const glowColor = glowAnim.interpolate({
     inputRange: [0, 1],
@@ -203,15 +178,20 @@ export function ProjectCard({
   const cardStyle = [
     styles.card,
     {
-      backgroundColor: colors.surface,
+      backgroundColor: colors.surface, // White in light mode, grey in dark mode
       borderColor: colors.border,
+      borderLeftColor: projectColor,
     },
     isActive && styles.cardActive,
-    {
-      borderLeftColor: projectColor,
-      backgroundColor: getBackgroundGradientColor(projectColor),
-    },
-    isActive && (Platform.OS === "ios" ? shadows.lg : { elevation: 8 }),
+    // Enhanced shadow for active card
+    isActive && Platform.select({
+      ios: {
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.12,
+        shadowRadius: 12,
+      },
+      android: { elevation: 6 },
+    }),
     // Dim non-active cards when timer is running
     isTimerRunning && !isActive && { opacity: 0.6 },
   ];
@@ -248,24 +228,6 @@ export function ProjectCard({
           <View style={[styles.runningBadge, { backgroundColor: projectColor }]}>
             <Text style={styles.runningBadgeText}>⏱️ Running</Text>
           </View>
-        )}
-
-        {/* Favorite Star - Top Right */}
-        {onToggleFavorite && (
-          <TouchableOpacity
-            onPress={handleToggleFavorite}
-            style={styles.favoriteButton}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            accessible={true}
-            accessibilityRole="button"
-            accessibilityLabel={isFavorite ? "Remove from favorites" : "Add to favorites"}
-          >
-            <Star
-              size={20}
-              color={isFavorite ? "#f59e0b" : colors.textTertiary}
-              fill={isFavorite ? "#f59e0b" : "transparent"}
-            />
-          </TouchableOpacity>
         )}
 
         {/* Project Name */}
@@ -321,7 +283,7 @@ export function ProjectCard({
         {!isTimerRunning && onQuickStart && (
           <View style={styles.playIconContainer}>
             <View style={[styles.playIconCircle, { backgroundColor: projectColor }]}>
-              <Play size={18} color="#ffffff" fill="#ffffff" />
+              <Play size={24} color="#ffffff" fill="#ffffff" />
             </View>
           </View>
         )}
@@ -332,15 +294,22 @@ export function ProjectCard({
 
 const styles = StyleSheet.create({
   card: {
-    width: 280,
-    borderRadius: borderRadius.md,
-    borderLeftWidth: 4,
+    width: 300, // Increased from 280
+    height: 180, // Fixed height for consistency
+    borderRadius: borderRadius.lg, // Larger radius
+    borderLeftWidth: 5, // Increased from 4 for more prominence
     borderWidth: 1,
-    padding: spacing.md,
-    paddingTop: spacing.lg, // Extra space for favorite star
+    paddingHorizontal: 20, // More generous horizontal padding
+    paddingVertical: 20, // More generous vertical padding
+    // Subtle drop shadow
     ...Platform.select({
-      ios: shadows.md,
-      android: { elevation: 5 },
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+      },
+      android: { elevation: 3 },
     }),
   },
   cardActive: {
@@ -359,22 +328,17 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 8,
   },
-  favoriteButton: {
-    position: "absolute",
-    top: spacing.sm,
-    right: spacing.sm,
-    zIndex: 10,
-    padding: spacing.xs,
-  },
   projectName: {
-    ...typography.body,
-    fontWeight: "700",
+    fontSize: 20, // Increased from body size
+    fontWeight: "700", // Bold but not ultra-bold (fixes blurriness)
     marginBottom: spacing.xs,
-    paddingRight: spacing.lg, // Space for star
+    letterSpacing: -0.2, // Slightly looser for clarity
   },
   clientName: {
-    ...typography.caption,
+    fontSize: 13, // Slightly smaller
+    fontWeight: "600", // Medium weight
     marginBottom: spacing.sm,
+    opacity: 0.8, // Subtle opacity
   },
   footer: {
     flexDirection: "row",
@@ -384,13 +348,15 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   hourlyRate: {
-    ...typography.body,
-    fontWeight: "600",
+    fontSize: 17, // Larger for prominence
+    fontWeight: "700", // Bold
+    letterSpacing: -0.2,
     // Color set dynamically via inline style
   },
   todaysTime: {
-    ...typography.caption,
-    fontWeight: "500",
+    fontSize: 13,
+    fontWeight: "600", // Increased weight
+    opacity: 0.85,
   },
   runningBadge: {
     position: "absolute",
@@ -400,10 +366,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     borderRadius: borderRadius.sm,
     zIndex: 10,
-    ...Platform.select({
-      ios: shadows.sm,
-      android: { elevation: 3 },
-    }),
   },
   runningBadgeText: {
     color: "#ffffff",
@@ -427,32 +389,29 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   budgetBarContainer: {
-    height: 3,
-    backgroundColor: "rgba(0,0,0,0.1)",
-    borderRadius: 2,
+    height: 6, // Increased from 3 for better visibility
+    backgroundColor: "rgba(0,0,0,0.08)",
+    borderRadius: 3,
     overflow: "hidden",
     marginTop: spacing.sm,
     marginBottom: -spacing.xs, // Negative margin to keep card compact
   },
   budgetBar: {
     height: "100%",
-    borderRadius: 2,
+    borderRadius: 3,
   },
   playIconContainer: {
     position: "absolute",
-    bottom: spacing.sm,
-    right: spacing.sm,
+    bottom: spacing.md,
+    right: spacing.md,
     zIndex: 5,
   },
   playIconCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 48, // Increased from 36
+    height: 48, // Increased from 36
+    borderRadius: 24,
     alignItems: "center",
     justifyContent: "center",
-    ...Platform.select({
-      ios: shadows.sm,
-      android: { elevation: 3 },
-    }),
+    backgroundColor: "rgba(255, 255, 255, 0.2)", // Glassmorphism backdrop
   },
 });
