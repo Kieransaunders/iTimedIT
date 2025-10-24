@@ -9,6 +9,7 @@ import {
   Modal,
   FlatList,
 } from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { createStyleSheet, useStyles } from "react-native-unistyles";
 import { useOrganization, type MembershipWithOrganization } from "@/contexts/OrganizationContext";
 import { WorkspaceTransitionOverlay } from "./common/WorkspaceTransitionOverlay";
@@ -69,10 +70,9 @@ export function WorkspaceSwitcher({ style, onWorkspaceChange }: WorkspaceSwitche
   }
 
   // Display name and color for the button
-  const displayName =
-    currentWorkspace === "personal"
-      ? "Personal"
-      : activeOrganization?.name || "Work";
+  const isPersonal = currentWorkspace === "personal";
+  const displayName = isPersonal ? "Personal" : (activeOrganization?.name || "Work");
+  const iconName = isPersonal ? "account" : "account-group";
   const displayColor =
     currentWorkspace === "personal"
       ? "#3b82f6" // Blue for personal
@@ -138,7 +138,11 @@ export function WorkspaceSwitcher({ style, onWorkspaceChange }: WorkspaceSwitche
   return (
     <View style={[styles.container, style]}>
       <TouchableOpacity
-        style={styles.trigger}
+        style={[
+          styles.trigger,
+          isPersonal ? styles.triggerPersonal : styles.triggerWork,
+          { borderColor: isPersonal ? theme.colors.border : displayColor }
+        ]}
         onPress={() => setIsOpen(true)}
         disabled={isSwitching}
         accessible={true}
@@ -146,19 +150,25 @@ export function WorkspaceSwitcher({ style, onWorkspaceChange }: WorkspaceSwitche
         accessibilityRole="button"
         accessibilityHint="Opens workspace selection"
       >
-        <View style={styles.triggerContent}>
-          <View
-            style={[styles.colorDot, { backgroundColor: displayColor }]}
-          />
-          <Text style={styles.triggerText} numberOfLines={1}>
-            {displayName}
-          </Text>
-          <Text style={styles.chevron}>▼</Text>
-        </View>
+        <MaterialCommunityIcons
+          name={iconName as any}
+          size={14}
+          color={isPersonal ? theme.colors.textSecondary : "#ffffff"}
+        />
+        <Text style={[
+          styles.triggerText,
+          isPersonal ? styles.triggerTextPersonal : styles.triggerTextWork
+        ]} numberOfLines={1}>
+          {displayName}
+        </Text>
+        <Text style={[
+          styles.chevron,
+          isPersonal ? styles.chevronPersonal : styles.chevronWork
+        ]}>▼</Text>
         {isSwitching && (
           <ActivityIndicator
             size="small"
-            color={theme.colors.primary}
+            color={isPersonal ? theme.colors.primary : "#ffffff"}
             style={styles.loadingIndicator}
           />
         )}
@@ -221,36 +231,44 @@ const stylesheet = createStyleSheet((theme) => ({
     gap: theme.spacing.sm,
   },
   trigger: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.md,
+    borderRadius: 999, // Fully rounded pill shape
     borderWidth: 1,
-    borderColor: theme.colors.border,
-    minHeight: theme.sizing.minTouchTarget,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    gap: 4,
+    alignSelf: "flex-start",
   },
-  triggerContent: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: theme.spacing.sm,
+  triggerPersonal: {
+    backgroundColor: theme.colors.surface,
+  },
+  triggerWork: {
+    backgroundColor: theme.colors.primary,
   },
   triggerText: {
-    fontSize: 14,
+    fontSize: 11,
     fontWeight: "600",
-    color: theme.colors.textPrimary,
-    flex: 1,
+    letterSpacing: 0.5,
+  },
+  triggerTextPersonal: {
+    color: theme.colors.textSecondary,
+  },
+  triggerTextWork: {
+    color: "#ffffff",
   },
   chevron: {
-    color: theme.colors.textSecondary,
-    fontSize: 12,
-    marginLeft: theme.spacing.xs,
+    fontSize: 10,
+    marginLeft: 2,
+  },
+  chevronPersonal: {
+    color: theme.colors.textTertiary,
+  },
+  chevronWork: {
+    color: "rgba(255, 255, 255, 0.7)",
   },
   loadingIndicator: {
-    marginLeft: theme.spacing.sm,
+    marginLeft: theme.spacing.xs,
   },
   colorDot: {
     width: 8,

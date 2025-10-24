@@ -15,8 +15,7 @@ import { useFavoriteProjects } from "@/hooks/useFavoriteProjects";
 import { useTheme } from "@/utils/ThemeContext";
 import { calculateBudgetStatus } from "@/utils/budget";
 import { warningTap } from "@/utils/haptics";
-import { EmptyStateCard, WebAppPrompt, openWebApp } from "@/components";
-import { WorkspaceBadge } from "@/components/common/WorkspaceBadge";
+import { EmptyStateCard, WebAppPrompt, openWebApp, WorkspaceSwitcher } from "@/components";
 import { TipsBottomSheet, useTipsBottomSheet } from "@/components/common/TipsBottomSheet";
 import { FloatingActionButton } from "@/components/common/FloatingActionButton";
 import { WebTimerBadge } from "@/components/timer/WebTimerBadge";
@@ -198,8 +197,25 @@ export default function Index() {
   const canStartTimer = !isTimerRunning && selectedProject !== null;
 
   const handleStartTimer = async () => {
+    // Validate we have projects in the database
+    if (projects.length === 0) {
+      showErrorToast("No projects available. Create a project first to start tracking time.");
+      // Optionally open create project modal
+      setTimeout(() => setShowCreateProject(true), 500);
+      return;
+    }
+
+    // Validate a project is selected
     if (!selectedProject) {
-      showErrorToast("Please select a project first");
+      showErrorToast("Please select a project before starting the timer");
+      return;
+    }
+
+    // Validate the selected project still exists in the current projects list
+    const projectExists = projects.some(p => p._id === selectedProject._id);
+    if (!projectExists) {
+      showErrorToast("Selected project no longer exists. Please select a different project.");
+      setSelectedProject(null);
       return;
     }
 
@@ -251,6 +267,11 @@ export default function Index() {
     setShowToast(true);
   };
 
+  const showInfoToast = (message: string) => {
+    setToastMessage(message);
+    setShowToast(true);
+  };
+
   if (isLoading) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
@@ -269,7 +290,7 @@ export default function Index() {
         {/* Large Timer Display - at top for visibility */}
         <View style={styles.timerDisplayContainer}>
           <View style={styles.timerHeader}>
-            <WorkspaceBadge size="medium" />
+            <WorkspaceSwitcher style={styles.workspaceSwitcher} />
             <WebTimerBadge visible={(runningTimer as any)?.startedFrom === "web"} />
           </View>
           <LargeTimerDisplay
@@ -306,9 +327,21 @@ export default function Index() {
                 selectedProject={selectedProject}
                 onSelectProject={setSelectedProject}
                 onToggleFavorite={toggleFavorite}
-                onQuickStart={(project) => {
+                onQuickStart={async (project) => {
                   setSelectedProject(project);
-                  // Don't auto-start - let user manually start via controls
+                  // Auto-start timer immediately when project card is pressed
+                  try {
+                    setIsStarting(true);
+                    await startTimer(
+                      project._id as any,
+                      selectedCategory || undefined,
+                      timerMode === "pomodoro"
+                    );
+                  } catch (err: any) {
+                    showErrorToast(err.message || "Failed to start timer");
+                  } finally {
+                    setIsStarting(false);
+                  }
                 }}
                 isFavorite={isFavorite}
                 sectionTitle="⚡ Recent Projects"
@@ -322,9 +355,21 @@ export default function Index() {
                 selectedProject={selectedProject}
                 onSelectProject={setSelectedProject}
                 onToggleFavorite={toggleFavorite}
-                onQuickStart={(project) => {
+                onQuickStart={async (project) => {
                   setSelectedProject(project);
-                  // Don't auto-start - let user manually start via controls
+                  // Auto-start timer immediately when project card is pressed
+                  try {
+                    setIsStarting(true);
+                    await startTimer(
+                      project._id as any,
+                      selectedCategory || undefined,
+                      timerMode === "pomodoro"
+                    );
+                  } catch (err: any) {
+                    showErrorToast(err.message || "Failed to start timer");
+                  } finally {
+                    setIsStarting(false);
+                  }
                 }}
                 isFavorite={isFavorite}
                 sectionTitle="👤 Personal Projects"
@@ -338,9 +383,21 @@ export default function Index() {
                 selectedProject={selectedProject}
                 onSelectProject={setSelectedProject}
                 onToggleFavorite={toggleFavorite}
-                onQuickStart={(project) => {
+                onQuickStart={async (project) => {
                   setSelectedProject(project);
-                  // Don't auto-start - let user manually start via controls
+                  // Auto-start timer immediately when project card is pressed
+                  try {
+                    setIsStarting(true);
+                    await startTimer(
+                      project._id as any,
+                      selectedCategory || undefined,
+                      timerMode === "pomodoro"
+                    );
+                  } catch (err: any) {
+                    showErrorToast(err.message || "Failed to start timer");
+                  } finally {
+                    setIsStarting(false);
+                  }
                 }}
                 isFavorite={isFavorite}
                 sectionTitle="💼 Work Projects"
@@ -351,10 +408,15 @@ export default function Index() {
           /* Show empty state hint if no projects exist */
           <View style={styles.emptyStateContainer}>
             <View style={[styles.emptyStateHint, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <MaterialCommunityIcons name="information-outline" size={24} color={colors.primary} />
-              <Text style={[styles.emptyStateText, { color: colors.textPrimary }]}>
-                No projects yet. Use the web app to create your first project.
-              </Text>
+              <MaterialCommunityIcons name="folder-plus-outline" size={32} color={colors.primary} />
+              <View style={styles.emptyStateTextContainer}>
+                <Text style={[styles.emptyStateTitle, { color: colors.textPrimary }]}>
+                  No projects yet
+                </Text>
+                <Text style={[styles.emptyStateDescription, { color: colors.textSecondary }]}>
+                  Create your first project to start tracking time. Tap the + button below to get started!
+                </Text>
+              </View>
             </View>
           </View>
         )}
@@ -530,6 +592,9 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     gap: spacing.sm,
   },
+  workspaceSwitcher: {
+    alignSelf: "center",
+  },
   emptyStateContainer: {
     paddingHorizontal: spacing.lg,
     marginBottom: spacing.md,
@@ -542,8 +607,16 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.lg,
     borderWidth: 1,
   },
-  emptyStateText: {
+  emptyStateTextContainer: {
     flex: 1,
+    gap: spacing.xs,
+  },
+  emptyStateTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    lineHeight: 22,
+  },
+  emptyStateDescription: {
     fontSize: 14,
     lineHeight: 20,
   },

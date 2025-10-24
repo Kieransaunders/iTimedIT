@@ -27,13 +27,13 @@ describe('useAuth - Google OAuth Integration', () => {
     jest.clearAllMocks();
 
     // Setup Convex sign in mock
-    mockConvexSignIn = jest.fn().mockResolvedValue(undefined);
+    mockConvexSignIn = jest.fn().mockResolvedValue(undefined as any);
 
     // Setup AuthSession mock
-    (AuthSession.makeRedirectUri as jest.Mock).mockReturnValue('itimeditapp://auth/callback');
+    (AuthSession.makeRedirectUri as any).mockReturnValue('itimeditapp://auth/callback');
 
     // Setup storage mocks
-    (secureStorage.storeAuthToken as jest.Mock) = jest.fn().mockResolvedValue(undefined);
+    (secureStorage.storeAuthToken as any) = jest.fn().mockResolvedValue(undefined as any);
 
     // Setup environment variable
     process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID = 'test-client-id.apps.googleusercontent.com';
@@ -50,12 +50,12 @@ describe('useAuth - Google OAuth Integration', () => {
         redirectUri: AuthSession.makeRedirectUri({
           scheme: 'itimeditapp',
           path: 'auth/callback'
-        }),
+        }) as string,
         scopes: ['openid', 'profile', 'email'],
         convexSignIn: mockConvexSignIn,
       };
 
-      new GoogleAuthService(config);
+      new (GoogleAuthService as any)(config);
 
       expect(GoogleAuthService).toHaveBeenCalledWith(config);
       expect(config.clientId).toBe('test-client-id.apps.googleusercontent.com');
@@ -67,12 +67,12 @@ describe('useAuth - Google OAuth Integration', () => {
         redirectUri: AuthSession.makeRedirectUri({
           scheme: 'itimeditapp',
           path: 'auth/callback'
-        }),
+        }) as string,
         scopes: ['openid', 'profile', 'email'],
         convexSignIn: mockConvexSignIn,
       };
 
-      new GoogleAuthService(config);
+      new (GoogleAuthService as any)(config);
 
       expect(AuthSession.makeRedirectUri).toHaveBeenCalledWith({
         scheme: 'itimeditapp',
@@ -89,7 +89,7 @@ describe('useAuth - Google OAuth Integration', () => {
         convexSignIn: mockConvexSignIn,
       };
 
-      new GoogleAuthService(config);
+      new (GoogleAuthService as any)(config);
 
       expect(config.scopes).toEqual(['openid', 'profile', 'email']);
       expect(config.scopes).toHaveLength(3);
@@ -103,7 +103,7 @@ describe('useAuth - Google OAuth Integration', () => {
         convexSignIn: mockConvexSignIn,
       };
 
-      new GoogleAuthService(config);
+      new (GoogleAuthService as any)(config);
 
       expect(config.convexSignIn).toBe(mockConvexSignIn);
       expect(typeof config.convexSignIn).toBe('function');
@@ -118,14 +118,14 @@ describe('useAuth - Google OAuth Integration', () => {
         codeVerifier: 'test-code-verifier',
       } as GoogleAuthResult);
 
-      const mockGoogleAuthExchangeToken = jest.fn().mockResolvedValue(undefined);
+      const mockGoogleAuthExchangeToken = jest.fn().mockResolvedValue(undefined as any);
 
-      (GoogleAuthService as jest.Mock).mockImplementation(() => ({
+      (GoogleAuthService as any as jest.Mock).mockImplementation(() => ({
         signIn: mockGoogleAuthSignIn,
         exchangeCodeForToken: mockGoogleAuthExchangeToken,
       }));
 
-      const googleAuth = new GoogleAuthService({
+      const googleAuth = new (GoogleAuthService as any)({
         clientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID!,
         redirectUri: 'itimeditapp://auth/callback',
         scopes: ['openid', 'profile', 'email'],
@@ -146,14 +146,14 @@ describe('useAuth - Google OAuth Integration', () => {
         codeVerifier: 'test-code-verifier',
       } as GoogleAuthResult);
 
-      const mockGoogleAuthExchangeToken = jest.fn().mockResolvedValue(undefined);
+      const mockGoogleAuthExchangeToken = jest.fn().mockResolvedValue(undefined as any);
 
-      (GoogleAuthService as jest.Mock).mockImplementation(() => ({
+      (GoogleAuthService as any as jest.Mock).mockImplementation(() => ({
         signIn: mockGoogleAuthSignIn,
         exchangeCodeForToken: mockGoogleAuthExchangeToken,
       }));
 
-      const googleAuth = new GoogleAuthService({
+      const googleAuth = new (GoogleAuthService as any)({
         clientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID!,
         redirectUri: 'itimeditapp://auth/callback',
         scopes: ['openid', 'profile', 'email'],
@@ -186,12 +186,12 @@ describe('useAuth - Google OAuth Integration', () => {
         error: 'User cancelled the authentication flow',
       } as GoogleAuthResult);
 
-      (GoogleAuthService as jest.Mock).mockImplementation(() => ({
+      (GoogleAuthService as any as jest.Mock).mockImplementation(() => ({
         signIn: mockGoogleAuthSignIn,
         exchangeCodeForToken: jest.fn(),
       }));
 
-      const googleAuth = new GoogleAuthService({
+      const googleAuth = new (GoogleAuthService as any)({
         clientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID!,
         redirectUri: 'itimeditapp://auth/callback',
         scopes: ['openid', 'profile', 'email'],
@@ -213,12 +213,12 @@ describe('useAuth - Google OAuth Integration', () => {
 
       const mockGoogleAuthExchangeToken = jest.fn();
 
-      (GoogleAuthService as jest.Mock).mockImplementation(() => ({
+      (GoogleAuthService as any as jest.Mock).mockImplementation(() => ({
         signIn: mockGoogleAuthSignIn,
         exchangeCodeForToken: mockGoogleAuthExchangeToken,
       }));
 
-      const googleAuth = new GoogleAuthService({
+      const googleAuth = new (GoogleAuthService as any)({
         clientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID!,
         redirectUri: 'itimeditapp://auth/callback',
         scopes: ['openid', 'profile', 'email'],
@@ -238,12 +238,12 @@ describe('useAuth - Google OAuth Integration', () => {
         type: 'cancel',
       } as GoogleAuthResult);
 
-      (GoogleAuthService as jest.Mock).mockImplementation(() => ({
+      (GoogleAuthService as any as jest.Mock).mockImplementation(() => ({
         signIn: mockGoogleAuthSignIn,
         exchangeCodeForToken: jest.fn(),
       }));
 
-      const googleAuth = new GoogleAuthService({
+      const googleAuth = new (GoogleAuthService as any)({
         clientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID!,
         redirectUri: 'itimeditapp://auth/callback',
         scopes: ['openid', 'profile', 'email'],
@@ -266,12 +266,12 @@ describe('useAuth - Google OAuth Integration', () => {
         error: 'Failed to authenticate with Google',
       } as GoogleAuthResult);
 
-      (GoogleAuthService as jest.Mock).mockImplementation(() => ({
+      (GoogleAuthService as any as jest.Mock).mockImplementation(() => ({
         signIn: mockGoogleAuthSignIn,
         exchangeCodeForToken: jest.fn(),
       }));
 
-      const googleAuth = new GoogleAuthService({
+      const googleAuth = new (GoogleAuthService as any)({
         clientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID!,
         redirectUri: 'itimeditapp://auth/callback',
         scopes: ['openid', 'profile', 'email'],
@@ -290,12 +290,12 @@ describe('useAuth - Google OAuth Integration', () => {
         // Missing code and codeVerifier
       } as GoogleAuthResult);
 
-      (GoogleAuthService as jest.Mock).mockImplementation(() => ({
+      (GoogleAuthService as any as jest.Mock).mockImplementation(() => ({
         signIn: mockGoogleAuthSignIn,
         exchangeCodeForToken: jest.fn(),
       }));
 
-      const googleAuth = new GoogleAuthService({
+      const googleAuth = new (GoogleAuthService as any)({
         clientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID!,
         redirectUri: 'itimeditapp://auth/callback',
         scopes: ['openid', 'profile', 'email'],
@@ -323,12 +323,12 @@ describe('useAuth - Google OAuth Integration', () => {
         new Error('Invalid authorization code')
       );
 
-      (GoogleAuthService as jest.Mock).mockImplementation(() => ({
+      (GoogleAuthService as any as jest.Mock).mockImplementation(() => ({
         signIn: mockGoogleAuthSignIn,
         exchangeCodeForToken: mockGoogleAuthExchangeToken,
       }));
 
-      const googleAuth = new GoogleAuthService({
+      const googleAuth = new (GoogleAuthService as any)({
         clientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID!,
         redirectUri: 'itimeditapp://auth/callback',
         scopes: ['openid', 'profile', 'email'],
@@ -355,12 +355,12 @@ describe('useAuth - Google OAuth Integration', () => {
         new Error('Network error during authentication')
       );
 
-      (GoogleAuthService as jest.Mock).mockImplementation(() => ({
+      (GoogleAuthService as any as jest.Mock).mockImplementation(() => ({
         signIn: mockGoogleAuthSignIn,
         exchangeCodeForToken: mockGoogleAuthExchangeToken,
       }));
 
-      const googleAuth = new GoogleAuthService({
+      const googleAuth = new (GoogleAuthService as any)({
         clientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID!,
         redirectUri: 'itimeditapp://auth/callback',
         scopes: ['openid', 'profile', 'email'],
@@ -382,12 +382,12 @@ describe('useAuth - Google OAuth Integration', () => {
         error: 'OAuth failed',
       } as GoogleAuthResult);
 
-      (GoogleAuthService as jest.Mock).mockImplementation(() => ({
+      (GoogleAuthService as any as jest.Mock).mockImplementation(() => ({
         signIn: mockGoogleAuthSignIn,
         exchangeCodeForToken: jest.fn(),
       }));
 
-      const googleAuth = new GoogleAuthService({
+      const googleAuth = new (GoogleAuthService as any)({
         clientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID!,
         redirectUri: 'itimeditapp://auth/callback',
         scopes: ['openid', 'profile', 'email'],

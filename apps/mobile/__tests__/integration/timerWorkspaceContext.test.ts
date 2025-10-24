@@ -58,11 +58,11 @@ describe('Timer Workspace Context Integration Tests', () => {
       return undefined;
     });
 
-    mockStartMutation.mockResolvedValue();
-    mockStopMutation.mockResolvedValue();
-    mockResetMutation.mockResolvedValue();
-    mockHeartbeatMutation.mockResolvedValue();
-    mockAckInterruptMutation.mockResolvedValue();
+    mockStartMutation.mockResolvedValue(undefined as any);
+    mockStopMutation.mockResolvedValue(undefined as any);
+    mockResetMutation.mockResolvedValue(undefined as any);
+    mockHeartbeatMutation.mockResolvedValue(undefined as any);
+    mockAckInterruptMutation.mockResolvedValue(undefined as any);
   });
 
   describe('Timer Start/Stop in Personal Workspace', () => {

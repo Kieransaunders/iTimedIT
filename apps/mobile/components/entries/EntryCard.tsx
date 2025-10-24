@@ -1,7 +1,8 @@
 import React from "react";
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { formatDate, formatDuration } from "../../utils/formatters";
-import { colors, typography } from "../../utils/theme";
+import { typography } from "../../utils/theme";
+import { useTheme } from "../../utils/ThemeContext";
 
 interface EntryCardProps {
   entry: {
@@ -24,6 +25,7 @@ interface EntryCardProps {
 }
 
 export function EntryCard({ entry, onPress, onDelete }: EntryCardProps) {
+  const { colors } = useTheme();
   const duration = entry.seconds || 0;
   const formattedDuration = formatDuration(duration);
   const formattedDate = formatDate(entry.startedAt);
@@ -50,7 +52,13 @@ export function EntryCard({ entry, onPress, onDelete }: EntryCardProps) {
 
   return (
     <TouchableOpacity
-      style={styles.card}
+      style={[
+        styles.card,
+        {
+          backgroundColor: colors.surface,
+          borderColor: colors.border,
+        }
+      ]}
       onPress={onPress}
       onLongPress={handleLongPress}
       disabled={!onPress && !onDelete}
@@ -58,29 +66,29 @@ export function EntryCard({ entry, onPress, onDelete }: EntryCardProps) {
     >
       <View style={styles.header}>
         <View style={styles.projectInfo}>
-          <Text style={styles.projectName} numberOfLines={1}>
+          <Text style={[styles.projectName, { color: colors.textPrimary }]} numberOfLines={1}>
             {entry.project?.name || "Unknown Project"}
           </Text>
           {entry.client && (
-            <Text style={styles.clientName} numberOfLines={1}>
+            <Text style={[styles.clientName, { color: colors.textSecondary }]} numberOfLines={1}>
               {entry.client.name}
             </Text>
           )}
         </View>
-        <Text style={styles.date}>{formattedDate}</Text>
+        <Text style={[styles.date, { color: colors.textSecondary }]}>{formattedDate}</Text>
       </View>
 
       <View style={styles.details}>
-        <Text style={styles.duration}>{formattedDuration}</Text>
+        <Text style={[styles.duration, { color: colors.primary }]}>{formattedDuration}</Text>
         {entry.category && (
-          <View style={styles.categoryBadge}>
-            <Text style={styles.categoryText}>{entry.category}</Text>
+          <View style={[styles.categoryBadge, { backgroundColor: colors.border }]}>
+            <Text style={[styles.categoryText, { color: colors.textSecondary }]}>{entry.category}</Text>
           </View>
         )}
       </View>
 
       {entry.note && (
-        <Text style={styles.note} numberOfLines={2}>
+        <Text style={[styles.note, { color: colors.textSecondary }]} numberOfLines={2}>
           {entry.note}
         </Text>
       )}
@@ -90,12 +98,10 @@ export function EntryCard({ entry, onPress, onDelete }: EntryCardProps) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.surface,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: colors.border,
   },
   header: {
     flexDirection: "row",
@@ -109,17 +115,14 @@ const styles = StyleSheet.create({
   },
   projectName: {
     ...typography.body,
-    color: colors.textPrimary,
     fontWeight: "600",
     marginBottom: 2,
   },
   clientName: {
     ...typography.caption,
-    color: colors.textSecondary,
   },
   date: {
     ...typography.caption,
-    color: colors.textSecondary,
   },
   details: {
     flexDirection: "row",
@@ -128,23 +131,19 @@ const styles = StyleSheet.create({
   },
   duration: {
     ...typography.body,
-    color: colors.primary,
     fontWeight: "600",
   },
   categoryBadge: {
-    backgroundColor: colors.border,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
   },
   categoryText: {
     ...typography.caption,
-    color: colors.textSecondary,
     fontSize: 12,
   },
   note: {
     ...typography.caption,
-    color: colors.textSecondary,
     marginTop: 8,
     lineHeight: 18,
   },

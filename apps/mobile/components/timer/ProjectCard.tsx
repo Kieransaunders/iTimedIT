@@ -19,7 +19,7 @@ import {
   Animated,
   TouchableOpacity,
 } from "react-native";
-import { Star, Play, AlertCircle } from "lucide-react-native";
+import { Star, AlertCircle } from "lucide-react-native";
 import { lightTap, mediumTap } from "@/utils/haptics";
 
 export interface ProjectCardProps {
@@ -144,10 +144,14 @@ export function ProjectCard({
 
   const handlePress = useCallback(() => {
     lightTap();
-    if (onPress) {
+    // If onQuickStart is provided, use it to auto-start timer on card press
+    // Otherwise fall back to onPress for simple selection
+    if (onQuickStart) {
+      onQuickStart(project);
+    } else if (onPress) {
       onPress(project);
     }
-  }, [onPress, project]);
+  }, [onPress, onQuickStart, project]);
 
   const handleLongPress = useCallback(() => {
     mediumTap();
@@ -164,14 +168,6 @@ export function ProjectCard({
       onToggleFavorite(project._id);
     }
   }, [onToggleFavorite, project._id]);
-
-  const handleQuickStart = useCallback((e: any) => {
-    e?.stopPropagation?.();
-    mediumTap();
-    if (onQuickStart) {
-      onQuickStart(project);
-    }
-  }, [onQuickStart, project]);
 
   // Format today's time as "Xh Ym"
   const formatTodaysTime = (seconds: number): string => {
@@ -308,20 +304,6 @@ export function ProjectCard({
             />
           </View>
         )}
-
-        {/* Quick Start Button */}
-        {onQuickStart && (
-          <TouchableOpacity
-            onPress={handleQuickStart}
-            style={[styles.quickStartButton, { backgroundColor: projectColor }]}
-            accessible={true}
-            accessibilityRole="button"
-            accessibilityLabel="Quick start timer for this project"
-          >
-            <Play size={14} color="#ffffff" fill="#ffffff" />
-            <Text style={styles.quickStartText}>Quick Start</Text>
-          </TouchableOpacity>
-        )}
       </Pressable>
     </Animated.View>
   );
@@ -388,21 +370,6 @@ const styles = StyleSheet.create({
   todaysTime: {
     ...typography.caption,
     fontWeight: "500",
-  },
-  quickStartButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: spacing.xs,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: borderRadius.sm,
-    marginTop: spacing.sm,
-  },
-  quickStartText: {
-    color: "#ffffff",
-    fontSize: 13,
-    fontWeight: "600",
   },
   budgetBadge: {
     position: "absolute",

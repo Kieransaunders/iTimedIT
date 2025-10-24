@@ -1,7 +1,6 @@
 import React from "react";
 import {
   Modal,
-  SafeAreaView,
   FlatList,
   StyleSheet,
   Text,
@@ -10,6 +9,7 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useClients } from "@/hooks/useClients";
 import { useTheme } from "@/utils/ThemeContext";

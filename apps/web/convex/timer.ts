@@ -69,8 +69,7 @@ export const getRunningTimer = query({
 
     return {
       ...timer,
-      project,
-      client,
+      project: project ? { ...project, client } : null,
     };
   },
 });
@@ -85,12 +84,18 @@ export const start = mutation({
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) {
-      throw new Error("Not authenticated");
+      throw new Error("Please sign in to start a timer");
     }
 
+    // Validate project exists
     const project = await ctx.db.get(args.projectId);
     if (!project) {
-      throw new Error("Project not found");
+      throw new Error("Project not found. It may have been deleted. Please refresh and select a valid project.");
+    }
+
+    // Check if project is archived
+    if (project.archived) {
+      throw new Error("Cannot start timer for an archived project. Please unarchive the project first or select a different project.");
     }
 
     // Detect workspace type
@@ -100,14 +105,14 @@ export const start = mutation({
     if (isPersonal) {
       // Personal workspace - verify user owns the project
       if (project.ownerId !== userId) {
-        throw new Error("Personal project not found");
+        throw new Error("You don't have permission to use this project. Please select one of your own projects.");
       }
       organizationId = undefined;
     } else {
       // Work workspace - verify organization membership
       const membership = await ensureMembership(ctx);
       if (project.organizationId !== membership.organizationId) {
-        throw new Error("Project not found");
+        throw new Error("Project not found in your current workspace. Please switch workspaces or select a different project.");
       }
       organizationId = membership.organizationId;
     }

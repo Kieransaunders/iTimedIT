@@ -3,7 +3,6 @@ import {
     ActivityIndicator,
     FlatList,
     Modal,
-    SafeAreaView,
     ScrollView,
     StyleSheet,
     Text,
@@ -11,6 +10,7 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useProjects } from "../../hooks/useProjects";
 import { useClients } from "../../hooks/useClients";

@@ -94,12 +94,12 @@ describe('Workspace Integration Suite - Complete Functionality Test', () => {
 
     // Setup default successful responses
     mockStorage.getItem.mockResolvedValue('personal');
-    mockStorage.setItem.mockResolvedValue();
-    mockEnsureWorkspace.mockResolvedValue();
-    mockSetActiveOrganization.mockResolvedValue();
-    mockStartTimer.mockResolvedValue();
-    mockStopTimer.mockResolvedValue();
-    mockHeartbeat.mockResolvedValue();
+    mockStorage.setItem.mockResolvedValue(undefined as any);
+    mockEnsureWorkspace.mockResolvedValue(undefined as any);
+    mockSetActiveOrganization.mockResolvedValue(undefined as any);
+    mockStartTimer.mockResolvedValue(undefined as any);
+    mockStopTimer.mockResolvedValue(undefined as any);
+    mockHeartbeat.mockResolvedValue(undefined as any);
   });
 
   describe('Requirement 1.1: Organization Context Detection', () => {

@@ -8,7 +8,7 @@ export default function TabLayout() {
   const { colors } = useTheme();
 
   const handleReportPress = () => {
-    Linking.openURL("https://itimedit.com/projects");
+    Linking.openURL("https://itimedit.netlify.app/projects");
   };
 
   return (
@@ -31,13 +31,13 @@ export default function TabLayout() {
               style={{
                 padding: 8,
                 borderRadius: 8,
-                backgroundColor: colors.primary,
+                backgroundColor: colors.surface,
               }}
               accessible={true}
-              accessibilityLabel="Open reporting in web browser"
+              accessibilityLabel="Open projects in web browser"
               accessibilityRole="button"
             >
-              <MaterialCommunityIcons name="chart-bar" size={20} color="#fff" />
+              <MaterialCommunityIcons name="chart-bar" size={20} color={colors.textSecondary} />
             </TouchableOpacity>
             <ThemeToggle />
           </View>

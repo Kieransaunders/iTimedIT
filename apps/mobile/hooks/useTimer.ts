@@ -292,6 +292,11 @@ export function useTimer(): UseTimerReturn {
         try {
           setError(null);
 
+          // Validate projectId is provided
+          if (!projectId) {
+            throw new Error("Please select a project before starting the timer");
+          }
+
           await startMutation({
             projectId,
             category,
@@ -309,7 +314,32 @@ export function useTimer(): UseTimerReturn {
           }
         } catch (err: any) {
           console.error("Failed to start timer:", err);
-          const errorMessage = err?.message || "Failed to start timer";
+
+          // Extract user-friendly error message from Convex error
+          let errorMessage = "Failed to start timer";
+
+          if (err?.message) {
+            // Check for specific error patterns from backend
+            const msg = err.message;
+
+            if (msg.includes("Project not found")) {
+              errorMessage = "This project no longer exists. Please select a different project.";
+            } else if (msg.includes("archived project")) {
+              errorMessage = "Cannot start timer for archived projects. Please select an active project.";
+            } else if (msg.includes("don't have permission")) {
+              errorMessage = "You don't have permission to use this project.";
+            } else if (msg.includes("not found in your current workspace")) {
+              errorMessage = "Project not found. Try switching workspaces or select a different project.";
+            } else if (msg.includes("sign in")) {
+              errorMessage = "Please sign in to start a timer.";
+            } else if (msg.includes("select a project")) {
+              errorMessage = msg; // Use the message as-is
+            } else {
+              // Use the backend error message if it's descriptive
+              errorMessage = msg;
+            }
+          }
+
           setError(errorMessage);
 
           // Show network error if it's a retryable error
