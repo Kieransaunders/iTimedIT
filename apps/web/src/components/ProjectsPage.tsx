@@ -82,6 +82,17 @@ export function ProjectsPage({
         budgetType,
       };
 
+      // Handle client assignment (can be changed or removed when editing)
+      if (editingProject) {
+        // When editing, always include clientId (undefined to remove, or the selected client)
+        projectData.clientId = clientId ? (clientId as Id<"clients">) : undefined;
+      } else {
+        // When creating, only include if selected
+        if (clientId) {
+          projectData.clientId = clientId as Id<"clients">;
+        }
+      }
+
       // Only add budget fields if they have values
       if (budgetType === "hours" && budgetHours) {
         projectData.budgetHours = parseFloat(budgetHours);
@@ -102,16 +113,7 @@ export function ProjectsPage({
         console.log("Project updated successfully");
       } else {
         console.log("Creating new project");
-        const createData: any = {
-          ...projectData,
-        };
-
-        // Client is now optional for both personal and team workspaces
-        if (clientId) {
-          createData.clientId = clientId as Id<"clients">;
-        }
-
-        await createProject(createData);
+        await createProject(projectData);
         console.log("Project created successfully");
       }
       
@@ -353,7 +355,6 @@ export function ProjectsPage({
                   id="clientId"
                   value={clientId}
                   onChange={(e) => setClientId(e.target.value as Id<"clients">)}
-                  disabled={!!editingProject}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-purple-timer bg-white dark:bg-gray-700/50 text-gray-900 dark:text-gray-100"
                 >
                   <option value="">Select a client</option>

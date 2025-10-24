@@ -271,16 +271,21 @@ export const update = mutation({
       }
     }
 
-    await ctx.db.patch(args.id, {
-      ...(args.clientId !== undefined && { clientId: args.clientId }),
-      ...(args.name !== undefined && { name: args.name }),
-      ...(args.hourlyRate !== undefined && { hourlyRate: args.hourlyRate }),
-      ...(args.budgetType !== undefined && { budgetType: args.budgetType }),
-      ...(args.budgetHours !== undefined && { budgetHours: args.budgetHours }),
-      ...(args.budgetAmount !== undefined && { budgetAmount: args.budgetAmount }),
-      ...(args.archived !== undefined && { archived: args.archived }),
-      ...(args.workspaceType !== undefined && { workspaceType: args.workspaceType }),
-    });
+    const patchData: any = {};
+
+    // Handle optional fields that might be explicitly undefined (to clear them)
+    if (args.name !== undefined) patchData.name = args.name;
+    if (args.hourlyRate !== undefined) patchData.hourlyRate = args.hourlyRate;
+    if (args.budgetType !== undefined) patchData.budgetType = args.budgetType;
+    if (args.budgetHours !== undefined) patchData.budgetHours = args.budgetHours;
+    if (args.budgetAmount !== undefined) patchData.budgetAmount = args.budgetAmount;
+    if (args.archived !== undefined) patchData.archived = args.archived;
+    if (args.workspaceType !== undefined) patchData.workspaceType = args.workspaceType;
+
+    // Special handling for clientId - allow clearing by passing undefined
+    if ("clientId" in args) patchData.clientId = args.clientId;
+
+    await ctx.db.patch(args.id, patchData);
   },
 });
 
