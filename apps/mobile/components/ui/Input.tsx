@@ -1,5 +1,5 @@
-import { borderRadius, colors, sizing, spacing, typography } from "@/utils/theme";
-import React, { useState } from "react";
+import { borderRadius, sizing, spacing, typography } from "@/utils/theme";
+import React, { useMemo, useState } from "react";
 import {
     StyleSheet,
     Text,
@@ -8,6 +8,7 @@ import {
     View,
     ViewStyle,
 } from "react-native";
+import { useTheme } from "@/utils/ThemeContext";
 
 interface InputProps extends TextInputProps {
   label?: string;
@@ -24,9 +25,13 @@ export function Input({
   leftIcon,
   rightIcon,
   style,
+  multiline,
   ...textInputProps
 }: InputProps) {
+  const { colors } = useTheme();
   const [isFocused, setIsFocused] = useState(false);
+
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   return (
     <View style={[styles.container, containerStyle]}>
@@ -34,18 +39,26 @@ export function Input({
       <View
         style={[
           styles.inputContainer,
+          multiline && styles.inputContainerMultiline,
           isFocused && styles.inputContainerFocused,
           error && styles.inputContainerError,
         ]}
       >
         {leftIcon && <View style={styles.iconLeft}>{leftIcon}</View>}
         <TextInput
-          style={[styles.input, leftIcon && styles.inputWithLeftIcon, rightIcon && styles.inputWithRightIcon, style]}
+          style={[
+            styles.input,
+            multiline && styles.inputMultiline,
+            leftIcon && styles.inputWithLeftIcon,
+            rightIcon && styles.inputWithRightIcon,
+            style
+          ]}
           placeholderTextColor={colors.textSecondary}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           accessible={true}
           accessibilityLabel={label || textInputProps.placeholder}
+          multiline={multiline}
           {...textInputProps}
         />
         {rightIcon && <View style={styles.iconRight}>{rightIcon}</View>}
@@ -55,7 +68,7 @@ export function Input({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: typeof import("@/utils/theme").lightColors) => StyleSheet.create({
   container: {
     marginBottom: spacing.md,
   },
@@ -74,6 +87,12 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     height: sizing.inputHeight,
   },
+  inputContainerMultiline: {
+    height: undefined,
+    minHeight: sizing.inputHeight,
+    alignItems: "flex-start",
+    paddingVertical: spacing.sm,
+  },
   inputContainerFocused: {
     borderColor: colors.primary,
   },
@@ -86,6 +105,11 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     paddingHorizontal: spacing.md,
     height: "100%",
+  },
+  inputMultiline: {
+    height: undefined,
+    paddingVertical: spacing.sm,
+    textAlignVertical: "top",
   },
   inputWithLeftIcon: {
     paddingLeft: spacing.sm,

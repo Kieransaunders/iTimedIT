@@ -7,6 +7,7 @@ import {
     ScrollView,
     StyleSheet,
     Text,
+    TextInput,
     TouchableOpacity,
     View,
 } from "react-native";
@@ -55,9 +56,6 @@ export function EditEntryModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [durationHours, setDurationHours] = useState(0);
-  const [durationMinutes, setDurationMinutes] = useState(0);
-  const [durationSeconds, setDurationSeconds] = useState(0);
 
   // Pre-fill form when entry changes
   useEffect(() => {
@@ -70,24 +68,11 @@ export function EditEntryModal({
       setNote(entry.note || "");
       setSelectedCategory(entry.category || null);
       setError(null);
-
-      const durationInSeconds = Math.max(0, Math.floor((end.getTime() - start.getTime()) / 1000));
-      setDurationHours(Math.floor(durationInSeconds / 3600));
-      setDurationMinutes(Math.floor((durationInSeconds % 3600) / 60));
-      setDurationSeconds(durationInSeconds % 60);
     }
   }, [entry, visible]);
 
   const duration = Math.max(0, Math.floor((endDate.getTime() - startDate.getTime()) / 1000));
   const isValid = selectedProject && endDate > startDate;
-
-  useEffect(() => {
-    const newDurationInSeconds = (durationHours * 3600) + (durationMinutes * 60) + durationSeconds;
-    if (!isNaN(newDurationInSeconds) && startDate) {
-      const newEndDate = new Date(startDate.getTime() + newDurationInSeconds * 1000);
-      setEndDate(newEndDate);
-    }
-  }, [durationHours, durationMinutes, durationSeconds, startDate]);
 
   const handleSubmit = async () => {
     if (!isValid || !selectedProject || !entry) {
@@ -214,34 +199,13 @@ export function EditEntryModal({
               </TouchableOpacity>
             </View>
 
-            {/* Duration Input */}
+            {/* Duration Display */}
             <View style={styles.field}>
-              <Text style={[styles.label, { color: colors.textPrimary }]}>Duration</Text>
-              <View style={[styles.durationInputContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                <Input
-                  value={String(durationHours)}
-                  onChangeText={(text) => setDurationHours(Number(text) || 0)}
-                  keyboardType="number-pad"
-                  style={[styles.durationInput, { color: colors.textPrimary }]}
-                  placeholderTextColor={colors.textSecondary}
-                />
-                <Text style={[styles.durationSeparator, { color: colors.textSecondary }]}>h</Text>
-                <Input
-                  value={String(durationMinutes)}
-                  onChangeText={(text) => setDurationMinutes(Number(text) || 0)}
-                  keyboardType="number-pad"
-                  style={[styles.durationInput, { color: colors.textPrimary }]}
-                  placeholderTextColor={colors.textSecondary}
-                />
-                <Text style={[styles.durationSeparator, { color: colors.textSecondary }]}>m</Text>
-                <Input
-                  value={String(durationSeconds)}
-                  onChangeText={(text) => setDurationSeconds(Number(text) || 0)}
-                  keyboardType="number-pad"
-                  style={[styles.durationInput, { color: colors.textPrimary }]}
-                  placeholderTextColor={colors.textSecondary}
-                />
-                <Text style={[styles.durationSeparator, { color: colors.textSecondary }]}>s</Text>
+              <Text style={styles.label}>Duration</Text>
+              <View style={styles.durationDisplay}>
+                <Text style={styles.durationText}>
+                  {formatDuration(duration)}
+                </Text>
               </View>
             </View>
 
@@ -305,32 +269,98 @@ export function EditEntryModal({
         </View>
 
         {/* Date/Time Pickers */}
-        {showStartPicker && (
+        {Platform.OS === "ios" && showStartPicker && (
+          <Modal
+            visible={showStartPicker}
+            animationType="slide"
+            presentationStyle="pageSheet"
+            onRequestClose={() => setShowStartPicker(false)}
+          >
+            <View style={styles.pickerContainer}>
+              <View style={styles.pickerHeader}>
+                <TouchableOpacity onPress={() => setShowStartPicker(false)}>
+                  <Text style={styles.cancelButton}>Cancel</Text>
+                </TouchableOpacity>
+                <Text style={styles.pickerTitle}>Start Time</Text>
+                <TouchableOpacity onPress={() => setShowStartPicker(false)}>
+                  <Text style={styles.cancelButton}>Done</Text>
+                </TouchableOpacity>
+              </View>
+              <DateTimePicker
+                value={startDate}
+                mode="datetime"
+                display="spinner"
+                onChange={(event, date) => {
+                  if (date) {
+                    setStartDate(date);
+                    // Auto-adjust end date if it's before start date
+                    if (date > endDate) {
+                      setEndDate(new Date(date.getTime() + 3600000)); // +1 hour
+                    }
+                  }
+                }}
+                style={{ flex: 1 }}
+              />
+            </View>
+          </Modal>
+        )}
+
+        {Platform.OS === "android" && showStartPicker && (
           <DateTimePicker
             value={startDate}
             mode="datetime"
-            display={Platform.OS === "ios" ? "spinner" : "default"}
+            display="default"
             onChange={(event, date) => {
-              setShowStartPicker(Platform.OS === "ios");
+              setShowStartPicker(false);
               if (date) {
                 setStartDate(date);
-                // Auto-adjust end date if it's before start date
                 if (date > endDate) {
-                  setEndDate(new Date(date.getTime() + 3600000)); // +1 hour
+                  setEndDate(new Date(date.getTime() + 3600000));
                 }
               }
             }}
           />
         )}
 
-        {showEndPicker && (
+        {Platform.OS === "ios" && showEndPicker && (
+          <Modal
+            visible={showEndPicker}
+            animationType="slide"
+            presentationStyle="pageSheet"
+            onRequestClose={() => setShowEndPicker(false)}
+          >
+            <View style={styles.pickerContainer}>
+              <View style={styles.pickerHeader}>
+                <TouchableOpacity onPress={() => setShowEndPicker(false)}>
+                  <Text style={styles.cancelButton}>Cancel</Text>
+                </TouchableOpacity>
+                <Text style={styles.pickerTitle}>End Time</Text>
+                <TouchableOpacity onPress={() => setShowEndPicker(false)}>
+                  <Text style={styles.cancelButton}>Done</Text>
+                </TouchableOpacity>
+              </View>
+              <DateTimePicker
+                value={endDate}
+                mode="datetime"
+                display="spinner"
+                minimumDate={startDate}
+                onChange={(event, date) => {
+                  if (date) setEndDate(date);
+                }}
+                style={{ flex: 1 }}
+              />
+            </View>
+          </Modal>
+        )}
+
+        {Platform.OS === "android" && showEndPicker && (
           <DateTimePicker
             value={endDate}
             mode="datetime"
-            display={Platform.OS === "ios" ? "spinner" : "default"}
+            display="default"
             minimumDate={startDate}
             onChange={(event, date) => {
-              setShowEndPicker(Platform.OS === "ios");
+              setShowEndPicker(false);
               if (date) setEndDate(date);
             }}
           />
@@ -458,35 +488,6 @@ const createStyles = (colors: typeof import("../../utils/theme").lightColors) =>
     marginTop: spacing.xs,
     fontStyle: "italic",
   },
-  durationDisplay: {
-    backgroundColor: colors.surface,
-    borderRadius: 8,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  durationText: {
-    ...typography.body,
-    color: colors.primary,
-    fontWeight: "600",
-  },
-  durationInputContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderRadius: 8,
-    borderWidth: 1,
-    paddingHorizontal: spacing.sm,
-  },
-  durationInput: {
-    flex: 1,
-    textAlign: "center",
-    paddingVertical: spacing.md,
-  },
-  durationSeparator: {
-    ...typography.body,
-    fontWeight: "bold",
-    marginHorizontal: spacing.xs,
-  },
   noteInput: {
     minHeight: 80,
     textAlignVertical: "top",
@@ -547,5 +548,17 @@ const createStyles = (colors: typeof import("../../utils/theme").lightColors) =>
   checkmark: {
     ...typography.heading,
     color: colors.primary,
+  },
+  durationDisplay: {
+    backgroundColor: colors.surface,
+    borderRadius: 8,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  durationText: {
+    ...typography.body,
+    color: colors.primary,
+    fontWeight: "600",
   },
 });

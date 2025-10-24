@@ -74,15 +74,22 @@ export function ProjectsPage({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     try {
-      const projectData = {
+      const projectData: any = {
         name,
         hourlyRate: parseFloat(hourlyRate),
         budgetType,
-        ...(budgetType === "hours" && budgetHours && { budgetHours: parseFloat(budgetHours) }),
-        ...(budgetType === "amount" && budgetAmount && { budgetAmount: parseFloat(budgetAmount) }),
       };
+
+      // Only add budget fields if they have values
+      if (budgetType === "hours" && budgetHours) {
+        projectData.budgetHours = parseFloat(budgetHours);
+      }
+
+      if (budgetType === "amount" && budgetAmount) {
+        projectData.budgetAmount = parseFloat(budgetAmount);
+      }
 
       console.log("Submitting project data:", projectData);
 

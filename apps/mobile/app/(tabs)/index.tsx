@@ -15,8 +15,7 @@ import { useEntries } from "@/hooks/useEntries";
 import { useTheme } from "@/utils/ThemeContext";
 import { calculateBudgetStatus } from "@/utils/budget";
 import { warningTap } from "@/utils/haptics";
-import { EmptyStateCard, WebAppPrompt, openWebApp, WorkspaceSwitcher } from "@/components";
-import { TipsBottomSheet, useTipsBottomSheet } from "@/components/common/TipsBottomSheet";
+import { EmptyStateCard, WebAppPrompt, openWebApp } from "@/components";
 import { WebTimerBadge } from "@/components/timer/WebTimerBadge";
 import { QuickActionMenu } from "@/components/common/QuickActionMenu";
 import { CreateProjectModal } from "@/components/projects/CreateProjectModal";
@@ -61,7 +60,6 @@ export default function Index() {
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
   const [toastAction, setToastAction] = useState<{ label: string; onPress: () => void } | undefined>();
-  const [showTipsSheet, setShowTipsSheet] = useState(false);
   const [showQuickMenu, setShowQuickMenu] = useState(false);
   const [showCreateProject, setShowCreateProject] = useState(false);
   const [showCreateClient, setShowCreateClient] = useState(false);
@@ -71,17 +69,6 @@ export default function Index() {
 
   // Track budget status for haptic feedback
   const previousBudgetStatus = useRef<string>("safe");
-
-  // Tips bottom sheet auto-show logic
-  const { shouldAutoShow, markAsShown } = useTipsBottomSheet();
-
-  // Show tips on first 3 app opens
-  useEffect(() => {
-    if (shouldAutoShow) {
-      setShowTipsSheet(true);
-      markAsShown();
-    }
-  }, [shouldAutoShow, markAsShown]);
 
   // Monitor budget status and trigger haptic feedback when crossing thresholds
   useEffect(() => {
@@ -465,27 +452,6 @@ export default function Index() {
         )}
       </ScrollView>
 
-      {/* Tips Button - Bottom left */}
-      <View style={[styles.tipsButtonContainer, { backgroundColor: 'transparent' }]}>
-        <TouchableOpacity
-          onPress={() => setShowTipsSheet(true)}
-          style={[styles.tipsButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
-          accessible={true}
-          accessibilityRole="button"
-          accessibilityLabel="Show tips"
-        >
-          <Text style={[styles.tipsButtonText, { color: colors.textSecondary }]}>💡 Tips</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Floating Workspace Switcher - Bottom right */}
-      <View style={[styles.floatingWorkspace, { backgroundColor: 'transparent' }]}>
-        <WorkspaceSwitcher style={styles.workspaceSwitcherFloating} />
-      </View>
-
-      {/* Tips Bottom Sheet */}
-      <TipsBottomSheet visible={showTipsSheet} onClose={() => setShowTipsSheet(false)} />
-
       {/* Toast Notifications */}
       {showToast && (
         <Toast
@@ -564,7 +530,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingVertical: spacing.md,
-    paddingBottom: 80, // Extra padding for floating buttons
   },
   timerDisplayContainer: {
     paddingHorizontal: spacing.lg,
@@ -605,40 +570,5 @@ const styles = StyleSheet.create({
   emptyStateDescription: {
     fontSize: 14,
     lineHeight: 20,
-  },
-  tipsButtonContainer: {
-    position: "absolute",
-    bottom: spacing.md,
-    left: spacing.md,
-    zIndex: 100,
-  },
-  floatingWorkspace: {
-    position: "absolute",
-    bottom: spacing.md,
-    right: spacing.md,
-    zIndex: 100,
-  },
-  workspaceSwitcherFloating: {
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  tipsButton: {
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: borderRadius.full,
-    borderWidth: 1,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  tipsButtonText: {
-    fontSize: 12,
-    fontWeight: "500",
   },
 });

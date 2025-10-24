@@ -43,7 +43,7 @@ export function useEntries(projectId?: Id<"projects">): UseEntriesReturn {
 
   // Mutations based on workspace context
   const createManualEntryMutation = useMutation(
-    currentWorkspace === "personal" ? api.personalEntries.createManualPersonal : api.entries.createManualEntry
+    currentWorkspace === "personal" ? api.personalEntries.createManualPersonal : api.timer.createManualEntry
   );
   const editEntryMutation = useMutation(
     currentWorkspace === "personal" ? api.personalEntries.editPersonal : api.entries.edit

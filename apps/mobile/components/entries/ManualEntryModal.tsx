@@ -17,7 +17,8 @@ import { useCategories } from "../../hooks/useCategories";
 import { useEntries } from "../../hooks/useEntries";
 import { useProjects } from "../../hooks/useProjects";
 import { formatDateTime, formatDuration } from "../../utils/formatters";
-import { colors, spacing, typography } from "../../utils/theme";
+import { spacing, typography } from "../../utils/theme";
+import { useTheme } from "../../utils/ThemeContext";
 import { Button, Input } from "../ui";
 
 interface ManualEntryModalProps {
@@ -31,6 +32,7 @@ export function ManualEntryModal({
   onClose,
   onSuccess,
 }: ManualEntryModalProps) {
+  const { colors } = useTheme();
   const [projectSearchTerm, setProjectSearchTerm] = useState("");
   const { projects, isLoading: isLoadingProjects } = useProjects({ searchTerm: projectSearchTerm });
   const { categories } = useCategories();
@@ -38,7 +40,7 @@ export function ManualEntryModal({
 
   const [selectedProject, setSelectedProject] = useState<any>(null);
   const [startDate, setStartDate] = useState(new Date());
-  const [endDate, setEndDate] = useState(new Date());
+  const [endDate, setEndDate] = useState(() => new Date(Date.now() + 3600000)); // Default to 1 hour later
   const [note, setNote] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [showProjectSelector, setShowProjectSelector] = useState(false);
@@ -71,8 +73,9 @@ export function ManualEntryModal({
 
       // Reset form
       setSelectedProject(null);
-      setStartDate(new Date());
-      setEndDate(new Date());
+      const newStartDate = new Date();
+      setStartDate(newStartDate);
+      setEndDate(new Date(newStartDate.getTime() + 3600000)); // +1 hour
       setNote("");
       setSelectedCategory(null);
       setError(null);
@@ -107,27 +110,27 @@ export function ManualEntryModal({
         presentationStyle="pageSheet"
         onRequestClose={handleCancel}
       >
-        <View style={styles.container}>
-          <View style={styles.header}>
+        <View style={[styles.container, { backgroundColor: colors.background }]}>
+          <View style={[styles.header, { borderBottomColor: colors.border }]}>
             <TouchableOpacity onPress={handleCancel}>
-              <Text style={styles.cancelButton}>Cancel</Text>
+              <Text style={[styles.cancelButton, { color: colors.primary }]}>Cancel</Text>
             </TouchableOpacity>
-            <Text style={styles.title}>Add Time Entry</Text>
+            <Text style={[styles.title, { color: colors.textPrimary }]}>Add Time Entry</Text>
             <View style={{ width: 60 }} />
           </View>
 
           <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent}>
             {/* Project Selector */}
             <View style={styles.field}>
-              <Text style={styles.label}>Project *</Text>
+              <Text style={[styles.label, { color: colors.textPrimary }]}>Project *</Text>
               <TouchableOpacity
-                style={styles.selector}
+                style={[styles.selector, { backgroundColor: colors.surface, borderColor: colors.border }]}
                 onPress={() => setShowProjectSelector(!showProjectSelector)}
               >
                 <Text
                   style={[
                     styles.selectorText,
-                    !selectedProject && styles.placeholderText,
+                    { color: selectedProject ? colors.textPrimary : colors.textSecondary },
                   ]}
                 >
                   {selectedProject?.name || "Select a project"}
@@ -141,9 +144,9 @@ export function ManualEntryModal({
 
               {/* Inline Project Picker */}
               {showProjectSelector && (
-                <View style={styles.inlinePickerContainer}>
+                <View style={[styles.inlinePickerContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                   {/* Search Input */}
-                  <View style={styles.searchContainer}>
+                  <View style={[styles.searchContainer, { borderBottomColor: colors.border }]}>
                     <MaterialCommunityIcons
                       name="magnify"
                       size={20}
@@ -151,7 +154,7 @@ export function ManualEntryModal({
                       style={styles.searchIcon}
                     />
                     <TextInput
-                      style={styles.searchInput}
+                      style={[styles.searchInput, { color: colors.textPrimary }]}
                       placeholder="Search projects..."
                       placeholderTextColor={colors.textSecondary}
                       value={projectSearchTerm}
@@ -169,7 +172,7 @@ export function ManualEntryModal({
                     {isLoadingProjects ? (
                       <View style={styles.loadingContainer}>
                         <ActivityIndicator size="small" color={colors.primary} />
-                        <Text style={styles.loadingText}>Loading...</Text>
+                        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading...</Text>
                       </View>
                     ) : projects.length === 0 ? (
                       <View style={styles.emptyContainer}>
@@ -178,7 +181,7 @@ export function ManualEntryModal({
                           size={32}
                           color={colors.textSecondary}
                         />
-                        <Text style={styles.emptyText}>
+                        <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
                           {projectSearchTerm
                             ? "No projects found"
                             : "No projects yet"}
@@ -190,8 +193,10 @@ export function ManualEntryModal({
                           key={item._id}
                           style={[
                             styles.projectItem,
-                            selectedProject?._id === item._id &&
-                              styles.projectItemSelected,
+                            { borderBottomColor: colors.border },
+                            selectedProject?._id === item._id && {
+                              backgroundColor: `${colors.primary}10`,
+                            },
                           ]}
                           onPress={() => handleProjectSelect(item)}
                         >
@@ -199,14 +204,13 @@ export function ManualEntryModal({
                             <Text
                               style={[
                                 styles.projectItemText,
-                                selectedProject?._id === item._id &&
-                                  styles.projectItemTextSelected,
+                                { color: selectedProject?._id === item._id ? colors.primary : colors.textPrimary },
                               ]}
                             >
                               {item.name}
                             </Text>
                             {item.client && (
-                              <Text style={styles.projectClientText}>
+                              <Text style={[styles.projectClientText, { color: colors.textSecondary }]}>
                                 {item.client.name}
                               </Text>
                             )}
@@ -228,12 +232,12 @@ export function ManualEntryModal({
 
             {/* Start Date/Time */}
             <View style={styles.field}>
-              <Text style={styles.label}>Start Time *</Text>
+              <Text style={[styles.label, { color: colors.textPrimary }]}>Start Time *</Text>
               <TouchableOpacity
-                style={styles.selector}
+                style={[styles.selector, { backgroundColor: colors.surface, borderColor: colors.border }]}
                 onPress={() => setShowStartPicker(true)}
               >
-                <Text style={styles.selectorText}>
+                <Text style={[styles.selectorText, { color: colors.textPrimary }]}>
                   {formatDateTime(startDate.getTime())}
                 </Text>
               </TouchableOpacity>
@@ -241,12 +245,12 @@ export function ManualEntryModal({
 
             {/* End Date/Time */}
             <View style={styles.field}>
-              <Text style={styles.label}>End Time *</Text>
+              <Text style={[styles.label, { color: colors.textPrimary }]}>End Time *</Text>
               <TouchableOpacity
-                style={styles.selector}
+                style={[styles.selector, { backgroundColor: colors.surface, borderColor: colors.border }]}
                 onPress={() => setShowEndPicker(true)}
               >
-                <Text style={styles.selectorText}>
+                <Text style={[styles.selectorText, { color: colors.textPrimary }]}>
                   {formatDateTime(endDate.getTime())}
                 </Text>
               </TouchableOpacity>
@@ -254,9 +258,9 @@ export function ManualEntryModal({
 
             {/* Duration Display */}
             <View style={styles.field}>
-              <Text style={styles.label}>Duration</Text>
-              <View style={styles.durationDisplay}>
-                <Text style={styles.durationText}>
+              <Text style={[styles.label, { color: colors.textPrimary }]}>Duration</Text>
+              <View style={[styles.durationDisplay, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                <Text style={[styles.durationText, { color: colors.primary }]}>
                   {formatDuration(duration)}
                 </Text>
               </View>
@@ -264,15 +268,15 @@ export function ManualEntryModal({
 
             {/* Category Selector */}
             <View style={styles.field}>
-              <Text style={styles.label}>Category</Text>
+              <Text style={[styles.label, { color: colors.textPrimary }]}>Category</Text>
               <TouchableOpacity
-                style={styles.selector}
+                style={[styles.selector, { backgroundColor: colors.surface, borderColor: colors.border }]}
                 onPress={() => setShowCategoryPicker(true)}
               >
                 <Text
                   style={[
                     styles.selectorText,
-                    !selectedCategory && styles.placeholderText,
+                    { color: selectedCategory ? colors.textPrimary : colors.textSecondary },
                   ]}
                 >
                   {selectedCategory || "Select a category (optional)"}
@@ -282,7 +286,7 @@ export function ManualEntryModal({
 
             {/* Note Input */}
             <View style={styles.field}>
-              <Text style={styles.label}>Note</Text>
+              <Text style={[styles.label, { color: colors.textPrimary }]}>Note</Text>
               <Input
                 value={note}
                 onChangeText={setNote}
@@ -296,13 +300,13 @@ export function ManualEntryModal({
 
             {/* Error Message */}
             {error && (
-              <View style={styles.errorContainer}>
-                <Text style={styles.errorText}>{error}</Text>
+              <View style={[styles.errorContainer, { backgroundColor: `${colors.error}20` }]}>
+                <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
               </View>
             )}
           </ScrollView>
 
-          <View style={styles.footer}>
+          <View style={[styles.footer, { borderTopColor: colors.border }]}>
             <Button
               onPress={handleSubmit}
               disabled={!isValid || isSubmitting}
@@ -314,32 +318,98 @@ export function ManualEntryModal({
         </View>
 
         {/* Date/Time Pickers */}
-        {showStartPicker && (
+        {Platform.OS === "ios" && showStartPicker && (
+          <Modal
+            visible={showStartPicker}
+            animationType="slide"
+            presentationStyle="pageSheet"
+            onRequestClose={() => setShowStartPicker(false)}
+          >
+            <View style={[styles.pickerContainer, { backgroundColor: colors.background }]}>
+              <View style={[styles.pickerHeader, { borderBottomColor: colors.border }]}>
+                <TouchableOpacity onPress={() => setShowStartPicker(false)}>
+                  <Text style={[styles.cancelButton, { color: colors.primary }]}>Cancel</Text>
+                </TouchableOpacity>
+                <Text style={[styles.pickerTitle, { color: colors.textPrimary }]}>Start Time</Text>
+                <TouchableOpacity onPress={() => setShowStartPicker(false)}>
+                  <Text style={[styles.cancelButton, { color: colors.primary }]}>Done</Text>
+                </TouchableOpacity>
+              </View>
+              <DateTimePicker
+                value={startDate}
+                mode="datetime"
+                display="spinner"
+                onChange={(event, date) => {
+                  if (date) {
+                    setStartDate(date);
+                    // Auto-adjust end date if it's before start date
+                    if (date > endDate) {
+                      setEndDate(new Date(date.getTime() + 3600000)); // +1 hour
+                    }
+                  }
+                }}
+                style={{ flex: 1 }}
+              />
+            </View>
+          </Modal>
+        )}
+
+        {Platform.OS === "android" && showStartPicker && (
           <DateTimePicker
             value={startDate}
             mode="datetime"
-            display={Platform.OS === "ios" ? "spinner" : "default"}
+            display="default"
             onChange={(event, date) => {
-              setShowStartPicker(Platform.OS === "ios");
+              setShowStartPicker(false);
               if (date) {
                 setStartDate(date);
-                // Auto-adjust end date if it's before start date
                 if (date > endDate) {
-                  setEndDate(new Date(date.getTime() + 3600000)); // +1 hour
+                  setEndDate(new Date(date.getTime() + 3600000));
                 }
               }
             }}
           />
         )}
 
-        {showEndPicker && (
+        {Platform.OS === "ios" && showEndPicker && (
+          <Modal
+            visible={showEndPicker}
+            animationType="slide"
+            presentationStyle="pageSheet"
+            onRequestClose={() => setShowEndPicker(false)}
+          >
+            <View style={[styles.pickerContainer, { backgroundColor: colors.background }]}>
+              <View style={[styles.pickerHeader, { borderBottomColor: colors.border }]}>
+                <TouchableOpacity onPress={() => setShowEndPicker(false)}>
+                  <Text style={[styles.cancelButton, { color: colors.primary }]}>Cancel</Text>
+                </TouchableOpacity>
+                <Text style={[styles.pickerTitle, { color: colors.textPrimary }]}>End Time</Text>
+                <TouchableOpacity onPress={() => setShowEndPicker(false)}>
+                  <Text style={[styles.cancelButton, { color: colors.primary }]}>Done</Text>
+                </TouchableOpacity>
+              </View>
+              <DateTimePicker
+                value={endDate}
+                mode="datetime"
+                display="spinner"
+                minimumDate={startDate}
+                onChange={(event, date) => {
+                  if (date) setEndDate(date);
+                }}
+                style={{ flex: 1 }}
+              />
+            </View>
+          </Modal>
+        )}
+
+        {Platform.OS === "android" && showEndPicker && (
           <DateTimePicker
             value={endDate}
             mode="datetime"
-            display={Platform.OS === "ios" ? "spinner" : "default"}
+            display="default"
             minimumDate={startDate}
             onChange={(event, date) => {
-              setShowEndPicker(Platform.OS === "ios");
+              setShowEndPicker(false);
               if (date) setEndDate(date);
             }}
           />
@@ -353,32 +423,32 @@ export function ManualEntryModal({
             presentationStyle="pageSheet"
             onRequestClose={() => setShowCategoryPicker(false)}
           >
-            <View style={styles.pickerContainer}>
-              <View style={styles.pickerHeader}>
+            <View style={[styles.pickerContainer, { backgroundColor: colors.background }]}>
+              <View style={[styles.pickerHeader, { borderBottomColor: colors.border }]}>
                 <TouchableOpacity onPress={() => setShowCategoryPicker(false)}>
-                  <Text style={styles.cancelButton}>Cancel</Text>
+                  <Text style={[styles.cancelButton, { color: colors.primary }]}>Cancel</Text>
                 </TouchableOpacity>
-                <Text style={styles.pickerTitle}>Select Category</Text>
+                <Text style={[styles.pickerTitle, { color: colors.textPrimary }]}>Select Category</Text>
                 <TouchableOpacity onPress={() => {
                   setSelectedCategory(null);
                   setShowCategoryPicker(false);
                 }}>
-                  <Text style={styles.clearButton}>Clear</Text>
+                  <Text style={[styles.clearButton, { color: colors.error }]}>Clear</Text>
                 </TouchableOpacity>
               </View>
               <ScrollView>
                 {categories.map((category) => (
                   <TouchableOpacity
                     key={category._id}
-                    style={styles.pickerItem}
+                    style={[styles.pickerItem, { borderBottomColor: colors.border }]}
                     onPress={() => {
                       setSelectedCategory(category.name);
                       setShowCategoryPicker(false);
                     }}
                   >
-                    <Text style={styles.pickerItemText}>{category.name}</Text>
+                    <Text style={[styles.pickerItemText, { color: colors.textPrimary }]}>{category.name}</Text>
                     {selectedCategory === category.name && (
-                      <Text style={styles.checkmark}>✓</Text>
+                      <Text style={[styles.checkmark, { color: colors.primary }]}>✓</Text>
                     )}
                   </TouchableOpacity>
                 ))}
@@ -394,7 +464,6 @@ export function ManualEntryModal({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   header: {
     flexDirection: "row",
@@ -403,15 +472,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
   title: {
     ...typography.heading,
-    color: colors.textPrimary,
   },
   cancelButton: {
     ...typography.body,
-    color: colors.primary,
   },
   content: {
     flex: 1,
@@ -424,34 +490,25 @@ const styles = StyleSheet.create({
   },
   label: {
     ...typography.body,
-    color: colors.textPrimary,
     marginBottom: spacing.sm,
     fontWeight: "600",
   },
   selector: {
-    backgroundColor: colors.surface,
     borderRadius: 8,
     padding: spacing.md,
     borderWidth: 1,
-    borderColor: colors.border,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
   selectorText: {
     ...typography.body,
-    color: colors.textPrimary,
     flex: 1,
-  },
-  placeholderText: {
-    color: colors.textSecondary,
   },
   inlinePickerContainer: {
     marginTop: spacing.sm,
-    backgroundColor: colors.surface,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: colors.border,
     overflow: "hidden",
   },
   searchContainer: {
@@ -460,7 +517,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
   searchIcon: {
     marginRight: spacing.sm,
@@ -468,7 +524,6 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     ...typography.body,
-    color: colors.textPrimary,
     paddingVertical: spacing.xs,
   },
   projectListContainer: {
@@ -483,7 +538,6 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     ...typography.caption,
-    color: colors.textSecondary,
   },
   emptyContainer: {
     alignItems: "center",
@@ -493,7 +547,6 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     ...typography.body,
-    color: colors.textSecondary,
   },
   projectItem: {
     flexDirection: "row",
@@ -502,37 +555,24 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  projectItemSelected: {
-    backgroundColor: `${colors.primary}10`,
   },
   projectItemContent: {
     flex: 1,
   },
   projectItemText: {
     ...typography.body,
-    color: colors.textPrimary,
-  },
-  projectItemTextSelected: {
-    color: colors.primary,
-    fontWeight: "600",
   },
   projectClientText: {
     ...typography.caption,
-    color: colors.textSecondary,
     marginTop: spacing.xs,
   },
   durationDisplay: {
-    backgroundColor: colors.surface,
     borderRadius: 8,
     padding: spacing.md,
     borderWidth: 1,
-    borderColor: colors.border,
   },
   durationText: {
     ...typography.body,
-    color: colors.primary,
     fontWeight: "600",
   },
   noteInput: {
@@ -540,23 +580,19 @@ const styles = StyleSheet.create({
     textAlignVertical: "top",
   },
   errorContainer: {
-    backgroundColor: `${colors.error}20`,
     borderRadius: 8,
     padding: spacing.md,
     marginTop: spacing.md,
   },
   errorText: {
     ...typography.body,
-    color: colors.error,
   },
   footer: {
     padding: spacing.lg,
     borderTopWidth: 1,
-    borderTopColor: colors.border,
   },
   pickerContainer: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   pickerHeader: {
     flexDirection: "row",
@@ -565,15 +601,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
   pickerTitle: {
     ...typography.heading,
-    color: colors.textPrimary,
   },
   clearButton: {
     ...typography.body,
-    color: colors.error,
   },
   pickerItem: {
     flexDirection: "row",
@@ -581,14 +614,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: spacing.lg,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
   pickerItemText: {
     ...typography.body,
-    color: colors.textPrimary,
   },
   checkmark: {
     ...typography.heading,
-    color: colors.primary,
   },
 });

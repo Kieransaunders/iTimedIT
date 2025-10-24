@@ -1788,48 +1788,51 @@ export function ModernDashboard({
                       + Add Time Entry
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-[425px]">
+                  <DialogContent className="sm:max-w-[425px] bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700">
                     <DialogHeader>
                       <DialogTitle>Add Manual Time Entry</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <label className="text-sm font-medium text-foreground">Date</label>
+                          <label className="text-sm font-medium text-gray-900 dark:text-white">Date</label>
                           <Input
                             type="date"
                             value={manualEntryForm.date}
                             onChange={(e) => setManualEntryForm(prev => ({ ...prev, date: e.target.value }))}
+                            className="bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600"
                           />
                         </div>
                       </div>
-                      
+
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <label className="text-sm font-medium text-foreground">Start Time</label>
+                          <label className="text-sm font-medium text-gray-900 dark:text-white">Start Time</label>
                           <Input
                             type="time"
                             value={manualEntryForm.startTime}
                             onChange={(e) => setManualEntryForm(prev => ({ ...prev, startTime: e.target.value }))}
+                            className="bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600"
                           />
                         </div>
                         <div className="space-y-2">
-                          <label className="text-sm font-medium text-foreground">End Time</label>
+                          <label className="text-sm font-medium text-gray-900 dark:text-white">End Time</label>
                           <Input
                             type="time"
                             value={manualEntryForm.endTime}
                             onChange={(e) => setManualEntryForm(prev => ({ ...prev, endTime: e.target.value }))}
+                            className="bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600"
                           />
                         </div>
                       </div>
 
                       <div className="space-y-2">
-                        <label className="text-sm font-medium text-foreground">Note (optional)</label>
+                        <label className="text-sm font-medium text-gray-900 dark:text-white">Note (optional)</label>
                         <textarea
                           placeholder="What did you work on?"
                           value={manualEntryForm.note}
                           onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setManualEntryForm(prev => ({ ...prev, note: e.target.value }))}
-                          className="w-full min-h-[80px] px-3 py-2 border border-input bg-background text-foreground rounded-md shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
+                          className="w-full min-h-[80px] px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none placeholder:text-gray-500 dark:placeholder:text-gray-400"
                         />
                       </div>
                       
