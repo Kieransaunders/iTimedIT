@@ -1,8 +1,14 @@
 {
   "android": {
-    "package": "com.mrzang77.itimeditmonorepo"
+    "package": "com.itimedit.app"
   },
   "ios": {
-    "bundleIdentifier": "com.mrzang77.itimeditmonorepo"
+    "bundleIdentifier": "com.itimedit.app"
+  },
+  "owner": "iconnectit",
+  "extra": {
+    "eas": {
+      "projectId": "3203c79f-0f22-4b6e-a0b1-f8972b933181"
+    }
   }
 }
