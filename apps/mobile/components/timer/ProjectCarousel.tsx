@@ -1,9 +1,13 @@
 import React, { useState, useRef, useCallback, useMemo } from "react";
 import {
+  FlatList,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
+  ListRenderItemInfo,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
 } from "react-native";
 import PagerView from "react-native-pager-view";
 import { LinearGradient } from "expo-linear-gradient";
@@ -309,11 +313,11 @@ const createStyles = (colors: typeof import("@/utils/theme").lightColors) =>
     },
     carouselWrapper: {
       position: "relative",
-      height: 190, // Updated to accommodate new card height (180px + some breathing room)
+      height: 160, // Updated to accommodate new card height (150px + some breathing room)
     },
     pagerView: {
       flex: 1,
-      height: 190,
+      height: 160,
     },
     pageContainer: {
       justifyContent: "center",

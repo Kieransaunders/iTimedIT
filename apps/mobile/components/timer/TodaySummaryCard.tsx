@@ -7,6 +7,7 @@ import {
   Platform,
   LayoutAnimation,
   UIManager,
+  TouchableOpacity,
 } from "react-native";
 import Animated, {
   useAnimatedStyle,
@@ -36,6 +37,21 @@ if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental
 // AsyncStorage key for dismissal state
 const DISMISSAL_KEY = "todaySummaryCard_dismissed";
 
+export interface ProjectTimeData {
+  project: Project;
+  seconds: number;
+  percentage: number;
+}
+
+export interface TimeEntry {
+  _id: string;
+  projectId: string;
+  startedAt: number;
+  stoppedAt?: number;
+  seconds: number;
+  project?: Project;
+}
+
 export interface TodaySummaryCardProps {
   /** Total time tracked today in seconds */
   todaysTotalSeconds: number;
@@ -45,6 +61,8 @@ export interface TodaySummaryCardProps {
   topProject: Project | null;
   /** Total earnings today based on hourly rates */
   todaysEarnings: number;
+  /** All time entries for filtering */
+  entries: TimeEntry[];
 }
 
 /**
@@ -61,15 +79,111 @@ export interface TodaySummaryCardProps {
  * - Full accessibility support
  * - Haptic feedback on interactions
  */
+export type TimePeriod = "day" | "week" | "month" | "year";
+
 export function TodaySummaryCard({
   todaysTotalSeconds,
   entriesCount,
   topProject,
   todaysEarnings,
+  entries,
 }: TodaySummaryCardProps) {
   const { colors } = useTheme();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
+  const [timePeriod, setTimePeriod] = useState<TimePeriod>("week");
+
+  // Calculate date range based on selected period
+  const getDateRange = useCallback((period: TimePeriod): { start: number; end: number } => {
+    const now = Date.now();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    switch (period) {
+      case "day":
+        return {
+          start: today.getTime(),
+          end: now,
+        };
+      case "week": {
+        const startOfWeek = new Date(today);
+        startOfWeek.setDate(today.getDate() - today.getDay()); // Sunday
+        return {
+          start: startOfWeek.getTime(),
+          end: now,
+        };
+      }
+      case "month": {
+        const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        return {
+          start: startOfMonth.getTime(),
+          end: now,
+        };
+      }
+      case "year": {
+        const startOfYear = new Date(today.getFullYear(), 0, 1);
+        return {
+          start: startOfYear.getTime(),
+          end: now,
+        };
+      }
+    }
+  }, []);
+
+  // Filter entries by selected time period and calculate project data
+  const projectTimeData = React.useMemo((): ProjectTimeData[] => {
+    const { start, end } = getDateRange(timePeriod);
+
+    // Filter entries within date range
+    const filteredEntries = entries.filter(
+      (entry) => entry.startedAt >= start && entry.startedAt <= end
+    );
+
+    // Group by project and sum seconds
+    const projectMap = new Map<string, { project: Project; seconds: number }>();
+
+    filteredEntries.forEach((entry) => {
+      if (!entry.project) return;
+
+      // Ensure seconds is a valid number
+      const entrySeconds = typeof entry.seconds === "number" && !isNaN(entry.seconds)
+        ? entry.seconds
+        : 0;
+
+      const existing = projectMap.get(entry.projectId);
+      if (existing) {
+        existing.seconds += entrySeconds;
+      } else {
+        projectMap.set(entry.projectId, {
+          project: entry.project,
+          seconds: entrySeconds,
+        });
+      }
+    });
+
+    // Calculate total seconds
+    const totalSeconds = Array.from(projectMap.values()).reduce(
+      (sum, item) => sum + (typeof item.seconds === "number" && !isNaN(item.seconds) ? item.seconds : 0),
+      0
+    );
+
+    if (totalSeconds === 0) return [];
+
+    // Create time data with percentages
+    const timeData: ProjectTimeData[] = Array.from(projectMap.values()).map((item) => {
+      const validSeconds = typeof item.seconds === "number" && !isNaN(item.seconds) ? item.seconds : 0;
+      const percentage = totalSeconds > 0 ? (validSeconds / totalSeconds) * 100 : 0;
+
+      return {
+        project: item.project,
+        seconds: validSeconds,
+        percentage: !isNaN(percentage) ? percentage : 0,
+      };
+    });
+
+    // Sort by time (most time first)
+    return timeData.sort((a, b) => b.seconds - a.seconds);
+  }, [entries, timePeriod, getDateRange]);
 
   // Animated values
   const rotationValue = useSharedValue(0);
@@ -175,19 +289,12 @@ export function TodaySummaryCard({
         <View style={styles.statsGrid}>
           {/* Entries Count */}
           <View style={styles.statItem}>
-            <View
-              style={[
-                styles.badge,
-                { backgroundColor: `${colors.primary}20`, borderColor: colors.primary },
-              ]}
+            <Text
+              style={[styles.entriesCount, { color: colors.primary }]}
+              accessibilityLabel={`${entriesCount} entries`}
             >
-              <Text
-                style={[styles.badgeText, { color: colors.primary }]}
-                accessibilityLabel={`${entriesCount} entries`}
-              >
-                {entriesCount}
-              </Text>
-            </View>
+              {entriesCount}
+            </Text>
             <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
               {entriesCount === 1 ? "Entry" : "Entries"}
             </Text>
@@ -242,21 +349,138 @@ export function TodaySummaryCard({
           {/* Divider */}
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
-          {/* Placeholder for Hourly Breakdown Chart */}
-          <View
-            style={[
-              styles.chartPlaceholder,
-              { backgroundColor: colors.background, borderColor: colors.border },
-            ]}
-          >
-            <TrendingUp size={32} color={colors.textTertiary} />
-            <Text style={[styles.placeholderText, { color: colors.textSecondary }]}>
-              Hourly Breakdown Chart
-            </Text>
-            <Text style={[styles.placeholderSubtext, { color: colors.textTertiary }]}>
-              Coming soon
-            </Text>
+          {/* Time Period Filter */}
+          <View style={styles.timePeriodFilter}>
+            <TouchableOpacity
+              style={[
+                styles.periodButton,
+                timePeriod === "day" && styles.periodButtonActive,
+                { borderColor: colors.border, backgroundColor: timePeriod === "day" ? colors.primary : colors.surface },
+              ]}
+              onPress={() => {
+                lightTap();
+                setTimePeriod("day");
+              }}
+            >
+              <Text style={[styles.periodButtonText, { color: timePeriod === "day" ? "#ffffff" : colors.textSecondary }]}>
+                Day
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.periodButton,
+                timePeriod === "week" && styles.periodButtonActive,
+                { borderColor: colors.border, backgroundColor: timePeriod === "week" ? colors.primary : colors.surface },
+              ]}
+              onPress={() => {
+                lightTap();
+                setTimePeriod("week");
+              }}
+            >
+              <Text style={[styles.periodButtonText, { color: timePeriod === "week" ? "#ffffff" : colors.textSecondary }]}>
+                Week
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.periodButton,
+                timePeriod === "month" && styles.periodButtonActive,
+                { borderColor: colors.border, backgroundColor: timePeriod === "month" ? colors.primary : colors.surface },
+              ]}
+              onPress={() => {
+                lightTap();
+                setTimePeriod("month");
+              }}
+            >
+              <Text style={[styles.periodButtonText, { color: timePeriod === "month" ? "#ffffff" : colors.textSecondary }]}>
+                Month
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.periodButton,
+                timePeriod === "year" && styles.periodButtonActive,
+                { borderColor: colors.border, backgroundColor: timePeriod === "year" ? colors.primary : colors.surface },
+              ]}
+              onPress={() => {
+                lightTap();
+                setTimePeriod("year");
+              }}
+            >
+              <Text style={[styles.periodButtonText, { color: timePeriod === "year" ? "#ffffff" : colors.textSecondary }]}>
+                Year
+              </Text>
+            </TouchableOpacity>
           </View>
+
+          {/* Time by Project Breakdown */}
+          {projectTimeData.length > 0 ? (
+            <View style={styles.projectBreakdown}>
+              <Text style={[styles.breakdownTitle, { color: colors.textPrimary }]}>
+                Time by Project
+              </Text>
+              {projectTimeData.map((item, index) => {
+                const projectColor = item.project.client?.color || item.project.color || colors.primary;
+                return (
+                  <View
+                    key={item.project._id}
+                    style={[
+                      styles.projectBarItem,
+                      index === projectTimeData.length - 1 && styles.projectBarItemLast,
+                    ]}
+                  >
+                    <View style={styles.projectBarHeader}>
+                      <View style={styles.projectBarInfo}>
+                        <View
+                          style={[styles.projectColorDot, { backgroundColor: projectColor }]}
+                        />
+                        <Text
+                          style={[styles.projectBarName, { color: colors.textPrimary }]}
+                          numberOfLines={1}
+                        >
+                          {item.project.name}
+                        </Text>
+                      </View>
+                      <View style={styles.projectBarStats}>
+                        <Text style={[styles.projectBarTime, { color: colors.textPrimary }]}>
+                          {formatDuration(item.seconds)}
+                        </Text>
+                        <Text style={[styles.projectBarPercentage, { color: colors.textSecondary }]}>
+                          {Math.round(item.percentage)}%
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={[styles.projectBarContainer, { backgroundColor: colors.border }]}>
+                      <View
+                        style={[
+                          styles.projectBar,
+                          {
+                            width: `${item.percentage}%`,
+                            backgroundColor: projectColor,
+                          },
+                        ]}
+                      />
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          ) : (
+            <View
+              style={[
+                styles.chartPlaceholder,
+                { backgroundColor: colors.background, borderColor: colors.border },
+              ]}
+            >
+              <TrendingUp size={32} color={colors.textTertiary} />
+              <Text style={[styles.placeholderText, { color: colors.textSecondary }]}>
+                No project data yet
+              </Text>
+              <Text style={[styles.placeholderSubtext, { color: colors.textTertiary }]}>
+                Start tracking time to see breakdown
+              </Text>
+            </View>
+          )}
 
           {/* Dismiss Button */}
           <Pressable
@@ -360,6 +584,11 @@ const styles = StyleSheet.create({
     ...typography.body,
     fontWeight: "700",
   },
+  entriesCount: {
+    ...typography.body,
+    fontWeight: "700",
+    fontSize: 20,
+  },
   statLabel: {
     ...typography.caption,
     fontSize: 11,
@@ -428,5 +657,84 @@ const styles = StyleSheet.create({
   dismissButtonText: {
     ...typography.caption,
     fontWeight: "500",
+  },
+  projectBreakdown: {
+    marginBottom: spacing.md,
+  },
+  breakdownTitle: {
+    ...typography.body,
+    fontWeight: "600",
+    marginBottom: spacing.sm,
+  },
+  projectBarItem: {
+    marginBottom: spacing.md,
+  },
+  projectBarItemLast: {
+    marginBottom: 0,
+  },
+  projectBarHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: spacing.xs,
+  },
+  projectBarInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    flex: 1,
+    marginRight: spacing.sm,
+  },
+  projectBarName: {
+    ...typography.caption,
+    fontWeight: "600",
+    flex: 1,
+  },
+  projectBarStats: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  projectBarTime: {
+    ...typography.caption,
+    fontWeight: "700",
+    fontSize: 13,
+  },
+  projectBarPercentage: {
+    ...typography.caption,
+    fontSize: 12,
+    minWidth: 35,
+    textAlign: "right",
+  },
+  projectBarContainer: {
+    height: 8,
+    borderRadius: borderRadius.sm,
+    overflow: "hidden",
+  },
+  projectBar: {
+    height: "100%",
+    borderRadius: borderRadius.sm,
+  },
+  timePeriodFilter: {
+    flexDirection: "row",
+    gap: spacing.xs,
+    marginBottom: spacing.md,
+  },
+  periodButton: {
+    flex: 1,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  periodButtonActive: {
+    // Active styles applied inline
+  },
+  periodButtonText: {
+    ...typography.caption,
+    fontWeight: "600",
+    fontSize: 12,
   },
 });

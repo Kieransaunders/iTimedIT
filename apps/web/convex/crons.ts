@@ -12,28 +12,45 @@ export const checkMissedInterrupts = internalMutation({
   args: {},
   handler: async (ctx) => {
     const now = Date.now();
-    const staleThreshold = 60000; // 60 seconds
 
-    // Find all timers awaiting interrupt acknowledgment that are stale
+    // IMPORTANT: This cron job should NOT interfere with active interrupt acknowledgments.
+    // The scheduled interrupt handler (api.interrupts.autoStopIfNoAck) handles the grace period.
+    // This job only cleans up truly stale/abandoned timers (no heartbeat for 5+ minutes).
+
+    const staleHeartbeatThreshold = 5 * 60 * 1000; // 5 minutes without heartbeat
+
+    // Find timers that haven't sent a heartbeat in 5+ minutes (likely abandoned/crashed app)
     const staleTimers = await ctx.db
       .query("runningTimers")
-      .filter((q) => q.and(
-        q.eq(q.field("awaitingInterruptAck"), true),
-        q.lt(q.field("interruptShownAt"), now - staleThreshold)
-      ))
+      .filter((q) => q.lt(q.field("lastHeartbeatAt"), now - staleHeartbeatThreshold))
       .collect();
 
+    console.log(`🧹 Cron: Found ${staleTimers.length} stale timers (no heartbeat for 5+ min)`);
+
     for (const timer of staleTimers) {
+      console.log(`🧹 Cron: Auto-stopping stale timer ${timer._id} (last heartbeat: ${new Date(timer.lastHeartbeatAt).toISOString()})`);
+
       // Auto-stop the timer
       const activeEntry = await ctx.db
         .query("timeEntries")
         .withIndex("byProject", (q) => q.eq("projectId", timer.projectId))
-        .filter((q) => q.and(
-          q.eq(q.field("organizationId"), timer.organizationId),
-          q.eq(q.field("userId"), timer.userId),
-          q.eq(q.field("stoppedAt"), undefined),
-          q.eq(q.field("isOverrun"), false)
-        ))
+        .filter((q) => {
+          if (timer.organizationId) {
+            return q.and(
+              q.eq(q.field("organizationId"), timer.organizationId),
+              q.eq(q.field("userId"), timer.userId),
+              q.eq(q.field("stoppedAt"), undefined),
+              q.eq(q.field("isOverrun"), false)
+            );
+          } else {
+            return q.and(
+              q.eq(q.field("userId"), timer.userId),
+              q.eq(q.field("organizationId"), undefined),
+              q.eq(q.field("stoppedAt"), undefined),
+              q.eq(q.field("isOverrun"), false)
+            );
+          }
+        })
         .first();
 
       if (activeEntry) {
@@ -48,16 +65,7 @@ export const checkMissedInterrupts = internalMutation({
       // Delete running timer
       await ctx.db.delete(timer._id);
 
-      // Create overrun placeholder
-      await ctx.db.insert("timeEntries", {
-        organizationId: timer.organizationId,
-        userId: timer.userId,
-        projectId: timer.projectId,
-        startedAt: now,
-        source: "overrun",
-        isOverrun: true,
-        note: "Overrun placeholder - merge if you were still working",
-      });
+      console.log(`✅ Cron: Stale timer ${timer._id} stopped successfully`);
     }
   },
 });

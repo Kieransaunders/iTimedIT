@@ -25,7 +25,11 @@
       "Read(//Users/MrZang/Desktop/**)",
       "Bash(npx convex env:*)",
       "mcp__convex__data",
-      "Read(//c/Users/OMG/Downloads/**)"
+      "Read(//c/Users/OMG/Downloads/**)",
+      "Read(//var/folders/fz/tf99g_hs5f9bqb61cs2lbtn80000gp/T/TemporaryItems/NSIRD_screencaptureui_SxYQ7J/**)",
+      "Read(//var/folders/fz/tf99g_hs5f9bqb61cs2lbtn80000gp/T/TemporaryItems/NSIRD_screencaptureui_KXhRLl/**)",
+      "Read(//var/folders/fz/tf99g_hs5f9bqb61cs2lbtn80000gp/T/TemporaryItems/NSIRD_screencaptureui_T2i3q8/**)",
+      "mcp__convex__status"
     ],
     "deny": [],
     "ask": []

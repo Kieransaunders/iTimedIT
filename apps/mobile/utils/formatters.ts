@@ -19,6 +19,11 @@ export function formatElapsedTime(seconds: number): string {
  * @returns Formatted duration string (e.g., "2h 30m")
  */
 export function formatDuration(seconds: number): string {
+  // Handle invalid inputs
+  if (typeof seconds !== "number" || isNaN(seconds) || seconds < 0) {
+    return "0m";
+  }
+
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
 

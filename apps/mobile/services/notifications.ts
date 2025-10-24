@@ -56,10 +56,12 @@ export async function requestNotificationPermissions(): Promise<boolean> {
 export async function getExpoPushToken(): Promise<string> {
   // Check if running on a physical device
   if (!Constants.isDevice) {
-    throw new Error(
-      "Push notifications only work on physical devices. " +
-      "Please test on a real device instead of a simulator/emulator."
+    console.warn(
+      "⚠️ Push notifications only work on physical devices. " +
+      "Skipping token registration on simulator/emulator."
     );
+    // Return a dummy token for development on simulators
+    return "ExponentPushToken[simulator-development-token]";
   }
 
   // Request permissions first

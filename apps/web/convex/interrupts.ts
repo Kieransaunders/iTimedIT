@@ -30,14 +30,39 @@ export const check = action({
       return { action: "skipped", graceJobScheduled: false, graceJobTime: null };
     }
 
+    // IMPORTANT: Verify this interrupt is for THIS timer
+    // If the timer doesn't have nextInterruptAt set, it shouldn't be interrupted
+    // This prevents orphaned scheduled jobs from interrupting new timers
+    const now = Date.now();
+    if (!timer.nextInterruptAt) {
+      console.log(`⚠️ Timer has no nextInterruptAt - likely a Pomodoro timer or interrupts disabled. Skipping.`);
+      return { action: "skipped", graceJobScheduled: false, graceJobTime: null };
+    }
+
+    // Check if this interrupt is firing at approximately the right time
+    // Allow 2 minute tolerance for scheduling delays
+    const timeDiff = Math.abs(now - timer.nextInterruptAt);
+    if (timeDiff > 2 * 60 * 1000) {
+      console.log(`⚠️ Interrupt timing mismatch! Expected: ${new Date(timer.nextInterruptAt).toISOString()}, Actual: ${new Date(now).toISOString()}. This is likely an orphaned scheduled job. Skipping.`);
+      return { action: "skipped", graceJobScheduled: false, graceJobTime: null };
+    }
+
     // Get user's grace period setting
     const userSettings = await ctx.runMutation(internal.interrupts.getUserSettings, {
       userId: args.userId,
     });
     const gracePeriodMs: number = (userSettings?.gracePeriod ?? 5) * 1000;
 
+    console.log(`⏰ Interrupt Check - Timer found:`, {
+      timerId: timer._id,
+      projectId: timer.projectId,
+      startedAt: new Date(timer.startedAt).toISOString(),
+      elapsedMinutes: Math.floor((now - timer.startedAt) / 60000),
+      gracePeriodSeconds: gracePeriodMs / 1000,
+      awaitingAck: timer.awaitingInterruptAck
+    });
+
     // Check if user has been active (heartbeat within last 5 minutes)
-    const now = Date.now();
     const heartbeatStale = now - timer.lastHeartbeatAt > 5 * 60 * 1000; // 5 minutes
 
     if (heartbeatStale) {
@@ -87,6 +112,8 @@ export const check = action({
 
     // Schedule auto-stop if no acknowledgment after grace period
     const graceJobTime: number = interruptAt + gracePeriodMs;
+    console.log(`⏰ Scheduling grace period auto-stop at: ${new Date(graceJobTime).toISOString()} (in ${gracePeriodMs / 1000} seconds)`);
+
     await ctx.scheduler.runAt(graceJobTime, api.interrupts.autoStopIfNoAck, {
       organizationId: timer.organizationId,
       userId: timer.userId,

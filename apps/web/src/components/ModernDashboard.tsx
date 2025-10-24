@@ -19,7 +19,6 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
 import { cn } from "../lib/utils";
-import { InterruptModal } from "./InterruptModal";
 import { ProjectSwitchModal } from "./ProjectSwitchModal";
 import { ProjectKpis } from "./ProjectKpis";
 import { ProjectSummaryGrid } from "./ProjectSummaryGrid";
@@ -40,6 +39,8 @@ import { updateTimerFavicon, clearTimerFavicon, type FaviconState } from "../lib
 import { SoundSelectionModal } from "./SoundSelectionModal";
 import { PictureInPictureTimer } from "./PictureInPictureTimer";
 import type { PiPTimerState } from "../lib/pip";
+import { TodaySummaryCard } from "./TodaySummaryCard";
+import type { TimeEntry } from "./TodaySummaryCard";
 
 interface ModernDashboardProps {
   pushSwitchRequest?: any | null;
@@ -114,7 +115,6 @@ export function ModernDashboard({
   const currentWorkspace = workspaceType;
   const { formatCurrency: formatCurrencyWithSymbol } = useCurrency();
   const [now, setNow] = useState(Date.now());
-  const [showInterruptModal, setShowInterruptModal] = useState(false);
   const [showProjectSwitchModal, setShowProjectSwitchModal] = useState(false);
   const [pendingProjectId, setPendingProjectId] = useState<Id<"projects"> | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -189,6 +189,16 @@ export function ModernDashboard({
   const notificationPrefs = useQuery(api.pushNotifications.getNotificationPrefs);
   const soundPreferenceEnabled = Boolean(notificationPrefs?.soundEnabled);
 
+  // Fetch time entries for TodaySummaryCard
+  const allEntriesResult = useQuery(
+    currentWorkspace === "personal"
+      ? api.personalEntries.listPersonal
+      : api.entries.list,
+    {
+      paginationOpts: { numItems: 1000, cursor: null },
+    }
+  );
+
   useEffect(() => {
     if (!soundPreferenceEnabled) {
       disableSounds();
@@ -238,6 +248,41 @@ export function ModernDashboard({
   const hasProjects = projectsWithColors.length > 0;
   const hasClients = (clients?.length ?? 0) > 0;
 
+  // Format entries for TodaySummaryCard
+  const formattedEntries = useMemo((): TimeEntry[] => {
+    if (!allEntriesResult?.page) return [];
+
+    return allEntriesResult.page
+      .map((entry: any) => ({
+        _id: entry._id || "",
+        projectId: entry.projectId || "",
+        startedAt: entry.startedAt || 0,
+        stoppedAt: entry.stoppedAt,
+        seconds: typeof entry.seconds === "number" ? entry.seconds : 0,
+        project: entry.project,
+      }))
+      .filter((entry) => entry.project && entry.seconds > 0);
+  }, [allEntriesResult]);
+
+  // Calculate totals for today
+  const todayStats = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayStart = today.getTime();
+    const todayEnd = Date.now();
+
+    const todayEntries = formattedEntries.filter(
+      (entry) => entry.startedAt >= todayStart && entry.startedAt <= todayEnd
+    );
+
+    const totalSeconds = todayEntries.reduce((sum, entry) => sum + entry.seconds, 0);
+
+    return {
+      totalSeconds,
+      entriesCount: todayEntries.length,
+    };
+  }, [formattedEntries]);
+
   // Reset currentProjectId when workspace changes to avoid fetching wrong project type
   useEffect(() => {
     setCurrentProjectId(null);
@@ -282,19 +327,8 @@ export function ModernDashboard({
     }
   }, [runningTimer, heartbeat]);
 
-  // Interrupt handling
-  useEffect(() => {
-    if (runningTimer?.awaitingInterruptAck) {
-      console.log("🚨 Interrupt detected! Showing modal...", runningTimer);
-      setShowInterruptModal(true);
-      
-      // Play interrupt sound if enabled
-      if (soundPreferenceEnabled) {
-        enableSounds();
-        playBreakStartSound(userSettings?.notificationSound);
-      }
-    }
-  }, [runningTimer?.awaitingInterruptAck, soundPreferenceEnabled, userSettings?.notificationSound]);
+  // Interrupt handling - Removed large modal, using toast notifications only
+  // The InterruptWatcher component handles toast notifications and sounds globally
 
   // Update timer mode when timer is running
   useEffect(() => {
@@ -1016,6 +1050,15 @@ export function ModernDashboard({
             />
           </div>
         )}
+
+        {/* Today's Summary */}
+        <section className="w-full max-w-6xl px-4 sm:px-0">
+          <TodaySummaryCard
+            entries={formattedEntries}
+            totalSeconds={todayStats.totalSeconds}
+            entriesCount={todayStats.entriesCount}
+          />
+        </section>
 
         {/* Project Switcher */}
         <div className="w-full flex flex-col items-center gap-3">
@@ -1816,14 +1859,7 @@ export function ModernDashboard({
         </section>
       </div>
 
-      {/* Interrupt Modal */}
-      {showInterruptModal && runningTimer && (
-        <InterruptModal
-          projectName={currentProject.name}
-          onClose={() => setShowInterruptModal(false)}
-          gracePeriod={userSettings?.gracePeriod ?? 5}
-        />
-      )}
+      {/* Interrupt Modal - DISABLED: Using toast notifications only (see InterruptWatcher component) */}
 
       {/* Project Switch Modal */}
       {showProjectSwitchModal && pendingProjectId && (

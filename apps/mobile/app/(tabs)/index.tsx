@@ -2,16 +2,16 @@ import { CategorySelector } from "@/components/timer/CategorySelector";
 import { LargeTimerDisplay } from "@/components/timer/LargeTimerDisplay";
 import { ProjectSelector } from "@/components/timer/ProjectSelector";
 import { ProjectCarousel } from "@/components/timer/ProjectCarousel";
-import { TodaySummaryCard } from "@/components/timer/TodaySummaryCard";
+import { TodaySummaryCard, type TimeEntry } from "@/components/timer/TodaySummaryCard";
 import { SegmentedModeToggle } from "@/components/timer/SegmentedModeToggle";
 import { TimerControls } from "@/components/timer/TimerControls";
-import { InterruptModal } from "@/components/timer/InterruptModal";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { Toast } from "@/components/ui/Toast";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useTimer } from "@/hooks/useTimer";
 import { useProjects } from "@/hooks/useProjects";
 import { useFavoriteProjects } from "@/hooks/useFavoriteProjects";
+import { useEntries } from "@/hooks/useEntries";
 import { useTheme } from "@/utils/ThemeContext";
 import { calculateBudgetStatus } from "@/utils/budget";
 import { warningTap } from "@/utils/haptics";
@@ -50,6 +50,7 @@ export default function Index() {
   const { colors } = useTheme();
   const { projects, currentWorkspace } = useProjects();
   const { favoriteIds, isFavorite, toggleFavorite } = useFavoriteProjects();
+  const { entries } = useEntries();
   const {
     registerForPushNotifications,
     setResponseHandler,
@@ -59,7 +60,7 @@ export default function Index() {
   const [isStopping, setIsStopping] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
-  const [showInterruptModal, setShowInterruptModal] = useState(false);
+  const [toastAction, setToastAction] = useState<{ label: string; onPress: () => void } | undefined>();
   const [showTipsSheet, setShowTipsSheet] = useState(false);
   const [showQuickMenu, setShowQuickMenu] = useState(false);
   const [showCreateProject, setShowCreateProject] = useState(false);
@@ -115,6 +116,18 @@ export default function Index() {
 
     return { personalProjects: personal, workProjects: work, recentProjects: recent };
   }, [projects]);
+
+  // Format entries for TodaySummaryCard
+  const formattedEntries = useMemo((): TimeEntry[] => {
+    return entries.map((entry: any) => ({
+      _id: entry._id || "",
+      projectId: entry.projectId || "",
+      startedAt: entry.startedAt || 0,
+      stoppedAt: entry.stoppedAt,
+      seconds: typeof entry.seconds === "number" ? entry.seconds : 0,
+      project: entry.project,
+    })).filter((entry) => entry.project && entry.seconds > 0); // Filter out invalid entries
+  }, [entries]);
 
   // Register for push notifications on mount
   useEffect(() => {
@@ -177,19 +190,24 @@ export default function Index() {
 
   const handleAcknowledgeInterrupt = async (shouldContinue: boolean) => {
     try {
-      setShowInterruptModal(false);
       await acknowledgeInterrupt(shouldContinue);
     } catch (err: any) {
       showErrorToast(err.message || "Failed to acknowledge interrupt");
     }
   };
 
-  // Show interrupt modal when timer interrupt is triggered
+  // Show toast notification when timer interrupt is triggered (no modal)
   useEffect(() => {
     if (runningTimer?.awaitingInterruptAck) {
-      setShowInterruptModal(true);
-    } else {
-      setShowInterruptModal(false);
+      const projectName = runningTimer?.project?.name || "this project";
+      const gracePeriod = userSettings?.gracePeriod ?? 60;
+
+      setToastMessage(`Still working on ${projectName}? Timer will auto-stop in ${gracePeriod}s`);
+      setToastAction({
+        label: "Continue",
+        onPress: () => handleAcknowledgeInterrupt(true),
+      });
+      setShowToast(true);
     }
   }, [runningTimer?.awaitingInterruptAck]);
 
@@ -263,11 +281,13 @@ export default function Index() {
 
   const showErrorToast = (message: string) => {
     setToastMessage(message);
+    setToastAction(undefined);
     setShowToast(true);
   };
 
   const showInfoToast = (message: string) => {
     setToastMessage(message);
+    setToastAction(undefined);
     setShowToast(true);
   };
 
@@ -318,14 +338,6 @@ export default function Index() {
           onStop={handleStopTimer}
           onReset={handleResetTimer}
           loading={isStarting || isStopping}
-        />
-
-        {/* Today's Summary Card - Collapsible at top */}
-        <TodaySummaryCard
-          todaysTotalSeconds={elapsedTime}
-          entriesCount={0}
-          topProject={selectedProject}
-          todaysEarnings={0}
         />
 
         {/* Project Carousels - Only show when timer is NOT running */}
@@ -426,6 +438,15 @@ export default function Index() {
           </>
         ) : null}
 
+        {/* Today's Summary Card - Below project carousels */}
+        <TodaySummaryCard
+          todaysTotalSeconds={elapsedTime}
+          entriesCount={formattedEntries.length}
+          topProject={selectedProject}
+          todaysEarnings={0}
+          entries={formattedEntries}
+        />
+
         {/* Show empty state hint if no projects exist and timer is not running */}
         {!isTimerRunning && projects.length === 0 && (
           <View style={styles.emptyStateContainer}>
@@ -465,25 +486,22 @@ export default function Index() {
       {/* Tips Bottom Sheet */}
       <TipsBottomSheet visible={showTipsSheet} onClose={() => setShowTipsSheet(false)} />
 
-      {/* Error Toast */}
+      {/* Toast Notifications */}
       {showToast && (
         <Toast
           message={toastMessage}
-          type="error"
+          type="info"
           visible={showToast}
-          onHide={() => setShowToast(false)}
+          onHide={() => {
+            setShowToast(false);
+            setToastAction(undefined);
+          }}
+          action={toastAction}
+          duration={runningTimer?.awaitingInterruptAck ? (userSettings?.gracePeriod ?? 60) * 1000 : 3000}
         />
       )}
 
-      {/* Interrupt Modal */}
-      <InterruptModal
-        visible={showInterruptModal}
-        projectName={runningTimer?.project?.name || "this project"}
-        onContinue={() => handleAcknowledgeInterrupt(true)}
-        onStop={() => handleAcknowledgeInterrupt(false)}
-        gracePeriodSeconds={userSettings?.gracePeriod ?? 60}
-      />
-
+      {/* Interrupt Modal - DISABLED: Using toast notifications only */}
 
       {/* Quick Action Menu */}
       <QuickActionMenu

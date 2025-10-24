@@ -169,6 +169,13 @@ export function ProjectCard({
     return `$${amount.toFixed(0)}`;
   };
 
+  // Calculate today's earnings
+  const calculateTodaysEarnings = (): number => {
+    if (!todaysTime || todaysTime === 0) return 0;
+    const hours = todaysTime / 3600;
+    return hours * project.hourlyRate;
+  };
+
   // Animated glow color for budget warnings
   const glowColor = glowAnim.interpolate({
     inputRange: [0, 1],
@@ -230,26 +237,35 @@ export function ProjectCard({
           </View>
         )}
 
-        {/* Project Name */}
-        <Text style={[styles.projectName, { color: colors.textPrimary }]} numberOfLines={1}>
-          {project.name}
-        </Text>
-
-        {/* Client Name */}
-        {project.client && (
-          <Text style={[styles.clientName, { color: colors.textSecondary }]} numberOfLines={1}>
-            {project.client.name}
+        {/* Project Name & Client Name - Unified on one line */}
+        <View style={styles.titleRow}>
+          <Text style={[styles.projectName, { color: colors.textPrimary }]} numberOfLines={1}>
+            {project.name}
+            {project.client && (
+              <Text style={[styles.clientNameInline, { color: colors.textSecondary }]}>
+                {" · " + project.client.name}
+              </Text>
+            )}
           </Text>
+        </View>
+
+        {/* Today's Time and Earnings - Prominent Display */}
+        {todaysTime !== undefined && todaysTime > 0 && (
+          <View style={styles.todaysStatsContainer}>
+            <Text style={[styles.todaysTimeDisplay, { color: projectColor }]}>
+              Today: {formatTodaysTime(todaysTime)}
+            </Text>
+          </View>
         )}
 
-        {/* Footer: Hourly Rate + Today's Time */}
+        {/* Footer: Hourly Rate + Today's Earnings */}
         <View style={styles.footer}>
-          <Text style={[styles.hourlyRate, { color: projectColor }]}>
+          <Text style={[styles.hourlyRate, { color: colors.textSecondary }]}>
             {formatCurrency(project.hourlyRate)}/hr
           </Text>
           {todaysTime !== undefined && todaysTime > 0 && (
-            <Text style={[styles.todaysTime, { color: colors.textSecondary }]}>
-              Today: {formatTodaysTime(todaysTime)}
+            <Text style={[styles.todaysEarnings, { color: projectColor }]}>
+              {formatCurrency(calculateTodaysEarnings())}
             </Text>
           )}
         </View>
@@ -264,18 +280,31 @@ export function ProjectCard({
           </View>
         )}
 
-        {/* Budget Progress Bar */}
+        {/* Spacer to push budget to bottom */}
+        <View style={styles.spacer} />
+
+        {/* Budget Progress Bar with Context - At Bottom */}
         {budgetInfo.status !== "none" && (
-          <View style={styles.budgetBarContainer}>
-            <View
-              style={[
-                styles.budgetBar,
-                {
-                  width: `${getBudgetProgressPercent(project)}%`,
-                  backgroundColor: budgetInfo.warningColor,
-                },
-              ]}
-            />
+          <View style={styles.budgetSection}>
+            <View style={styles.budgetHeader}>
+              <Text style={[styles.budgetLabel, { color: colors.textSecondary }]}>
+                Budget
+              </Text>
+              <Text style={[styles.budgetPercentage, { color: budgetInfo.warningColor }]}>
+                {Math.round(getBudgetProgressPercent(project))}%
+              </Text>
+            </View>
+            <View style={styles.budgetBarContainer}>
+              <View
+                style={[
+                  styles.budgetBar,
+                  {
+                    width: `${getBudgetProgressPercent(project)}%`,
+                    backgroundColor: budgetInfo.warningColor,
+                  },
+                ]}
+              />
+            </View>
           </View>
         )}
 
@@ -283,7 +312,7 @@ export function ProjectCard({
         {!isTimerRunning && onQuickStart && (
           <View style={styles.playIconContainer}>
             <View style={[styles.playIconCircle, { backgroundColor: projectColor }]}>
-              <Play size={24} color="#ffffff" fill="#ffffff" />
+              <Play size={18} color="#ffffff" fill="#ffffff" />
             </View>
           </View>
         )}
@@ -295,12 +324,12 @@ export function ProjectCard({
 const styles = StyleSheet.create({
   card: {
     width: 300, // Increased from 280
-    height: 180, // Fixed height for consistency
+    height: 150, // Reduced from 180 for more compact appearance
     borderRadius: borderRadius.lg, // Larger radius
     borderLeftWidth: 5, // Increased from 4 for more prominence
     borderWidth: 1,
-    paddingHorizontal: 20, // More generous horizontal padding
-    paddingVertical: 20, // More generous vertical padding
+    paddingHorizontal: 16, // Reduced from 20 for compactness
+    paddingVertical: 14, // Reduced from 20 for compactness
     // Subtle drop shadow
     ...Platform.select({
       ios: {
@@ -328,35 +357,60 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 8,
   },
+  titleRow: {
+    marginBottom: spacing.xs, // Reduced from sm
+  },
   projectName: {
-    fontSize: 20, // Increased from body size
+    fontSize: 18, // Reduced from 20 for compactness
     fontWeight: "700", // Bold but not ultra-bold (fixes blurriness)
-    marginBottom: spacing.xs,
     letterSpacing: -0.2, // Slightly looser for clarity
   },
   clientName: {
-    fontSize: 13, // Slightly smaller
+    fontSize: 14, // Increased from 13px
     fontWeight: "600", // Medium weight
     marginBottom: spacing.sm,
-    opacity: 0.8, // Subtle opacity
+    opacity: 0.7, // Reduced from 0.8 for better contrast
+  },
+  clientNameInline: {
+    fontSize: 14, // Reduced from 16 for compactness
+    fontWeight: "600", // Medium weight
+    opacity: 0.7, // Subtle but visible
+  },
+  todaysStatsContainer: {
+    marginBottom: spacing.xs / 2, // Reduced spacing
+  },
+  todaysTimeDisplay: {
+    fontSize: 14, // Reduced from 15
+    fontWeight: "600",
+    letterSpacing: -0.1,
   },
   footer: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: spacing.xs,
-    marginBottom: spacing.sm,
+    marginTop: spacing.xs / 2, // Reduced spacing
+    marginBottom: 0, // Remove bottom margin
+  },
+  spacer: {
+    flex: 1, // Takes up remaining space to push budget to bottom
   },
   hourlyRate: {
-    fontSize: 17, // Larger for prominence
-    fontWeight: "700", // Bold
-    letterSpacing: -0.2,
+    fontSize: 14, // Reduced from 17px - less prominent now
+    fontWeight: "600", // Medium weight instead of bold
+    letterSpacing: -0.1,
+    opacity: 0.8,
     // Color set dynamically via inline style
   },
   todaysTime: {
     fontSize: 13,
     fontWeight: "600", // Increased weight
     opacity: 0.85,
+  },
+  todaysEarnings: {
+    fontSize: 17, // Larger for prominence (earnings more important than rate)
+    fontWeight: "700", // Bold
+    letterSpacing: -0.2,
+    // Color set dynamically via inline style
   },
   runningBadge: {
     position: "absolute",
@@ -388,13 +442,31 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "700",
   },
+  budgetSection: {
+    marginTop: spacing.xs, // Position at bottom
+    marginBottom: 0,
+  },
+  budgetHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: spacing.xs / 2,
+  },
+  budgetLabel: {
+    fontSize: 11, // Reduced from 12
+    fontWeight: "600",
+    opacity: 0.8,
+  },
+  budgetPercentage: {
+    fontSize: 12, // Reduced from 13
+    fontWeight: "700",
+    letterSpacing: -0.1,
+  },
   budgetBarContainer: {
-    height: 6, // Increased from 3 for better visibility
-    backgroundColor: "rgba(0,0,0,0.08)",
+    height: 6, // Reduced from 8px for compactness
+    backgroundColor: "rgba(0,0,0,0.12)", // Increased from 0.08 for better contrast
     borderRadius: 3,
     overflow: "hidden",
-    marginTop: spacing.sm,
-    marginBottom: -spacing.xs, // Negative margin to keep card compact
   },
   budgetBar: {
     height: "100%",
@@ -402,14 +474,14 @@ const styles = StyleSheet.create({
   },
   playIconContainer: {
     position: "absolute",
-    bottom: spacing.md,
+    top: spacing.md,
     right: spacing.md,
     zIndex: 5,
   },
   playIconCircle: {
-    width: 48, // Increased from 36
-    height: 48, // Increased from 36
-    borderRadius: 24,
+    width: 36, // Reduced from 48 for smaller, more subtle appearance
+    height: 36, // Reduced from 48
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "rgba(255, 255, 255, 0.2)", // Glassmorphism backdrop

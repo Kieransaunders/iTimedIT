@@ -74,6 +74,28 @@ export const getRunningTimer = query({
   },
 });
 
+/**
+ * Start a timer for a project
+ *
+ * IMPORTANT: Timer Interrupts vs Pomodoro Mode
+ * ============================================
+ * The timer has TWO MUTUALLY EXCLUSIVE interruption systems:
+ *
+ * 1. **Standard Timer Interrupts** (default):
+ *    - Prompts user at configured interval (e.g., 45 minutes)
+ *    - Uses `settings.interruptInterval` and `settings.interruptEnabled`
+ *    - Scheduled via `ctx.scheduler.runAt(nextInterruptAt, api.interrupts.check)`
+ *    - User can choose to continue or stop when interrupted
+ *
+ * 2. **Pomodoro Mode**:
+ *    - Work/break cycle system (default: 25 min work, 5 min break)
+ *    - Uses `settings.pomodoroWorkMinutes` and `settings.pomodoroBreakMinutes`
+ *    - Scheduled via `ctx.scheduler.runAt(pomodoroTransitionAt, api.timer.handlePomodoroTransition)`
+ *    - Timer auto-transitions between work and break phases
+ *
+ * These systems CANNOT run simultaneously. If `pomodoroEnabled` is true,
+ * standard interrupts are DISABLED (nextInterruptAt = undefined).
+ */
 export const start = mutation({
   args: {
     projectId: v.id("projects"),
@@ -129,6 +151,16 @@ export const start = mutation({
     const pomodoroWorkMinutes = settings?.pomodoroWorkMinutes ?? 25;
     const pomodoroBreakMinutes = settings?.pomodoroBreakMinutes ?? 5;
 
+    console.log(`⏱️ Timer Start - Settings loaded:`, {
+      userId,
+      projectId: args.projectId,
+      interruptInterval,
+      interruptEnabled,
+      pomodoroEnabled: pomodoroEnabledSetting,
+      pomodoroWorkMinutes,
+      startedFrom: args.startedFrom || "unknown"
+    });
+
     // Stop ALL existing timers for this user (both personal and work workspaces)
     // This ensures only one timer runs globally
     const existingTimer = await getRunningTimerForUser(ctx, userId, organizationId);
@@ -152,6 +184,15 @@ export const start = mutation({
     // Don't schedule interrupts for Pomodoro timers - they have their own work/break transitions
     const nextInterruptAt = (interruptEnabled && !pomodoroEnabledSetting) ? now + (interruptInterval * 60 * 1000) : undefined;
     const pomodoroTransitionAt = pomodoroEnabledSetting ? now + pomodoroWorkMinutes * 60 * 1000 : undefined;
+
+    if (pomodoroEnabledSetting) {
+      console.log(`🍅 Pomodoro Mode - Interrupts DISABLED, using Pomodoro transitions instead`);
+      console.log(`🍅 Next Pomodoro transition: ${new Date(pomodoroTransitionAt!).toISOString()} (in ${pomodoroWorkMinutes} minutes)`);
+    } else if (interruptEnabled) {
+      console.log(`⏰ Standard Mode - Interrupt scheduled at: ${new Date(nextInterruptAt!).toISOString()} (in ${interruptInterval} minutes)`);
+    } else {
+      console.log(`❌ Interrupts DISABLED - No interrupts will be scheduled`);
+    }
 
     // Create running timer
     const timerId = await ctx.db.insert("runningTimers", {
@@ -479,6 +520,9 @@ export const ackInterrupt = mutation({
       const now = Date.now();
       const nextInterruptAt = interruptEnabled ? now + (interruptInterval * 60 * 1000) : undefined;
 
+      console.log(`✅ Interrupt Acknowledged - User chose to CONTINUE`);
+      console.log(`⏰ Rescheduling next interrupt at: ${nextInterruptAt ? new Date(nextInterruptAt).toISOString() : 'none'} (in ${interruptInterval} minutes)`);
+
       await ctx.db.patch(timer._id, {
         awaitingInterruptAck: false,
         interruptShownAt: undefined,
@@ -495,6 +539,8 @@ export const ackInterrupt = mutation({
 
       return { success: true, action: "continued", nextInterruptAt };
     } else {
+      console.log(`🛑 Interrupt Acknowledged - User chose to STOP`);
+
       const projectId = timer.projectId;
       await stopInternal(
         ctx,

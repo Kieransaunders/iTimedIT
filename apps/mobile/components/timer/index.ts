@@ -25,4 +25,4 @@ export { TimerDisplay } from "./TimerDisplay";
 export type { TimerDisplayProps } from "./TimerDisplay";
 
 export { TodaySummaryCard, reEnableTodaySummaryCard } from "./TodaySummaryCard";
-export type { TodaySummaryCardProps } from "./TodaySummaryCard";
+export type { TodaySummaryCardProps, ProjectTimeData, TimeEntry, TimePeriod } from "./TodaySummaryCard";
