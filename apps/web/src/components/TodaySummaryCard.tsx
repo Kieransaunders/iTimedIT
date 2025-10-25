@@ -261,9 +261,9 @@ export function TodaySummaryCard({
       {/* Main Stats - Always Visible */}
       <div className="px-4 sm:px-6 pb-4">
         {/* Total Time - Prominent Display with Clock Icon */}
-        <div className="flex items-center justify-center mb-6">
-          <Clock className="w-8 h-8 text-primary mr-2" />
-          <div className="text-5xl font-bold text-gray-900 dark:text-white font-mono tracking-tight">
+        <div className="flex items-center justify-center mb-4">
+          <Clock className="w-5 h-5 text-primary mr-2" />
+          <div className="text-2xl font-bold text-gray-900 dark:text-white font-mono tracking-tight">
             {formatDuration(filteredTotalSeconds || totalSeconds)}
           </div>
         </div>
