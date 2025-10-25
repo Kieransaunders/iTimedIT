@@ -1,10 +1,27 @@
-// Learn more https://docs.expo.dev/guides/customizing-metro
-const { getDefaultConfig } = require("expo/metro-config");
+// Learn more: https://docs.expo.dev/guides/monorepos
+const { getDefaultConfig } = require('expo/metro-config');
+const path = require('path');
 
-/** @type {import('expo/metro-config').MetroConfig} */
+// Get the default Expo config with require.context support enabled
 const config = getDefaultConfig(__dirname);
 
-// Set the app root for expo-router
-process.env.EXPO_ROUTER_APP_ROOT = "app";
+// Ensure context modules are enabled for expo-router
+config.transformer = {
+  ...config.transformer,
+  unstable_allowRequireContext: true,
+};
+
+// Monorepo setup: Watch all files in the workspace
+const projectRoot = __dirname;
+const workspaceRoot = path.resolve(projectRoot, '../..');
+
+config.watchFolders = [workspaceRoot];
+config.resolver = {
+  ...config.resolver,
+  nodeModulesPaths: [
+    path.resolve(projectRoot, 'node_modules'),
+    path.resolve(workspaceRoot, 'node_modules'),
+  ],
+};
 
 module.exports = config;
