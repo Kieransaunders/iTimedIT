@@ -1,4 +1,12 @@
-import * as LiveActivity from "expo-live-activity";
+// Try to import expo-live-activity, but handle gracefully if not available
+let LiveActivity: any = null;
+try {
+  LiveActivity = require("expo-live-activity");
+} catch (error) {
+  console.warn("expo-live-activity not available. Live Activities will be disabled.");
+  console.warn("This is expected in Expo Go or builds without the native module.");
+}
+
 import { Platform } from "react-native";
 import type { Project } from "@/types/models";
 
@@ -16,6 +24,7 @@ import type { Project } from "@/types/models";
  * Requirements:
  * - iOS 16.2+
  * - Expo DevClient (not Expo Go)
+ * - Native module properly configured in build
  *
  * Note: This service is iOS-only and will no-op on Android or older iOS versions.
  */
@@ -34,6 +43,11 @@ class LiveActivityService {
    * Check if Live Activities are supported on this device
    */
   isSupported(): boolean {
+    // First check if the module is even available
+    if (!LiveActivity) {
+      return false;
+    }
+
     if (Platform.OS !== "ios") {
       return false;
     }
@@ -66,11 +80,15 @@ class LiveActivityService {
       // Initial elapsed time
       const elapsedSeconds = Math.floor((Date.now() - startedAt) / 1000);
 
-      // Start the Live Activity
+      // Start the Live Activity (with extra safety check)
       const state = this.createActivityState(elapsedSeconds);
       const config = this.createActivityConfig();
 
-      this.activityId = await LiveActivity.startActivity(state, config);
+      if (LiveActivity && LiveActivity.startActivity) {
+        this.activityId = await LiveActivity.startActivity(state, config);
+      } else {
+        throw new Error("LiveActivity module not available");
+      }
 
       // Start periodic updates
       this.startPeriodicUpdates();
@@ -92,7 +110,9 @@ class LiveActivityService {
 
     try {
       const state = this.createActivityState(elapsedSeconds);
-      await LiveActivity.updateActivity(this.activityId, state);
+      if (LiveActivity && LiveActivity.updateActivity) {
+        await LiveActivity.updateActivity(this.activityId, state);
+      }
     } catch (error) {
       console.error("Failed to update Live Activity:", error);
     }
@@ -116,7 +136,9 @@ class LiveActivityService {
       // End the Live Activity with final state
       const elapsedSeconds = Math.floor((Date.now() - this.startTime) / 1000);
       const finalState = this.createActivityState(elapsedSeconds);
-      await LiveActivity.endActivity(this.activityId, finalState);
+      if (LiveActivity && LiveActivity.endActivity) {
+        await LiveActivity.endActivity(this.activityId, finalState);
+      }
 
       console.log("Live Activity stopped");
 
