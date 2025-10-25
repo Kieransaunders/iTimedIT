@@ -49,6 +49,7 @@ export function EntriesPage() {
 
   const projects = useQuery(api.projects.listAll, isReady ? { workspaceType: "work" } : "skip");
   const categories = useQuery(api.categories.getCategories, isReady ? {} : "skip");
+  const entries = useQuery(api.entries.list, isReady ? { paginationOpts: { numItems: 100, cursor: null } } : "skip");
   const createManualEntry = useMutation(api.timer.createManualEntry);
 
   const clientOptions = useMemo<ClientOption[]>(() => {
@@ -94,6 +95,118 @@ export function EntriesPage() {
   }, [projectOptions, selectedProject]);
 
   const hasProjects = projectOptions.length > 0;
+
+  // Get selected project data for budget calculation
+  const selectedProjectData = useMemo(() => {
+    if (selectedProject === "all" || !projects) return null;
+    return (projects as ProjectOption[]).find((p) => p._id === selectedProject);
+  }, [selectedProject, projects]);
+
+  // Calculate filtered entries and stats
+  const { filteredEntries, stats } = useMemo(() => {
+    if (!entries?.page) {
+      return {
+        filteredEntries: [],
+        stats: {
+          count: 0,
+          totalHours: 0,
+          totalMinutes: 0,
+          budgetHours: null,
+          remainingHours: null,
+          remainingMinutes: null,
+        },
+      };
+    }
+
+    // Apply filters
+    const filtered = entries.page.filter((entry) => {
+      // Client filter
+      if (selectedClient !== "all" && entry.client?._id !== selectedClient) {
+        return false;
+      }
+
+      // Project filter
+      if (selectedProject !== "all" && entry.projectId !== selectedProject) {
+        return false;
+      }
+
+      // Category filter
+      if (selectedCategory !== "all") {
+        if (selectedCategory === "none" && entry.category) {
+          return false;
+        } else if (selectedCategory !== "none" && entry.category !== selectedCategory) {
+          return false;
+        }
+      }
+
+      // Date range filter
+      const entryDate = entry.startedAt ?? entry._creationTime;
+      if (fromDate) {
+        const fromMs = new Date(fromDate).setHours(0, 0, 0, 0);
+        if (entryDate < fromMs) {
+          return false;
+        }
+      }
+      if (toDate) {
+        const toMs = new Date(toDate).setHours(23, 59, 59, 999);
+        if (entryDate > toMs) {
+          return false;
+        }
+      }
+
+      // Search term filter
+      if (searchTerm) {
+        const term = searchTerm.toLowerCase();
+        const fields = [
+          entry.project?.name || "",
+          entry.client?.name || "",
+          entry.note || "",
+          entry.category || "",
+        ];
+        const matches = fields.some((field) => field.toLowerCase().includes(term));
+        if (!matches) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+
+    // Calculate stats
+    const totalSeconds = filtered.reduce((sum, entry) => {
+      return sum + (entry.seconds || 0);
+    }, 0);
+    const totalHours = Math.floor(totalSeconds / 3600);
+    const totalMinutes = Math.floor((totalSeconds % 3600) / 60);
+
+    // Calculate budget info if a single project with budget is selected
+    let budgetHours: number | null = null;
+    let remainingHours: number | null = null;
+    let remainingMinutes: number | null = null;
+
+    if (selectedProject !== "all" && selectedProjectData) {
+      const projectData = selectedProjectData as any;
+      if (projectData.budgetType === "hours" && projectData.budgetHours) {
+        budgetHours = projectData.budgetHours;
+        const totalHoursDecimal = totalSeconds / 3600;
+        const remaining = Math.max(0, budgetHours - totalHoursDecimal);
+        remainingHours = Math.floor(remaining);
+        remainingMinutes = Math.floor((remaining % 1) * 60);
+      }
+    }
+
+    return {
+      filteredEntries: filtered,
+      stats: {
+        count: filtered.length,
+        totalHours,
+        totalMinutes,
+        budgetHours,
+        remainingHours,
+        remainingMinutes,
+      },
+    };
+  }, [entries, selectedClient, selectedProject, selectedCategory, fromDate, toDate, searchTerm, selectedProjectData]);
 
   const resetFilters = () => {
     setSearchTerm("");
@@ -530,6 +643,49 @@ export function EntriesPage() {
             </button>
           </div>
         )}
+      </div>
+
+      {/* Stats Card */}
+      <div className="bg-white dark:bg-gray-800/50 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700/50 p-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {/* Entry Count */}
+          <div className="flex flex-col items-center sm:items-start">
+            <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
+              Entries
+            </p>
+            <p className="text-2xl font-bold text-gray-900 dark:text-white">
+              {stats.count}
+            </p>
+          </div>
+
+          {/* Total Time */}
+          <div className="flex flex-col items-center sm:items-start">
+            <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
+              Total Time
+            </p>
+            <p className="text-2xl font-bold text-gray-900 dark:text-white">
+              {stats.totalHours}h {stats.totalMinutes}m
+            </p>
+          </div>
+
+          {/* Budget Remaining (conditional) */}
+          {stats.budgetHours !== null && (
+            <div className="flex flex-col items-center sm:items-start">
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
+                Budget Remaining
+              </p>
+              <p
+                className={`text-2xl font-bold ${
+                  (stats.remainingHours ?? 0) > 0
+                    ? "text-green-600 dark:text-green-400"
+                    : "text-red-600 dark:text-red-400"
+                }`}
+              >
+                {stats.remainingHours}h {stats.remainingMinutes}m
+              </p>
+            </div>
+          )}
+        </div>
       </div>
 
       <RecentEntriesTable
