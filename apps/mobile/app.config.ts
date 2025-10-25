@@ -12,7 +12,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   orientation: "portrait",
   icon: "./assets/images/icon.png",
   scheme: "itimeditapp",
-  userInterfaceStyle: "dark",
   newArchEnabled: true,
   owner: "iconnectit",
   splash: {
