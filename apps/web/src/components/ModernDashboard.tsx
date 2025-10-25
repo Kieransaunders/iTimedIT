@@ -1586,11 +1586,13 @@ export function ModernDashboard({
                   </button>
                 </div>
 
-                {/* Picture-in-Picture Button */}
-                <PictureInPictureTimer
-                  timerState={pipTimerState}
-                  disabled={!timerState.running}
-                />
+                {/* Picture-in-Picture Button - Hidden on mobile */}
+                <div className="hidden md:block">
+                  <PictureInPictureTimer
+                    timerState={pipTimerState}
+                    disabled={!timerState.running}
+                  />
+                </div>
               </div>
             )}
           </div>
