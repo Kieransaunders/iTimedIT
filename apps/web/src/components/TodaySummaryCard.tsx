@@ -175,21 +175,26 @@ export function TodaySummaryCard({
     return projectTimeData.reduce((sum, item) => sum + item.seconds, 0);
   }, [projectTimeData]);
 
-  // Calculate top project (project with most time today)
-  const topProject = useMemo((): Project | null => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayStart = today.getTime();
-    const todayEnd = Date.now();
+  // Calculate filtered entries count based on selected time period
+  const filteredEntriesCount = useMemo(() => {
+    const { start, end } = getDateRange(timePeriod);
+    return entries.filter(
+      (entry) => entry.startedAt >= start && entry.startedAt <= end
+    ).length;
+  }, [entries, timePeriod, getDateRange]);
 
-    // Filter today's entries
-    const todayEntries = entries.filter(
-      (entry) => entry.startedAt >= todayStart && entry.startedAt <= todayEnd
+  // Calculate top project (project with most time in selected period)
+  const topProject = useMemo((): Project | null => {
+    const { start, end } = getDateRange(timePeriod);
+
+    // Filter entries by selected time period
+    const filteredEntries = entries.filter(
+      (entry) => entry.startedAt >= start && entry.startedAt <= end
     );
 
     // Group by project
     const projectMap = new Map<string, { project: Project; seconds: number }>();
-    todayEntries.forEach((entry) => {
+    filteredEntries.forEach((entry) => {
       if (!entry.project) return;
       const entrySeconds = typeof entry.seconds === "number" && !isNaN(entry.seconds) ? entry.seconds : 0;
       const existing = projectMap.get(entry.projectId);
@@ -212,29 +217,26 @@ export function TodaySummaryCard({
     });
 
     return maxProject?.project || null;
-  }, [entries]);
+  }, [entries, timePeriod, getDateRange]);
 
-  // Calculate today's earnings
-  const todaysEarnings = useMemo((): number => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayStart = today.getTime();
-    const todayEnd = Date.now();
+  // Calculate earnings for selected time period
+  const filteredEarnings = useMemo((): number => {
+    const { start, end } = getDateRange(timePeriod);
 
-    // Filter today's entries
-    const todayEntries = entries.filter(
-      (entry) => entry.startedAt >= todayStart && entry.startedAt <= todayEnd
+    // Filter entries by selected time period
+    const filteredEntries = entries.filter(
+      (entry) => entry.startedAt >= start && entry.startedAt <= end
     );
 
     // Calculate total earnings
-    return todayEntries.reduce((total, entry) => {
+    return filteredEntries.reduce((total, entry) => {
       if (!entry.project) return total;
       const entrySeconds = typeof entry.seconds === "number" && !isNaN(entry.seconds) ? entry.seconds : 0;
       const hours = entrySeconds / 3600;
       const earnings = hours * entry.project.hourlyRate;
       return total + earnings;
     }, 0);
-  }, [entries]);
+  }, [entries, timePeriod, getDateRange]);
 
   return (
     <div className="bg-white/60 dark:bg-gray-800/30 backdrop-blur-sm border border-gray-300/50 dark:border-gray-700/50 rounded-xl overflow-hidden">
@@ -245,7 +247,7 @@ export function TodaySummaryCard({
       >
         <div className="flex items-center gap-3">
           <h3 className="text-sm font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
-            Today's Summary
+            Weekly Summary
           </h3>
         </div>
         <ChevronDown
@@ -270,11 +272,11 @@ export function TodaySummaryCard({
         <div className="grid grid-cols-3 gap-4">
           {/* Entries Count */}
           <div className="text-center">
-            <div className="text-2xl font-bold text-primary">
-              {entriesCount}
+            <div className="text-xl font-bold text-primary">
+              {filteredEntriesCount}
             </div>
             <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-              {entriesCount === 1 ? "Entry" : "Entries"}
+              {filteredEntriesCount === 1 ? "Entry" : "Entries"}
             </div>
           </div>
 
@@ -286,7 +288,7 @@ export function TodaySummaryCard({
                   className="w-2 h-2 rounded-full flex-shrink-0"
                   style={{ backgroundColor: topProject.color || "#8b5cf6" }}
                 />
-                <div className="text-sm font-semibold text-gray-900 dark:text-white truncate max-w-[100px]">
+                <div className="text-xs font-semibold text-gray-900 dark:text-white truncate max-w-[100px]">
                   {topProject.name}
                 </div>
               </div>
@@ -296,7 +298,7 @@ export function TodaySummaryCard({
             </div>
           ) : (
             <div className="text-center">
-              <div className="text-sm font-medium text-gray-400 dark:text-gray-500">
+              <div className="text-xs font-medium text-gray-400 dark:text-gray-500">
                 —
               </div>
               <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
@@ -307,11 +309,11 @@ export function TodaySummaryCard({
 
           {/* Earnings */}
           <div className="text-center">
-            <div className="text-base font-bold text-green-600 dark:text-green-500">
-              {formatCurrency(todaysEarnings)}
+            <div className="text-sm font-bold text-green-600 dark:text-green-500">
+              {formatCurrency(filteredEarnings)}
             </div>
             <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-              Earned Today
+              Earned This Week
             </div>
           </div>
         </div>
