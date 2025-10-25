@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { createStyleSheet, useStyles } from "react-native-unistyles";
 import { storage } from "@/services/storage";
+import Constants from "expo-constants";
 
 export interface WebAppPromptProps {
   message: string;
@@ -22,7 +23,10 @@ export interface WebAppPromptProps {
   dismissalKey?: string;
 }
 
-const WEB_APP_URL = "https://app.itimedit.com"; // Update with actual web app URL
+const WEB_APP_URL =
+  Constants.expoConfig?.extra?.webAppUrl ||
+  process.env.EXPO_PUBLIC_WEB_APP_URL ||
+  "https://itimedit.com";
 
 export function WebAppPrompt({
   message,

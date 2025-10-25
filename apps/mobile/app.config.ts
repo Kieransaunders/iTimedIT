@@ -95,8 +95,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   extra: {
     convexUrl: process.env.EXPO_PUBLIC_CONVEX_URL,
+    webAppUrl: process.env.EXPO_PUBLIC_WEB_APP_URL,
+    router: {
+      origin: false,
+    },
     eas: {
       projectId: "9765d9ef-1bbf-43eb-9200-6ecd31389a64",
     },
   },
+  userInterfaceStyle: "automatic",
 });

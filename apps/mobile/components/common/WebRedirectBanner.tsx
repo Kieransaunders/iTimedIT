@@ -3,6 +3,7 @@ import { Linking, StyleSheet, Text, TouchableOpacity, View } from "react-native"
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useTheme } from "@/utils/ThemeContext";
 import { borderRadius, spacing, typography } from "@/utils/theme";
+import Constants from "expo-constants";
 
 export interface WebRedirectBannerProps {
   message: string;
@@ -11,6 +12,11 @@ export interface WebRedirectBannerProps {
   showLearnMore?: boolean;
   variant?: "info" | "primary";
 }
+
+const WEB_APP_URL =
+  Constants.expoConfig?.extra?.webAppUrl ||
+  process.env.EXPO_PUBLIC_WEB_APP_URL ||
+  "https://itimedit.com";
 
 /**
  * WebRedirectBanner component
@@ -25,7 +31,7 @@ export function WebRedirectBanner({
   variant = "info",
 }: WebRedirectBannerProps) {
   const { colors } = useTheme();
-  const webAppUrl = "https://itimedit.com";
+  const webAppUrl = WEB_APP_URL;
   const fullUrl = targetPath ? `${webAppUrl}${targetPath}` : webAppUrl;
 
   const handleOpenWebApp = async () => {
