@@ -272,7 +272,7 @@ export function TodaySummaryCard({
         <div className="grid grid-cols-3 gap-4">
           {/* Entries Count */}
           <div className="text-center">
-            <div className="text-2xl font-bold text-primary">
+            <div className="text-xl font-bold text-primary">
               {filteredEntriesCount}
             </div>
             <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
@@ -288,7 +288,7 @@ export function TodaySummaryCard({
                   className="w-2 h-2 rounded-full flex-shrink-0"
                   style={{ backgroundColor: topProject.color || "#8b5cf6" }}
                 />
-                <div className="text-sm font-semibold text-gray-900 dark:text-white truncate max-w-[100px]">
+                <div className="text-xs font-semibold text-gray-900 dark:text-white truncate max-w-[100px]">
                   {topProject.name}
                 </div>
               </div>
@@ -298,7 +298,7 @@ export function TodaySummaryCard({
             </div>
           ) : (
             <div className="text-center">
-              <div className="text-sm font-medium text-gray-400 dark:text-gray-500">
+              <div className="text-xs font-medium text-gray-400 dark:text-gray-500">
                 —
               </div>
               <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
@@ -309,7 +309,7 @@ export function TodaySummaryCard({
 
           {/* Earnings */}
           <div className="text-center">
-            <div className="text-base font-bold text-green-600 dark:text-green-500">
+            <div className="text-sm font-bold text-green-600 dark:text-green-500">
               {formatCurrency(filteredEarnings)}
             </div>
             <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
