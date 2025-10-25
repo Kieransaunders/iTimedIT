@@ -1,10 +1,36 @@
 // Try to import expo-live-activity, but handle gracefully if not available
 let LiveActivity: any = null;
-try {
-  LiveActivity = require("expo-live-activity");
-} catch (error) {
-  console.warn("expo-live-activity not available. Live Activities will be disabled.");
-  console.warn("This is expected in Expo Go or builds without the native module.");
+
+// Only attempt to load if explicitly enabled via env var
+// TEMPORARILY DISABLED: The expo-live-activity module is causing crashes in TestFlight
+// See crash log: ErrorRecovery.swift and StartupProcedure.swift throwing exceptions
+// TODO: Re-enable once the native module is properly configured for production builds
+const LIVE_ACTIVITIES_ENABLED = false; // process.env.EXPO_PUBLIC_LIVE_ACTIVITIES === "1";
+
+if (LIVE_ACTIVITIES_ENABLED) {
+  try {
+    // Wrap in a function to delay execution and add extra safety
+    const loadModule = () => {
+      try {
+        return require("expo-live-activity");
+      } catch (innerError) {
+        console.error("Failed to load expo-live-activity module:", innerError);
+        return null;
+      }
+    };
+
+    // Only load the module when we're sure we're in a proper environment
+    // This prevents crashes during app startup
+    LiveActivity = loadModule();
+
+    if (!LiveActivity) {
+      console.warn("expo-live-activity module could not be loaded. Live Activities will be disabled.");
+    }
+  } catch (error) {
+    console.warn("expo-live-activity not available. Live Activities will be disabled.");
+    console.warn("This is expected in Expo Go or builds without the native module.");
+    console.warn("Error details:", error);
+  }
 }
 
 import { Platform } from "react-native";
@@ -43,7 +69,12 @@ class LiveActivityService {
    * Check if Live Activities are supported on this device
    */
   isSupported(): boolean {
-    // First check if the module is even available
+    // First check if feature is enabled in build
+    if (!LIVE_ACTIVITIES_ENABLED) {
+      return false;
+    }
+
+    // Check if the module is available
     if (!LiveActivity) {
       return false;
     }
