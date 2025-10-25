@@ -15,35 +15,35 @@ import Toast from "react-native-toast-message";
 import { UnistylesRegistry } from "react-native-unistyles";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { ErrorUtils } from "react-native";
-
 // Global error handlers to prevent silent crashes
 // Set up before any component rendering
 
 // Handle unhandled promise rejections
-const originalPromiseRejectionHandler = ErrorUtils.getGlobalHandler();
-ErrorUtils.setGlobalHandler((error, isFatal) => {
-  console.error("🚨 Global Error Handler:", error);
-  console.error("Is Fatal:", isFatal);
-  console.error("Stack:", error.stack);
+// Note: ErrorUtils is a global object in React Native, not an import
+declare const ErrorUtils: {
+  setGlobalHandler: (handler: (error: Error, isFatal: boolean) => void) => void;
+  getGlobalHandler: () => ((error: Error, isFatal: boolean) => void) | undefined;
+};
 
-  // Call original handler if it exists
-  if (originalPromiseRejectionHandler) {
-    originalPromiseRejectionHandler(error, isFatal);
-  }
-});
+const originalPromiseRejectionHandler = typeof ErrorUtils !== 'undefined'
+  ? ErrorUtils.getGlobalHandler?.()
+  : undefined;
 
-// Log unhandled promise rejections (additional safety net)
-if (typeof global.Promise !== "undefined") {
-  const originalRejection = global.Promise.prototype.catch;
-  // Track unhandled rejections via logging
-  if (typeof global.addEventListener === "function") {
-    global.addEventListener("unhandledrejection", (event: PromiseRejectionEvent) => {
-      console.error("🚨 Unhandled Promise Rejection:", event.reason);
-      console.error("Promise:", event.promise);
-    });
-  }
+if (typeof ErrorUtils !== 'undefined' && ErrorUtils.setGlobalHandler) {
+  ErrorUtils.setGlobalHandler((error, isFatal) => {
+    console.error("🚨 Global Error Handler:", error);
+    console.error("Is Fatal:", isFatal);
+    console.error("Stack:", error?.stack);
+
+    // Call original handler if it exists
+    if (originalPromiseRejectionHandler) {
+      originalPromiseRejectionHandler(error, isFatal);
+    }
+  });
 }
+
+// Note: React Native doesn't have global.addEventListener for promise rejections
+// The ErrorUtils handler above already catches most unhandled errors
 
 // Configure Unistyles with our themes
 UnistylesRegistry.addThemes({

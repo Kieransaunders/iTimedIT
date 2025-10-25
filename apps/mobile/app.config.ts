@@ -69,6 +69,15 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     output: "static",
     favicon: "./assets/images/favicon.png",
   },
+  updates: {
+    enabled: true,
+    fallbackToCacheTimeout: 0,
+    checkAutomatically: "ON_LOAD",
+    url: "https://u.expo.dev/9765d9ef-1bbf-43eb-9200-6ecd31389a64",
+  },
+  runtimeVersion: {
+    policy: "appVersion",
+  },
   plugins: [
     "expo-router",
     "expo-notifications",
@@ -76,6 +85,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     "expo-task-manager",
     "expo-secure-store",
     "expo-live-activity",
+    "expo-updates",
     [
       "expo-splash-screen",
       {

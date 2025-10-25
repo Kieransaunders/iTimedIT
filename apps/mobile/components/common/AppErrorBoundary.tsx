@@ -1,7 +1,15 @@
 import React, { Component, type ReactNode } from "react";
 import { View, Text, TouchableOpacity, ScrollView } from "react-native";
 import { createStyleSheet, useStyles } from "react-native-unistyles";
-import * as Updates from "expo-updates";
+
+// Conditionally import expo-updates (might not be available in all environments)
+let Updates: any;
+try {
+  Updates = require("expo-updates");
+} catch (error) {
+  console.warn("expo-updates not available, app restart functionality will be limited");
+  Updates = null;
+}
 
 interface Props {
   children: ReactNode;
@@ -37,8 +45,15 @@ export class AppErrorBoundary extends Component<Props, State> {
 
   handleRestart = async () => {
     try {
-      // Try to reload the app using Expo Updates
-      await Updates.reloadAsync();
+      // Check if Updates is available (not available in Expo Go or some dev builds)
+      if (Updates && Updates.reloadAsync) {
+        // Try to reload the app using Expo Updates
+        await Updates.reloadAsync();
+      } else {
+        console.warn("Expo Updates not available, using fallback restart");
+        // Fallback: reset error state to retry rendering
+        this.setState({ hasError: false, error: null, errorInfo: null });
+      }
     } catch (error) {
       console.error("Failed to reload app:", error);
       // Fallback: reset error state to retry rendering
