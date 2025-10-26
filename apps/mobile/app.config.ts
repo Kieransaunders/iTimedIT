@@ -98,6 +98,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         },
       },
     ],
+    [
+      "sentry-expo",
+      {
+        organization: "serenity-dev",
+        project: "itimedit",
+      },
+    ],
   ],
   experiments: {
     typedRoutes: true,
