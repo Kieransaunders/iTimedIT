@@ -1,12 +1,14 @@
 /**
  * Error handling utilities for Google OAuth authentication
- * 
+ *
  * This module provides:
  * - Error type categorization
  * - User-friendly error messages
  * - Error logging utilities
  * - Error recovery suggestions
  */
+
+import * as Sentry from "@sentry/react-native";
 
 /**
  * Categories of errors that can occur during OAuth flow
@@ -201,7 +203,7 @@ export function isRetryable(category: ErrorCategory): boolean {
  */
 export function logAuthError(error: AuthError, context?: string): void {
   const prefix = context ? `[${context}]` : '[Auth Error]';
-  
+
   console.error(`${prefix} ${error.category}:`, {
     message: error.message,
     userMessage: error.userMessage,
@@ -211,8 +213,21 @@ export function logAuthError(error: AuthError, context?: string): void {
     originalError: error.originalError,
   });
 
-  // In production, you might want to send this to a logging service
-  // Example: Sentry.captureException(error.originalError, { extra: { category: error.category } });
+  // Send to Sentry for production monitoring
+  Sentry.captureException(error.originalError || new Error(error.message), {
+    level: error.recoverable ? "warning" : "error",
+    tags: {
+      category: error.category,
+      context: context || "auth",
+      recoverable: error.recoverable.toString(),
+      retryable: error.retryable.toString(),
+    },
+    extra: {
+      message: error.message,
+      userMessage: error.userMessage,
+      timestamp: new Date(error.timestamp).toISOString(),
+    },
+  });
 }
 
 /**
