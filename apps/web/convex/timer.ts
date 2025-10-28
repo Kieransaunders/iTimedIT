@@ -67,9 +67,50 @@ export const getRunningTimer = query({
     const project = await ctx.db.get(timer.projectId);
     const client = project?.clientId ? await ctx.db.get(project.clientId) : null;
 
+    // Calculate totalSeconds for the project (needed for budget calculations)
+    let projectWithStats = null;
+    if (project) {
+      const entries = await ctx.db
+        .query("timeEntries")
+        .withIndex("byProject", (q) => q.eq("projectId", project._id))
+        .filter((q) => q.eq(q.field("isOverrun"), false))
+        .collect();
+
+      const totalSeconds = entries.reduce((sum, entry) => {
+        const seconds = entry.seconds || (entry.stoppedAt ? (entry.stoppedAt - entry.startedAt) / 1000 : 0);
+        return sum + seconds;
+      }, 0);
+
+      const totalHours = totalSeconds / 3600;
+      const totalAmount = totalHours * project.hourlyRate;
+
+      let budgetRemaining = 0;
+      let budgetRemainingFormatted = "N/A";
+
+      if (project.budgetType === "hours" && project.budgetHours) {
+        const budgetSeconds = project.budgetHours * 3600;
+        budgetRemaining = Math.max(0, budgetSeconds - totalSeconds);
+        const hoursRemaining = budgetRemaining / 3600;
+        budgetRemainingFormatted = `${hoursRemaining.toFixed(1)} hours`;
+      } else if (project.budgetType === "amount" && project.budgetAmount) {
+        budgetRemaining = Math.max(0, project.budgetAmount - totalAmount);
+        budgetRemainingFormatted = `$${budgetRemaining.toFixed(2)}`;
+      }
+
+      projectWithStats = {
+        ...project,
+        client,
+        totalSeconds,
+        totalHours,
+        totalHoursFormatted: `${totalHours.toFixed(1)}h`,
+        budgetRemaining,
+        budgetRemainingFormatted,
+      };
+    }
+
     return {
       ...timer,
-      project: project ? { ...project, client } : null,
+      project: projectWithStats,
     };
   },
 });

@@ -1,7 +1,8 @@
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 import type { Project } from "@/types/models";
-import { liveActivityService } from "./liveActivityService";
+// Live Activities temporarily disabled - causing build issues
+// import { liveActivityService } from "./liveActivityService";
 
 /**
  * Notification ID for the persistent timer notification
@@ -27,15 +28,14 @@ class TimerNotificationService {
    */
   async startTimerNotification(project: Project, startedAt: number): Promise<void> {
     try {
-      // Check if Live Activities are supported (iOS 16.2+)
-      if (liveActivityService.isSupported()) {
-        // Use Live Activities for iOS 16.2+
-        await liveActivityService.startActivity(project, startedAt);
-        console.log("Timer Live Activity started for project:", project.name);
-        return; // Early return, don't use notifications
-      }
+      // Live Activities temporarily disabled - use standard notifications
+      // if (liveActivityService.isSupported()) {
+      //   await liveActivityService.startActivity(project, startedAt);
+      //   console.log("Timer Live Activity started for project:", project.name);
+      //   return; // Early return, don't use notifications
+      // }
 
-      // Fallback to notifications for older iOS and Android
+      // Use standard notifications for all platforms
       // Store start time and project info
       this.startTime = startedAt;
       this.projectInfo = {
@@ -74,15 +74,14 @@ class TimerNotificationService {
    */
   async stopTimerNotification(): Promise<void> {
     try {
-      // Check if Live Activities are supported (iOS 16.2+)
-      if (liveActivityService.isSupported()) {
-        // Stop Live Activity
-        await liveActivityService.stopActivity();
-        console.log("Timer Live Activity stopped");
-        return; // Early return
-      }
+      // Live Activities temporarily disabled - use standard notifications
+      // if (liveActivityService.isSupported()) {
+      //   await liveActivityService.stopActivity();
+      //   console.log("Timer Live Activity stopped");
+      //   return; // Early return
+      // }
 
-      // Fallback: Stop notifications
+      // Stop standard notifications
       // Stop periodic updates
       if (this.updateInterval) {
         clearInterval(this.updateInterval);

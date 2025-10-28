@@ -8,8 +8,8 @@ import {
   Platform,
   Dimensions,
 } from "react-native";
-import React, { useEffect, useRef } from "react";
-import { AlertCircle } from "lucide-react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { AlertCircle, Clock } from "lucide-react-native";
 
 export interface LargeTimerDisplayProps {
   elapsedTime: number; // in seconds
@@ -18,6 +18,10 @@ export interface LargeTimerDisplayProps {
   isNearBudget?: boolean;
   isOverBudget?: boolean;
   startedAt?: number; // Timestamp when timer started
+  nextInterruptAt?: number; // Timestamp for next interrupt
+  pomodoroPhase?: "work" | "break"; // Current Pomodoro phase
+  pomodoroWorkDuration?: number; // Pomodoro work duration in minutes
+  pomodoroBreakDuration?: number; // Pomodoro break duration in minutes
 }
 
 /**
@@ -31,11 +35,22 @@ export function LargeTimerDisplay({
   isNearBudget = false,
   isOverBudget = false,
   startedAt,
+  nextInterruptAt,
+  pomodoroPhase,
+  pomodoroWorkDuration = 25,
+  pomodoroBreakDuration = 5,
 }: LargeTimerDisplayProps) {
   const { colors } = useTheme();
+  const [currentTime, setCurrentTime] = useState(Date.now());
 
-  // Calculate budget status from actual project data
-  const budgetInfo = calculateBudgetStatus(project);
+  // Calculate budget status from actual project data including current elapsed time
+  // When timer is running, add current elapsed time to the project's total
+  const projectWithCurrentTime = project && isRunning ? {
+    ...project,
+    totalSeconds: (project.totalSeconds || 0) + elapsedTime
+  } : project;
+
+  const budgetInfo = calculateBudgetStatus(projectWithCurrentTime);
   const actualIsNearBudget = budgetInfo.isNearBudget || isNearBudget;
   const actualIsOverBudget = budgetInfo.isOverBudget || isOverBudget;
 
@@ -151,6 +166,98 @@ export function LargeTimerDisplay({
     return `${hours}:${minutes}`;
   };
 
+  // Update current time every minute for time remaining display
+  useEffect(() => {
+    if (!isRunning) return;
+
+    const updateTime = () => setCurrentTime(Date.now());
+
+    // Update immediately
+    updateTime();
+
+    // Then update every minute
+    const interval = setInterval(updateTime, 60000);
+
+    return () => clearInterval(interval);
+  }, [isRunning]);
+
+  // Calculate time remaining based on context
+  const calculateTimeRemaining = (): { label: string; time: string } | null => {
+    if (!isRunning) return null;
+
+    // For Pomodoro mode
+    if (pomodoroPhase) {
+      const phaseStarted = startedAt || Date.now();
+      const phaseDuration = pomodoroPhase === "work"
+        ? pomodoroWorkDuration * 60 * 1000
+        : pomodoroBreakDuration * 60 * 1000;
+      const phaseEnd = phaseStarted + phaseDuration;
+      const remaining = Math.max(0, phaseEnd - currentTime);
+
+      if (remaining > 0) {
+        const minutes = Math.floor(remaining / 60000);
+        const seconds = Math.floor((remaining % 60000) / 1000);
+        return {
+          label: pomodoroPhase === "work" ? "Work time left" : "Break time left",
+          time: `${minutes}:${seconds.toString().padStart(2, "0")}`
+        };
+      }
+    }
+
+    // For interrupt intervals
+    if (nextInterruptAt) {
+      const remaining = Math.max(0, nextInterruptAt - currentTime);
+
+      if (remaining > 0) {
+        const minutes = Math.floor(remaining / 60000);
+        const seconds = Math.floor((remaining % 60000) / 1000);
+
+        // Only show if more than 1 minute remaining
+        if (minutes > 0) {
+          return {
+            label: "Next check-in",
+            time: `${minutes}:${seconds.toString().padStart(2, "0")}`
+          };
+        }
+      }
+    }
+
+    // For budget time remaining - use the budget info calculated with current time
+    if (budgetInfo.status !== "none" && budgetInfo.totalBudget > 0) {
+      const remainingBudget = budgetInfo.totalBudget - budgetInfo.totalUsed;
+
+      if (remainingBudget > 0) {
+        // For hours budget
+        if (project?.budgetType === "hours") {
+          const hours = Math.floor(remainingBudget);
+          const minutes = Math.floor((remainingBudget % 1) * 60);
+
+          if (hours > 0) {
+            return {
+              label: "Budget remaining",
+              time: `${hours}h ${minutes}m`
+            };
+          } else if (minutes > 0) {
+            return {
+              label: "Budget remaining",
+              time: `${minutes}m`
+            };
+          }
+        } else if (project?.budgetType === "amount") {
+          // For amount budget
+          return {
+            label: "Budget remaining",
+            time: `$${remainingBudget.toFixed(0)}`
+          };
+        }
+      }
+    }
+
+    return null;
+  };
+
+  const timeRemaining = calculateTimeRemaining();
+
   // Use the budget utilities for consistent budget display
   // Pass current elapsed time for real-time budget countdown
   const budgetRemainingText = formatBudgetRemaining(
@@ -192,11 +299,35 @@ export function LargeTimerDisplay({
         </View>
       )}
 
-      {/* Started Time - Only show when timer is running */}
-      {isRunning && startedAt && (
-        <Text style={[styles.startedText, { color: colors.textSecondary }]}>
-          Started: {formatStartTime(startedAt)}
-        </Text>
+      {/* Timer Info Section - Show started time and time remaining */}
+      {isRunning && (
+        <View style={styles.timerInfoContainer}>
+          {/* Started Time */}
+          {startedAt && (
+            <View style={styles.timerInfoItem}>
+              <Clock size={14} color={colors.textSecondary} />
+              <Text style={[styles.timerInfoLabel, { color: colors.textSecondary }]}>
+                Started
+              </Text>
+              <Text style={[styles.timerInfoValue, { color: colors.textPrimary }]}>
+                {formatStartTime(startedAt)}
+              </Text>
+            </View>
+          )}
+
+          {/* Time Remaining */}
+          {timeRemaining && (
+            <View style={styles.timerInfoItem}>
+              <AlertCircle size={14} color={colors.textSecondary} />
+              <Text style={[styles.timerInfoLabel, { color: colors.textSecondary }]}>
+                {timeRemaining.label}
+              </Text>
+              <Text style={[styles.timerInfoValue, { color: colors.textPrimary }]}>
+                {timeRemaining.time}
+              </Text>
+            </View>
+          )}
+        </View>
       )}
 
       {/* Budget Warning Badge - Show when approaching or over budget */}
@@ -279,11 +410,29 @@ const styles = StyleSheet.create({
     marginTop: 4,
     textAlign: "center",
   },
-  startedText: {
-    fontSize: 14,
-    marginTop: 6,
-    textAlign: "center",
+  timerInfoContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 12,
+    gap: 20,
+  },
+  timerInfoItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  timerInfoLabel: {
+    fontSize: 13,
     fontWeight: "500",
+  },
+  timerInfoValue: {
+    fontSize: 14,
+    fontWeight: "600",
+    fontFamily: Platform.select({
+      ios: "Menlo-Regular",
+      android: "monospace",
+    }),
   },
   budgetWarningBadge: {
     flexDirection: "row",

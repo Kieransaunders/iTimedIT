@@ -305,6 +305,10 @@ export default function Index() {
             isNearBudget={false}
             isOverBudget={false}
             startedAt={runningTimer?.startedAt}
+            nextInterruptAt={runningTimer?.nextInterruptAt}
+            pomodoroPhase={runningTimer?.pomodoroPhase}
+            pomodoroWorkDuration={userSettings?.pomodoroWorkDuration}
+            pomodoroBreakDuration={userSettings?.pomodoroBreakDuration}
           />
         </View>
 

@@ -55,7 +55,17 @@ export async function requestNotificationPermissions(): Promise<boolean> {
  */
 export async function getExpoPushToken(): Promise<string> {
   // Check if running on a physical device
-  if (!Constants.isDevice) {
+  // Note: Constants.isDevice can be unreliable in development builds
+  // We'll add additional checks to properly detect physical devices
+  const isSimulator = Platform.OS === "ios"
+    ? Constants.deviceName?.includes("Simulator") || !Constants.isDevice
+    : !Constants.isDevice;
+
+  // Allow override in development for testing on physical devices
+  const isDevelopment = __DEV__;
+  const forcePhysicalDevice = isDevelopment && Platform.OS === "ios" && Constants.deviceName?.includes("iPad");
+
+  if (isSimulator && !forcePhysicalDevice) {
     console.warn(
       "⚠️ Push notifications only work on physical devices. " +
       "Skipping token registration on simulator/emulator."

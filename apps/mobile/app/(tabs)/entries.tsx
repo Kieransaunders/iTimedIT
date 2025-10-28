@@ -5,7 +5,6 @@ import {
   FlatList,
   Modal,
   RefreshControl,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -13,6 +12,7 @@ import {
   TouchableOpacity,
   View
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { EditEntryModal, EntryCard, ManualEntryModal } from "../../components/entries";
 import { Button } from "../../components/ui";
 import { useEntries } from "../../hooks/useEntries";

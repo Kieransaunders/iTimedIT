@@ -168,6 +168,12 @@ export const registerExpoPushToken = mutation({
       throw new Error("Not authenticated");
     }
 
+    // Skip registration for dummy/simulator tokens
+    if (args.token.includes("simulator-development-token")) {
+      console.log("Skipping registration for simulator/development token");
+      return { success: true, message: "Development token - skipped registration" };
+    }
+
     // Check if this token already exists for this user
     const existingToken = await ctx.db
       .query("expoPushTokens")

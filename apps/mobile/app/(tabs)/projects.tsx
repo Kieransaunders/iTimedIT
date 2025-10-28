@@ -3,13 +3,13 @@ import {
     ActivityIndicator,
     FlatList,
     RefreshControl,
-    SafeAreaView,
     StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
     View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { ProjectCard } from "../../components/projects/ProjectCard";
 import { useProjects } from "../../hooks/useProjects";
 import { useTimer } from "../../hooks/useTimer";

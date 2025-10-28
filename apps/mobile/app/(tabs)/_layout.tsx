@@ -8,7 +8,7 @@ export default function TabLayout() {
   const { colors } = useTheme();
 
   const handleReportPress = () => {
-    Linking.openURL("https://itimedit.netlify.app/projects");
+    Linking.openURL("https://itimedit.com/projects");
   };
 
   return (
