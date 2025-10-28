@@ -84,7 +84,23 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     "expo-background-fetch",
     "expo-task-manager",
     "expo-secure-store",
-    "expo-live-activity",
+    [
+      "expo-live-activity",
+      {
+        widgetName: "LiveActivity",
+        bundleIdentifier: "com.itimedit.app.LiveActivity",
+        deploymentTarget: "16.2",
+        attributes: {
+          title: "string",
+          subtitle: "string",
+          elapsedTime: "string",
+          earnings: "string",
+          projectColor: "string",
+          imageName: "string"
+        },
+        frequentUpdates: true
+      }
+    ],
     "expo-updates",
     [
       "expo-splash-screen",

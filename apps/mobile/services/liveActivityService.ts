@@ -1,36 +1,75 @@
 // Try to import expo-live-activity, but handle gracefully if not available
 let LiveActivity: any = null;
+let moduleLoadError: any = null;
 
-// Only attempt to load if explicitly enabled via env var
-// TEMPORARILY DISABLED: The expo-live-activity module is causing crashes in TestFlight
-// See crash log: ErrorRecovery.swift and StartupProcedure.swift throwing exceptions
-// TODO: Re-enable once the native module is properly configured for production builds
-const LIVE_ACTIVITIES_ENABLED = false; // process.env.EXPO_PUBLIC_LIVE_ACTIVITIES === "1";
+// Enable Live Activities based on environment variable
+// For production safety, we'll check multiple conditions
+const LIVE_ACTIVITIES_ENABLED = process.env.EXPO_PUBLIC_LIVE_ACTIVITIES === "1";
 
+// Attempt to load the module with comprehensive error handling
 if (LIVE_ACTIVITIES_ENABLED) {
   try {
-    // Wrap in a function to delay execution and add extra safety
-    const loadModule = () => {
+    // Use a dynamic import wrapped in try-catch for maximum safety
+    const loadLiveActivityModule = () => {
       try {
-        return require("expo-live-activity");
-      } catch (innerError) {
-        console.error("Failed to load expo-live-activity module:", innerError);
+        // Check if we're in a native build environment (not Expo Go)
+        const { NativeModules } = require("react-native");
+
+        // Check if the native module exists before trying to load the JS module
+        if (!NativeModules.ExpoLiveActivity) {
+          console.warn("Native ExpoLiveActivity module not found. Live Activities will be disabled.");
+          console.warn("This is expected in Expo Go or development builds without the native module.");
+          return null;
+        }
+
+        // Now try to load the actual module
+        const module = require("expo-live-activity");
+
+        // Verify the module has the expected methods
+        if (module && typeof module.startActivity === "function") {
+          console.log("✅ Live Activity module loaded successfully");
+          return module;
+        } else {
+          console.warn("Live Activity module loaded but appears to be invalid");
+          return null;
+        }
+      } catch (innerError: any) {
+        // Store the error for debugging but don't crash
+        moduleLoadError = innerError;
+        console.warn("Failed to load expo-live-activity module:", innerError?.message);
+
+        // Check if it's a specific error we can handle
+        if (innerError?.message?.includes("Native module cannot be null")) {
+          console.warn("The native Live Activity extension is not properly included in this build.");
+          console.warn("Run 'npx expo prebuild --clean' and rebuild to include the extension.");
+        }
+
         return null;
       }
     };
 
-    // Only load the module when we're sure we're in a proper environment
-    // This prevents crashes during app startup
-    LiveActivity = loadModule();
+    // Delay module loading until after initial app setup
+    // This prevents crashes during the critical startup phase
+    setTimeout(() => {
+      if (!LiveActivity) {
+        LiveActivity = loadLiveActivityModule();
+      }
+    }, 100);
 
-    if (!LiveActivity) {
-      console.warn("expo-live-activity module could not be loaded. Live Activities will be disabled.");
-    }
-  } catch (error) {
+  } catch (error: any) {
+    moduleLoadError = error;
     console.warn("expo-live-activity not available. Live Activities will be disabled.");
-    console.warn("This is expected in Expo Go or builds without the native module.");
-    console.warn("Error details:", error);
+    console.warn("Error:", error?.message);
   }
+}
+
+// Export a function to check module status for debugging
+export function getLiveActivityStatus() {
+  return {
+    enabled: LIVE_ACTIVITIES_ENABLED,
+    loaded: !!LiveActivity,
+    error: moduleLoadError?.message || null
+  };
 }
 
 import { Platform } from "react-native";
@@ -74,19 +113,45 @@ class LiveActivityService {
       return false;
     }
 
-    // Check if the module is available
-    if (!LiveActivity) {
-      return false;
-    }
-
+    // Platform check
     if (Platform.OS !== "ios") {
       return false;
     }
 
-    // Live Activities require iOS 16.2+
-    // Note: Platform.Version returns iOS version as string like "16.2"
+    // iOS version check - Live Activities require iOS 16.2+
     const version = parseFloat(Platform.Version as string);
-    return version >= 16.2;
+    if (version < 16.2) {
+      return false;
+    }
+
+    // Check if the native module is available
+    try {
+      const { NativeModules } = require("react-native");
+      if (!NativeModules.ExpoLiveActivity) {
+        console.log("Native Live Activity module not found");
+        return false;
+      }
+    } catch (error) {
+      console.log("Error checking for native module:", error);
+      return false;
+    }
+
+    // Check if the JS module is loaded
+    if (!LiveActivity) {
+      // Try to load it now if it hasn't been loaded yet
+      try {
+        const { NativeModules } = require("react-native");
+        if (NativeModules.ExpoLiveActivity) {
+          LiveActivity = require("expo-live-activity");
+        }
+      } catch (error) {
+        console.log("Failed to load Live Activity module:", error);
+        return false;
+      }
+    }
+
+    // Final check that module is valid
+    return !!LiveActivity && typeof LiveActivity.startActivity === "function";
   }
 
   /**
