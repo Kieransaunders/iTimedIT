@@ -315,6 +315,30 @@ Key tables (defined in `apps/web/convex/schema.ts`):
 5. Push notifications use Expo's system (`expo-notifications`)
 6. **Timer interrupts with auto-stop**: Same backend logic as web app - uses `awaitingInterruptAck` field
 
+### ⚠️ CRITICAL: Sentry Setup for Mobile (Prevents TestFlight Crashes)
+**Problem**: App crashes immediately on TestFlight if both `@sentry/react-native` and `sentry-expo` are installed.
+
+**Solution**: ONLY use `sentry-expo` for Expo apps:
+```json
+// ✅ CORRECT - apps/mobile/package.json
+"sentry-expo": "~7.0.0",
+"expo-application": "~7.0.0",  // Required peer dependency
+// ❌ NEVER add "@sentry/react-native" directly
+```
+
+```typescript
+// ✅ CORRECT - apps/mobile/app/_layout.tsx
+import * as Sentry from "sentry-expo";
+// ❌ NEVER: import * as Sentry from "@sentry/react-native";
+```
+
+**Debugging TestFlight Crashes**:
+1. Clean all node_modules: `find . -name "node_modules" -type d -prune -exec rm -rf '{}' +`
+2. Check for conflicting SDKs: `grep -r "@sentry/react-native" apps/mobile`
+3. Run `npx expo install --fix` then `npx expo-doctor`
+4. Test locally: `npx expo start --no-dev --minify`
+5. Consider disabling new architecture: `newArchEnabled: false` in app.config.ts
+
 ### Deployment
 - Web: Netlify + Convex production backend
 - Mobile: Expo Application Services (EAS Build)

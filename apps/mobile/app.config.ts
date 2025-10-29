@@ -12,6 +12,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   orientation: "portrait",
   icon: "./assets/images/icon.png",
   scheme: "itimeditapp",
+  jsEngine: "jsc",  // Explicitly use JSC to avoid Hermes/iOS edge cases
   newArchEnabled: true,
   owner: "iconnectit",
   splash: {
@@ -80,6 +81,20 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   plugins: [
     "expo-router",
+    [
+      "expo-build-properties",
+      {
+        ios: {
+          jsEngine: "jsc",  // Ensure JSC is used for iOS builds
+          deploymentTarget: "15.1",
+          // Avoid useFrameworks conflicts that can cause TestFlight crashes
+          useFrameworks: "static"
+        },
+        android: {
+          jsEngine: "jsc"  // Use JSC for Android as well for consistency
+        }
+      }
+    ],
     "expo-notifications",
     "expo-background-fetch",
     "expo-task-manager",
@@ -113,13 +128,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         dark: {
           backgroundColor: "#1a1a2e",
         },
-      },
-    ],
-    [
-      "sentry-expo",
-      {
-        organization: "serenity-dev",
-        project: "itimedit",
       },
     ],
   ],

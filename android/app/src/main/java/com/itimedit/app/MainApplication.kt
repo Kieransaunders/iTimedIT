@@ -1,4 +1,4 @@
-package com.mrzang77.itimeditmonorepo
+package com.itimedit.app
 
 import android.app.Application
 import android.content.res.Configuration

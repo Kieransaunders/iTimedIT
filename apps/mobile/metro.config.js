@@ -15,7 +15,11 @@ config.transformer = {
 const projectRoot = __dirname;
 const workspaceRoot = path.resolve(projectRoot, '../..');
 
-config.watchFolders = [workspaceRoot];
+// Include both the default watchFolders and the workspace root
+config.watchFolders = [
+  ...config.watchFolders || [],
+  workspaceRoot
+];
 config.resolver = {
   ...config.resolver,
   nodeModulesPaths: [

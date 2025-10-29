@@ -1,4 +1,4 @@
-package com.mrzang77.itimeditmonorepo
+package com.itimedit.app
 
 import android.os.Build
 import android.os.Bundle

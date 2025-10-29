@@ -8,8 +8,6 @@
  * - Error recovery suggestions
  */
 
-import * as Sentry from "@sentry/react-native";
-
 /**
  * Categories of errors that can occur during OAuth flow
  */
@@ -213,21 +211,7 @@ export function logAuthError(error: AuthError, context?: string): void {
     originalError: error.originalError,
   });
 
-  // Send to Sentry for production monitoring
-  Sentry.captureException(error.originalError || new Error(error.message), {
-    level: error.recoverable ? "warning" : "error",
-    tags: {
-      category: error.category,
-      context: context || "auth",
-      recoverable: error.recoverable.toString(),
-      retryable: error.retryable.toString(),
-    },
-    extra: {
-      message: error.message,
-      userMessage: error.userMessage,
-      timestamp: new Date(error.timestamp).toISOString(),
-    },
-  });
+  // Production monitoring removed - will be added back later
 }
 
 /**

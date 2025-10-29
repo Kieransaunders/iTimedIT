@@ -15,23 +15,7 @@ import Toast from "react-native-toast-message";
 import { UnistylesRegistry } from "react-native-unistyles";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import * as Sentry from "@sentry/react-native";
 import Constants from "expo-constants";
-
-// Initialize Sentry before any component rendering
-Sentry.init({
-  dsn: "https://6067a602869754bdf4e3dc3a4c02ed45@o4509537295532033.ingest.de.sentry.io/4510146354020432",
-  enableInExpoDevelopment: false,
-  debug: __DEV__,
-  environment: __DEV__ ? "development" : "production",
-  tracesSampleRate: 1.0,
-  _experiments: {
-    profilesSampleRate: 1.0,
-  },
-  integrations: [
-    Sentry.reactNativeTracingIntegration(),
-  ],
-});
 
 // Global error handlers to prevent silent crashes
 // Set up before any component rendering
@@ -52,14 +36,6 @@ if (typeof ErrorUtils !== 'undefined' && ErrorUtils.setGlobalHandler) {
     console.error("🚨 Global Error Handler:", error);
     console.error("Is Fatal:", isFatal);
     console.error("Stack:", error?.stack);
-
-    // Send to Sentry
-    Sentry.captureException(error, {
-      level: isFatal ? "fatal" : "error",
-      tags: {
-        type: "global_error_handler",
-      },
-    });
 
     // Call original handler if it exists
     if (originalPromiseRejectionHandler) {
