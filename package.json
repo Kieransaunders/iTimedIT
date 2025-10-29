@@ -27,7 +27,6 @@
     "@radix-ui/react-popover": "^1.1.15",
     "@radix-ui/react-select": "^2.2.6",
     "@radix-ui/react-slot": "^1.2.3",
-    "@revenuecat/purchases-js": "^1.14.0",
     "@sentry/react": "^10.17.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -35,8 +34,8 @@
     "convex": "^1.28.0",
     "expo": "~54.0.20",
     "lucide-react": "^0.544.0",
-    "react": "18.3.1",
-    "react-dom": "18.3.1",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
     "react-native": "~0.81.5",
     "react-native-svg": "15.12.1",
     "sonner": "^2.0.3",
@@ -47,8 +46,8 @@
     "@eslint/js": "^9.21.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^22.13.10",
-    "@types/react": "^18.3.0",
-    "@types/react-dom": "^18.3.0",
+    "@types/react": "^19.0.6",
+    "@types/react-dom": "^19.0.2",
     "@types/web-push": "^3.6.4",
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "~10",
@@ -68,9 +67,10 @@
     "vite": "^6.2.0"
   },
   "overrides": {
-    "react": "18.3.1",
-    "react-dom": "18.3.1",
-    "@types/react": "^18.3.0",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "@types/react": "^19.0.6",
+    "@types/react-dom": "^19.0.2",
     "react-native-svg": "15.12.1"
   }
 }
