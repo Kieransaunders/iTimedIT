@@ -55,11 +55,12 @@ packages/
 ### Mobile App
 - **Framework**: Expo ~54 + React Native 0.81
 - **Backend**: Convex (shared with web via symlink at `apps/mobile/convex -> apps/web/convex`)
+- **JS Engine**: JSC (not Hermes) to avoid TestFlight crashes
 - **Routing**: Expo Router (file-based)
 - **UI**: react-native-unistyles + custom components
 - **Auth**: Convex Auth + Google OAuth (expo-auth-session)
 - **Navigation**: @react-navigation/native
-- **Testing**: Jest + jest-expo
+- **Testing**: Jest + jest-expo (run with --runInBand flag)
 
 ## Common Commands
 
@@ -73,29 +74,46 @@ npm run build:mobile     # Build mobile app for production
 npm run lint             # Lint all workspaces
 npm run test             # Run tests in all workspaces
 npm run clean            # Clean all node_modules
+npm run install:all      # Install dependencies for all workspaces
 ```
 
 ### Web app commands (from root or apps/web/)
 ```bash
+# From root directory:
 npm run dev --workspace=@itimedit/web    # Development with hot reload
-npm run dev:frontend                      # Vite only (requires separate Convex)
-npm run dev:backend                       # Convex dev server only
-npm run build                             # Production build
-npm run lint                              # TypeScript + Convex checks
-npm run test                              # Run Jest tests
-npm run test:watch                        # Jest in watch mode
-npm run test:coverage                     # Jest with coverage report
-npm run generate:vapid                    # Generate Web Push VAPID keys
+npm run build --workspace=@itimedit/web  # Production build
+npm run test --workspace=@itimedit/web   # Run Jest tests
+
+# From apps/web/ directory:
+npm run dev                # Start both frontend and backend
+npm run dev:frontend       # Vite only (requires separate Convex)
+npm run dev:backend        # Convex dev server only
+npm run build              # Production build
+npm run lint               # TypeScript + Convex checks
+npm run test               # Run Jest tests
+npm run test:watch         # Jest in watch mode
+npm run test:coverage      # Jest with coverage report
+npm run generate:vapid     # Generate Web Push VAPID keys
+
+# Run a specific test file:
+npm test -- path/to/test.spec.ts
+npm test -- --testNamePattern="should handle timer"
 ```
 
 ### Mobile app commands (from root or apps/mobile/)
 ```bash
+# From root directory:
 npm run start --workspace=@itimedit/mobile   # Start Expo dev server
-npm run ios                                  # Run on iOS simulator
-npm run android                              # Run on Android emulator
-npm run build                                # Export for production
-npm run lint                                 # ESLint checks
-npm run test                                 # Run Jest tests (--runInBand)
+npm run ios --workspace=@itimedit/mobile     # Run on iOS simulator
+npm run android --workspace=@itimedit/mobile # Run on Android emulator
+
+# From apps/mobile/ directory:
+npm run start              # Start Expo dev server
+npm run ios                # Run on iOS simulator
+npm run android            # Run on Android emulator
+npm run build              # Export for production
+npm run lint               # ESLint checks
+npm run test               # Run Jest tests (--runInBand)
 ```
 
 ### Convex commands (run from apps/web/)
@@ -104,6 +122,7 @@ npx convex dev           # Start Convex development backend
 npx convex deploy        # Deploy to production Convex backend
 npx convex dashboard     # Open Convex dashboard
 npx convex logs          # View function logs
+npx convex env set KEY VALUE  # Set environment variable
 ```
 
 ## Mobile-Web Feature Division Strategy
@@ -289,6 +308,8 @@ Key tables (defined in `apps/web/convex/schema.ts`):
   - `contract/` - Convex function tests
   - `integration/` - User flow tests
 - Run with `npm run test:coverage` before PRs
+- Run specific tests: `npm test -- path/to/test.spec.ts`
+- Test by pattern: `npm test -- --testNamePattern="timer"`
 
 ### Mobile App
 - Jest + jest-expo configuration
@@ -296,7 +317,8 @@ Key tables (defined in `apps/web/convex/schema.ts`):
   - `hooks/` - Hook tests
   - `services/` - Service tests
   - `components/` - Component tests
-- Run with `npm run test --runInBand` (prevents race conditions)
+- **ALWAYS run with `npm run test` (includes --runInBand flag to prevent race conditions)**
+- Do not run tests in parallel as it causes failures
 
 ## Critical Notes
 
@@ -314,6 +336,7 @@ Key tables (defined in `apps/web/convex/schema.ts`):
 4. Google OAuth uses PKCE flow via `services/googleAuth.ts`
 5. Push notifications use Expo's system (`expo-notifications`)
 6. **Timer interrupts with auto-stop**: Same backend logic as web app - uses `awaitingInterruptAck` field
+7. **JS Engine**: Uses JSC instead of Hermes to avoid TestFlight crashes (configured in `app.config.ts`)
 
 ### ⚠️ CRITICAL: Sentry Setup for Mobile (Prevents TestFlight Crashes)
 **Problem**: App crashes immediately on TestFlight if both `@sentry/react-native` and `sentry-expo` are installed.

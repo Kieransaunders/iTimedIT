@@ -13,7 +13,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   icon: "./assets/images/icon.png",
   scheme: "itimeditapp",
   jsEngine: "jsc",  // Explicitly use JSC to avoid Hermes/iOS edge cases
-  newArchEnabled: true,
+  newArchEnabled: false,  // Old architecture for stability
   owner: "iconnectit",
   splash: {
     image: "./assets/images/splash-icon.png",
@@ -133,7 +133,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ],
   experiments: {
     typedRoutes: true,
-    reactCompiler: true,
+    reactCompiler: false,  // Disabled - requires babel-plugin-react-compiler package
   },
   extra: {
     convexUrl: process.env.EXPO_PUBLIC_CONVEX_URL,
