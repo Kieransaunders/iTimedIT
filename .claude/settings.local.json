@@ -30,7 +30,9 @@
       "Read(//var/folders/fz/tf99g_hs5f9bqb61cs2lbtn80000gp/T/TemporaryItems/NSIRD_screencaptureui_KXhRLl/**)",
       "Read(//var/folders/fz/tf99g_hs5f9bqb61cs2lbtn80000gp/T/TemporaryItems/NSIRD_screencaptureui_T2i3q8/**)",
       "mcp__convex__status",
-      "Read(//Users/MrZang/Downloads/testflight_feedback-7/**)"
+      "Read(//Users/MrZang/Downloads/testflight_feedback-7/**)",
+      "Read(//Users/MrZang/Downloads/testflight_feedback-10/**)",
+      "Bash(npx expo-doctor:*)"
     ],
     "deny": [],
     "ask": []

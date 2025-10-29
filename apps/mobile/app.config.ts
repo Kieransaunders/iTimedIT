@@ -71,7 +71,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     favicon: "./assets/images/favicon.png",
   },
   updates: {
-    enabled: true,
+    enabled: false, // Temporarily disabled to isolate TestFlight crash issue
     fallbackToCacheTimeout: 0,
     checkAutomatically: "ON_LOAD",
     url: "https://u.expo.dev/9765d9ef-1bbf-43eb-9200-6ecd31389a64",

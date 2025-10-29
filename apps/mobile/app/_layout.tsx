@@ -1,6 +1,6 @@
 import { useAuth } from "@/hooks/useAuth";
 import { convexClient } from "@/services/convex";
-import { setupNotificationChannels, setupNotificationCategories } from "@/services/notifications";
+import { setupNotificationHandler, setupNotificationChannels, setupNotificationCategories } from "@/services/notifications";
 import { tokenStorage } from "@/services/storage";
 import { lightTheme, darkTheme } from "@/utils/theme";
 import { ThemeProvider, useTheme } from "@/utils/ThemeContext";
@@ -108,10 +108,12 @@ function ProtectedLayout() {
 
 export default function RootLayout() {
   useEffect(() => {
-    // Set up notification channels and categories on app start
+    // Set up notification handler, channels and categories on app start
     // Wrap in async IIFE with error handling to prevent crashes
     (async () => {
       try {
+        // Set up notification handler first (must be synchronous, before channels)
+        setupNotificationHandler();
         await setupNotificationChannels();
         await setupNotificationCategories();
         console.log("Notification setup completed successfully");

@@ -5,32 +5,35 @@ import { setupTimerNotificationChannel, setupTimerNotificationCategory } from ".
 
 /**
  * Configure how notifications are handled when the app is in the foreground
+ * IMPORTANT: This must be called from within a try-catch block to prevent uncatchable exceptions
  */
-Notifications.setNotificationHandler({
-  handleNotification: async (notification: Notifications.Notification) => {
-    const notificationType = notification.request.content.data?.type;
+export function setupNotificationHandler(): void {
+  Notifications.setNotificationHandler({
+    handleNotification: async (notification: Notifications.Notification) => {
+      const notificationType = notification.request.content.data?.type;
 
-    // Timer running notifications should be silent (no banner/alert)
-    // They update every 3-5 seconds and should only show in notification tray
-    if (notificationType === "timer-running" ||
-        notification.request.content.categoryIdentifier === "timer-running") {
+      // Timer running notifications should be silent (no banner/alert)
+      // They update every 3-5 seconds and should only show in notification tray
+      if (notificationType === "timer-running" ||
+          notification.request.content.categoryIdentifier === "timer-running") {
+        return {
+          shouldPlaySound: false,
+          shouldSetBadge: false,
+          shouldShowBanner: false,
+          shouldShowList: true, // Still show in notification list
+        };
+      }
+
+      // All other notifications (interrupts, budget alerts, etc.) should show
       return {
-        shouldPlaySound: false,
+        shouldPlaySound: true,
         shouldSetBadge: false,
-        shouldShowBanner: false,
-        shouldShowList: true, // Still show in notification list
+        shouldShowBanner: true,
+        shouldShowList: true,
       };
-    }
-
-    // All other notifications (interrupts, budget alerts, etc.) should show
-    return {
-      shouldPlaySound: true,
-      shouldSetBadge: false,
-      shouldShowBanner: true,
-      shouldShowList: true,
-    };
-  },
-});
+    },
+  });
+}
 
 /**
  * Request notification permissions from the user
