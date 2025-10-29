@@ -1,32 +1,35 @@
 # Mobile App - Shared Convex Backend
 
-## ⚠️ Critical: Hermes/JSC Engine - TestFlight Crash Fix
+## ⚠️ Critical: Hermes Engine Configuration
 
-### Problem
-The app can crash immediately on TestFlight/production due to a Hermes + New Architecture + iOS configuration edge case. This is particularly common with React Native 0.81.x and certain iOS build configurations.
+### Current Configuration
+**The app uses Hermes (React Native's default JavaScript engine).**
 
-### Solution
-**Use JSC instead of Hermes to avoid the edge case issues.**
+Hermes is optimized for React Native and provides:
+- ✅ Fast startup time
+- ✅ Reduced memory usage
+- ✅ Smaller app size
+- ✅ Better performance with New Architecture
 
-#### Configuration (Already Applied):
+#### Configuration:
 ```typescript
 // app.config.ts
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
-  jsEngine: "jsc",  // Explicitly use JSC to avoid Hermes/iOS edge cases
-  newArchEnabled: true,  // Can keep New Architecture with JSC
+  jsEngine: "hermes",  // Use Hermes (React Native default, optimized for RN 0.81+)
+  newArchEnabled: true,  // Required for react-native-reanimated v4.x (worklets dependency)
   // ...
   plugins: [
     [
       "expo-build-properties",
       {
         ios: {
-          jsEngine: "jsc",  // Ensure JSC is used for iOS builds
+          jsEngine: "hermes",  // Use Hermes for iOS (React Native default)
           deploymentTarget: "15.1",
-          useFrameworks: "static"  // Avoid framework conflicts
+          useFrameworks: "static"
         },
         android: {
-          jsEngine: "jsc"  // Use JSC for Android for consistency
+          jsEngine: "hermes"  // Use Hermes for Android (React Native default)
         }
       }
     ],
@@ -35,16 +38,17 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
 })
 ```
 
-#### Diagnosis Steps:
-1. If TestFlight crashes immediately, check JS engine configuration
-2. Run `npx expo prebuild --clean` after changing JS engine
-3. Build for TestFlight: `eas build --platform ios --profile production`
-4. Test locally first: `npx expo start --no-dev --minify`
+### Important Notes:
+- Hermes version (0.81.5) matches React Native version (0.81.5) ✅
+- Hermes + New Architecture is the recommended/tested combo for RN 0.81+
+- Each Hermes release is aimed at a specific RN version - version mismatch can cause crashes
 
-#### Alternative Solutions:
-- **If JSC doesn't fix it**: Try disabling New Architecture (`newArchEnabled: false`)
-- **If you need Hermes**: Remove `useFrameworks: "static"` but test thoroughly
-- **For debugging**: Check device logs in Xcode Organizer for crash details
+#### If Changing JS Engine:
+1. Update `jsEngine` in `app.config.ts`
+2. Clean iOS build: `rm -rf ios/Pods ios/Podfile.lock ios/build`
+3. Run `npx expo prebuild --clean --platform ios`
+4. Verify `ios/Podfile.properties.json` has correct `"expo.jsEngine"` value
+5. Build for TestFlight: `eas build --platform ios --profile production --clear-cache`
 
 ## ⚠️ Critical Sentry Setup - TestFlight Crash Fix
 

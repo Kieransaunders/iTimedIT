@@ -12,7 +12,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   orientation: "portrait",
   icon: "./assets/images/icon.png",
   scheme: "itimeditapp",
-  jsEngine: "jsc",  // Explicitly use JSC to avoid Hermes/iOS edge cases
+  jsEngine: "hermes",  // Use Hermes (React Native default, optimized for RN 0.81+)
   newArchEnabled: true,  // Required for react-native-reanimated v4.x (worklets dependency)
   owner: "iconnectit",
   splash: {
@@ -85,13 +85,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       "expo-build-properties",
       {
         ios: {
-          jsEngine: "jsc",  // Ensure JSC is used for iOS builds
+          jsEngine: "hermes",  // Use Hermes for iOS (React Native default)
           deploymentTarget: "15.1",
-          // Avoid useFrameworks conflicts that can cause TestFlight crashes
           useFrameworks: "static"
         },
         android: {
-          jsEngine: "jsc"  // Use JSC for Android as well for consistency
+          jsEngine: "hermes"  // Use Hermes for Android (React Native default)
         }
       }
     ],
