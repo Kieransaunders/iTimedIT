@@ -61,8 +61,16 @@ export const storage = {
   },
 
   async getObject<T>(key: string): Promise<T | null> {
-    const value = await AsyncStorage.getItem(key);
-    return value ? JSON.parse(value) : null;
+    try {
+      const value = await AsyncStorage.getItem(key);
+      return value ? JSON.parse(value) : null;
+    } catch (error) {
+      // If JSON parse fails (corrupted data), log and return null
+      console.error(`Failed to parse stored object for key "${key}":`, error);
+      // Optionally clear the corrupted data
+      await AsyncStorage.removeItem(key).catch(() => {});
+      return null;
+    }
   },
 
   async clear(): Promise<void> {

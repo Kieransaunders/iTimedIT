@@ -2,7 +2,10 @@ import { ConvexReactClient } from "convex/react";
 import Constants from "expo-constants";
 
 // Get Convex URL from environment variables
-const convexUrl = Constants.expoConfig?.extra?.convexUrl || process.env.EXPO_PUBLIC_CONVEX_URL;
+// In production/TestFlight builds, process.env may not be available
+// Always prefer Constants.expoConfig?.extra which is reliably available
+const convexUrl = Constants.expoConfig?.extra?.convexUrl ||
+  (typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_CONVEX_URL);
 
 if (!convexUrl) {
   throw new Error(

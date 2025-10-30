@@ -10,27 +10,39 @@ import { setupTimerNotificationChannel, setupTimerNotificationCategory } from ".
 export function setupNotificationHandler(): void {
   Notifications.setNotificationHandler({
     handleNotification: async (notification: Notifications.Notification) => {
-      const notificationType = notification.request.content.data?.type;
+      try {
+        // Safely access notification data with null checks
+        const notificationType = notification?.request?.content?.data?.type;
+        const categoryIdentifier = notification?.request?.content?.categoryIdentifier;
 
-      // Timer running notifications should be silent (no banner/alert)
-      // They update every 3-5 seconds and should only show in notification tray
-      if (notificationType === "timer-running" ||
-          notification.request.content.categoryIdentifier === "timer-running") {
+        // Timer running notifications should be silent (no banner/alert)
+        // They update every 3-5 seconds and should only show in notification tray
+        if (notificationType === "timer-running" || categoryIdentifier === "timer-running") {
+          return {
+            shouldPlaySound: false,
+            shouldSetBadge: false,
+            shouldShowBanner: false,
+            shouldShowList: true, // Still show in notification list
+          };
+        }
+
+        // All other notifications (interrupts, budget alerts, etc.) should show
+        return {
+          shouldPlaySound: true,
+          shouldSetBadge: false,
+          shouldShowBanner: true,
+          shouldShowList: true,
+        };
+      } catch (error) {
+        // If notification handling fails, return safe defaults to prevent crash
+        console.error("Error in notification handler:", error);
         return {
           shouldPlaySound: false,
           shouldSetBadge: false,
-          shouldShowBanner: false,
-          shouldShowList: true, // Still show in notification list
+          shouldShowBanner: true,
+          shouldShowList: true,
         };
       }
-
-      // All other notifications (interrupts, budget alerts, etc.) should show
-      return {
-        shouldPlaySound: true,
-        shouldSetBadge: false,
-        shouldShowBanner: true,
-        shouldShowList: true,
-      };
     },
   });
 }
