@@ -20,6 +20,23 @@ import Constants from "expo-constants";
 // Global error handlers to prevent silent crashes
 // Set up before any component rendering
 
+// Safe stack getter to prevent Hermes crashes when accessing Error.stack
+// on non-Error objects during early app startup
+const safeGetStack = (e: unknown): string | undefined => {
+  try {
+    // Check if it's an object with a stack property
+    if (e && typeof e === 'object' && 'stack' in e) {
+      const stack = (e as any).stack;
+      return typeof stack === 'string' ? stack : undefined;
+    }
+    return undefined;
+  } catch {
+    // If accessing .stack throws (e.g., getter called with invalid receiver in Hermes),
+    // return undefined instead of crashing
+    return undefined;
+  }
+};
+
 // Handle unhandled promise rejections
 // Note: ErrorUtils is a global object in React Native, not an import
 declare const ErrorUtils: {
@@ -35,7 +52,12 @@ if (typeof ErrorUtils !== 'undefined' && ErrorUtils.setGlobalHandler) {
   ErrorUtils.setGlobalHandler((error, isFatal) => {
     console.error("🚨 Global Error Handler:", error);
     console.error("Is Fatal:", isFatal);
-    console.error("Stack:", error?.stack);
+
+    // Use safe stack getter to prevent Hermes crashes
+    const stack = safeGetStack(error);
+    if (stack) {
+      console.error("Stack:", stack);
+    }
 
     // Call original handler if it exists
     if (originalPromiseRejectionHandler) {

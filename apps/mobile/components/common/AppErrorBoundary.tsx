@@ -11,6 +11,19 @@ try {
   Updates = null;
 }
 
+// Safe stack getter to prevent Hermes crashes when accessing Error.stack
+const safeGetStack = (e: unknown): string | undefined => {
+  try {
+    if (e && typeof e === 'object' && 'stack' in e) {
+      const stack = (e as any).stack;
+      return typeof stack === 'string' ? stack : undefined;
+    }
+    return undefined;
+  } catch {
+    return undefined;
+  }
+};
+
 interface Props {
   children: ReactNode;
 }
@@ -95,11 +108,14 @@ function ErrorScreen({ error, onRestart }: ErrorScreenProps) {
               <Text style={styles.errorDetails}>
                 {error.name}: {error.message}
               </Text>
-              {error.stack && (
-                <Text style={styles.errorStack} numberOfLines={10}>
-                  {error.stack}
-                </Text>
-              )}
+              {(() => {
+                const stack = safeGetStack(error);
+                return stack ? (
+                  <Text style={styles.errorStack} numberOfLines={10}>
+                    {stack}
+                  </Text>
+                ) : null;
+              })()}
             </View>
           )}
 
