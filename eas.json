@@ -11,15 +11,35 @@
     "preview": {
       "distribution": "internal"
     },
+    "mvp": {
+      "ios": {
+        "simulator": false
+      },
+      "android": {
+        "buildType": "apk"
+      },
+      "distribution": "internal",
+      "channel": "mvp",
+      "autoIncrement": true
+    },
     "production": {
-      "autoIncrement": true,
-      "env": {
-        "SENTRY_ORG": "serenity-dev",
-        "SENTRY_PROJECT": "itimedit"
-      }
+      "autoIncrement": true
     }
   },
   "submit": {
-    "production": {}
+    "mvp": {
+      "ios": {
+        "appleId": "kieran@iconnectit.online",
+        "ascAppId": "6738945449",
+        "appleTeamId": "V38P7Q7VHS"
+      }
+    },
+    "production": {
+      "ios": {
+        "appleId": "kieran@iconnectit.online",
+        "ascAppId": "6738945449",
+        "appleTeamId": "V38P7Q7VHS"
+      }
+    }
   }
 }

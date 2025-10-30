@@ -12,8 +12,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   orientation: "portrait",
   icon: "./assets/images/icon.png",
   scheme: "itimeditapp",
-  jsEngine: "hermes",  // Use Hermes (React Native default, optimized for RN 0.81+)
-  newArchEnabled: true,  // Required for react-native-reanimated v4.x (worklets dependency)
+  jsEngine: "jsc",  // MVP: Use JSC instead of Hermes to avoid Error.stack crashes
+  newArchEnabled: false,  // MVP: Disable new architecture for stability
   owner: "iconnectit",
   splash: {
     image: "./assets/images/splash-icon.png",
@@ -24,8 +24,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     supportsTablet: true,
     bundleIdentifier: "com.itimedit.app",
     infoPlist: {
-      UIBackgroundModes: ["fetch", "remote-notification", "processing"],
-      BGTaskSchedulerPermittedIdentifiers: ["timer-heartbeat-task"],
+      // MVP: Commenting out background modes to reduce startup complexity
+      // UIBackgroundModes: ["fetch", "remote-notification", "processing"],
+      // BGTaskSchedulerPermittedIdentifiers: ["timer-heartbeat-task"],
       NSSupportsLiveActivities: false, // Disabled - causing build issues
       CFBundleURLTypes: [
         {
@@ -85,12 +86,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       "expo-build-properties",
       {
         ios: {
-          jsEngine: "hermes",  // Use Hermes for iOS (React Native default)
+          jsEngine: "jsc",  // MVP: Use JSC for iOS stability
           deploymentTarget: "15.1",
           useFrameworks: "static"
         },
         android: {
-          jsEngine: "hermes"  // Use Hermes for Android (React Native default)
+          jsEngine: "jsc"  // MVP: Use JSC for Android stability
         }
       }
     ],
