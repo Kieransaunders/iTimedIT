@@ -17,57 +17,8 @@ import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import Constants from "expo-constants";
 
-// Global error handlers to prevent silent crashes
-// Set up before any component rendering
-
-// Safe stack getter to prevent Hermes crashes when accessing Error.stack
-// on non-Error objects during early app startup
-const safeGetStack = (e: unknown): string | undefined => {
-  try {
-    // Check if it's an object with a stack property
-    if (e && typeof e === 'object' && 'stack' in e) {
-      const stack = (e as any).stack;
-      return typeof stack === 'string' ? stack : undefined;
-    }
-    return undefined;
-  } catch {
-    // If accessing .stack throws (e.g., getter called with invalid receiver in Hermes),
-    // return undefined instead of crashing
-    return undefined;
-  }
-};
-
-// Handle unhandled promise rejections
-// Note: ErrorUtils is a global object in React Native, not an import
-declare const ErrorUtils: {
-  setGlobalHandler: (handler: (error: Error, isFatal: boolean) => void) => void;
-  getGlobalHandler: () => ((error: Error, isFatal: boolean) => void) | undefined;
-};
-
-const originalPromiseRejectionHandler = typeof ErrorUtils !== 'undefined'
-  ? ErrorUtils.getGlobalHandler?.()
-  : undefined;
-
-if (typeof ErrorUtils !== 'undefined' && ErrorUtils.setGlobalHandler) {
-  ErrorUtils.setGlobalHandler((error, isFatal) => {
-    console.error("🚨 Global Error Handler:", error);
-    console.error("Is Fatal:", isFatal);
-
-    // Use safe stack getter to prevent Hermes crashes
-    const stack = safeGetStack(error);
-    if (stack) {
-      console.error("Stack:", stack);
-    }
-
-    // Call original handler if it exists
-    if (originalPromiseRejectionHandler) {
-      originalPromiseRejectionHandler(error, isFatal);
-    }
-  });
-}
-
-// Note: React Native doesn't have global.addEventListener for promise rejections
-// The ErrorUtils handler above already catches most unhandled errors
+// MVP: Global error handlers moved to index.js (run before ANY imports)
+// This ensures fail-safe guards are active before module initialization
 
 // Configure Unistyles with our themes
 UnistylesRegistry.addThemes({
@@ -86,8 +37,34 @@ function ProtectedLayout() {
   const { colors } = useTheme();
   const segments = useSegments();
   const router = useRouter();
+  const notificationsInitialized = useRef(false);
 
+  // MVP: Defer notification setup until AFTER first screen is visible
+  // This prevents any notification-related crashes during app startup
+  useEffect(() => {
+    if (isLoading || notificationsInitialized.current) {
+      return; // Don't initialize during loading or if already initialized
+    }
 
+    // Only initialize notifications after auth check is complete
+    const initNotifications = async () => {
+      try {
+        console.log("[MVP] Initializing notifications after first render...");
+        setupNotificationHandler();
+        await setupNotificationChannels();
+        await setupNotificationCategories();
+        notificationsInitialized.current = true;
+        console.log("[MVP] Notifications initialized successfully");
+      } catch (error) {
+        console.error("[MVP] Failed to setup notifications:", error);
+        console.warn("[MVP] App will continue without notifications");
+      }
+    };
+
+    // Delay by 1 second to ensure first screen is fully rendered
+    const timer = setTimeout(initNotifications, 1000);
+    return () => clearTimeout(timer);
+  }, [isLoading]);
 
   useEffect(() => {
     if (isLoading) {
@@ -129,23 +106,8 @@ function ProtectedLayout() {
 }
 
 export default function RootLayout() {
-  useEffect(() => {
-    // Set up notification handler, channels and categories on app start
-    // Wrap in async IIFE with error handling to prevent crashes
-    (async () => {
-      try {
-        // Set up notification handler first (must be synchronous, before channels)
-        setupNotificationHandler();
-        await setupNotificationChannels();
-        await setupNotificationCategories();
-        console.log("Notification setup completed successfully");
-      } catch (error) {
-        // Log error but don't crash the app
-        console.error("Failed to setup notifications:", error);
-        console.warn("App will continue without notifications");
-      }
-    })();
-  }, []);
+  // MVP: Notification setup moved to ProtectedLayout (after first screen renders)
+  // This prevents notification-related crashes during early app startup
 
   return (
     <AppErrorBoundary>
