@@ -72,14 +72,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     favicon: "./assets/images/favicon.png",
   },
   updates: {
-    enabled: false, // Temporarily disabled to isolate TestFlight crash issue
+    enabled: false, // MVP: Completely disabled - no OTA updates, baked JS bundle only
     fallbackToCacheTimeout: 0,
-    checkAutomatically: "ON_LOAD",
+    checkAutomatically: "ON_ERROR_RECOVERY", // MVP: Only check on errors (but disabled anyway)
     url: "https://u.expo.dev/9765d9ef-1bbf-43eb-9200-6ecd31389a64",
   },
-  runtimeVersion: {
-    policy: "appVersion",
-  },
+  runtimeVersion: "1.0.0-mvp-jsc-1", // MVP: Unique runtime to invalidate any cached updates
   plugins: [
     "expo-router",
     [
