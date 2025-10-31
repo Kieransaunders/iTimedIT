@@ -22,6 +22,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ios: {
     supportsTablet: true,
     bundleIdentifier: "com.itimedit.app",
+    deploymentTarget: "16.2",
+    appleTeamId: "QHS5TSHJA5",
     infoPlist: {
       UIBackgroundModes: ["fetch", "remote-notification", "processing"],
       BGTaskSchedulerPermittedIdentifiers: ["timer-heartbeat-task"],
