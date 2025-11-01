@@ -47,3 +47,7 @@ apps/mobile/web-build/
 
 # Temporary files
 temp_jwt.txt
+
+# Local configuration files
+.mcp.json
+.claude/settings.local.json
