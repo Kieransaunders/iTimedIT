@@ -31,9 +31,15 @@
       "Read(//var/folders/fz/tf99g_hs5f9bqb61cs2lbtn80000gp/T/TemporaryItems/NSIRD_screencaptureui_T2i3q8/**)",
       "mcp__convex__status",
       "Read(//private/tmp/moviezang/**)",
-      "Read(//tmp/moviezang/mobile-app/**)"
+      "Read(//tmp/moviezang/mobile-app/**)",
+      "Bash(powershell:*)",
+      "Bash(npx @playwright/mcp@latest)",
+      "Bash(npx convex dashboard)",
+      "Bash(del nul)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []
-  }
+  },
+  "enableAllProjectMcpServers": true
 }
