@@ -44,6 +44,8 @@ export function RecentEntriesTable({
     category: "",
     note: "",
   });
+  const [deleteConfirmEntry, setDeleteConfirmEntry] = useState<Id<"timeEntries"> | null>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const { isReady } = useOrganization();
 
   const entries = useQuery(
@@ -107,6 +109,24 @@ export function RecentEntriesTable({
     setShowEditDialog(false);
     setEditingEntry(null);
     setEditForm({ hours: 0, minutes: 0, category: "", note: "" });
+  };
+
+  const handleDeleteClick = (entryId: Id<"timeEntries">) => {
+    setDeleteConfirmEntry(entryId);
+    setShowDeleteDialog(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (deleteConfirmEntry) {
+      await deleteEntry({ id: deleteConfirmEntry });
+      setShowDeleteDialog(false);
+      setDeleteConfirmEntry(null);
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteDialog(false);
+    setDeleteConfirmEntry(null);
   };
 
   // COMMENTED OUT: Overrun merge functionality
@@ -221,7 +241,7 @@ export function RecentEntriesTable({
                       ))}
                   </select>
                   <button
-                    onClick={() => deleteEntry({ id: entry._id as Id<"timeEntries"> })}
+                    onClick={() => handleDeleteClick(entry._id as Id<"timeEntries">)}
                     className="px-2 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700"
                   >
                     Discard
@@ -292,7 +312,7 @@ export function RecentEntriesTable({
                     onClick={(e) => e.stopPropagation()}
                   >
                     <button
-                      onClick={() => deleteEntry({ id: entry._id as Id<"timeEntries"> })}
+                      onClick={() => handleDeleteClick(entry._id as Id<"timeEntries">)}
                       className="font-medium text-red-600 hover:text-red-800 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20 px-2 py-1 rounded transition-colors text-xs sm:text-sm"
                     >
                       Delete
@@ -412,6 +432,35 @@ export function RecentEntriesTable({
                 </div>
               </>
             )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent className="sm:max-w-[425px] bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700">
+          <DialogHeader>
+            <DialogTitle>Delete Time Entry</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Are you sure you want to delete this time entry? This action cannot be undone.
+            </p>
+            <div className="flex gap-2 pt-2">
+              <Button
+                onClick={handleConfirmDelete}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+              >
+                Delete
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleCancelDelete}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
