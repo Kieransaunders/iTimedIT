@@ -9,6 +9,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Settings } from "./components/Settings";
 import { ClientsPage } from "./components/ClientsPage";
 import { ProjectsPage } from "./components/ProjectsPage";
+import { CategoriesPage } from "./components/CategoriesPage";
 import { ProjectDetailPage } from "./components/ProjectDetailPage";
 import { ThemeProvider } from "./lib/theme";
 import { ThemeToggle } from "./components/ThemeToggle";
@@ -259,6 +260,7 @@ function AuthenticatedApp() {
               <NavButton icon={<ClientsIcon />} label="Clients" isActive={currentPage === "clients"} onClick={() => setCurrentPage("clients")} />
               <NavButton icon={<ProjectsIcon />} label="Projects" isActive={currentPage === "projects"} onClick={() => setCurrentPage("projects")} />
               <NavButton icon={<EntriesIcon />} label="Entries" isActive={currentPage === "entries"} onClick={() => setCurrentPage("entries")} />
+              <NavButton icon={<CategoriesIcon />} label="Categories" isActive={currentPage === "categories"} onClick={() => setCurrentPage("categories")} />
               <NavButton icon={<SettingsIcon />} label="Settings" isActive={currentPage === "settings"} onClick={() => setCurrentPage("settings")} />
             </nav>
           </div>
@@ -328,6 +330,12 @@ function AuthenticatedApp() {
               )
             )}
             {currentPage === "entries" && <EntriesPage />}
+            {currentPage === "categories" && (
+              <CategoriesPage
+                workspaceType={currentWorkspace}
+                onWorkspaceChange={setCurrentWorkspace}
+              />
+            )}
             {currentPage === "settings" && <Settings onNavigate={handleNavigate} initialTab={settingsTab} />}
             {currentPage === "profile" && <ProfilePage user={loggedInUser} onNavigate={handleNavigate} />}
             {currentPage === "testEmail" && <TestEmailPage onNavigate={handleNavigate} />}
@@ -360,6 +368,12 @@ function AuthenticatedApp() {
               label="Entries"
               isActive={currentPage === "entries"}
               onClick={() => setCurrentPage("entries")}
+            />
+            <BottomNavButton
+              icon={<CategoriesIcon />}
+              label="Categories"
+              isActive={currentPage === "categories"}
+              onClick={() => setCurrentPage("categories")}
             />
             <BottomNavButton
               icon={<SettingsIcon />}
@@ -754,6 +768,14 @@ function ProfileIcon() {
   return (
     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-full h-full">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+    </svg>
+  );
+}
+
+function CategoriesIcon() {
+  return (
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-full h-full">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
     </svg>
   );
 }

@@ -29,6 +29,7 @@ export const getCategories = query({
 export const createCategory = mutation({
   args: {
     name: v.string(),
+    color: v.string(),
     isDefault: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
@@ -44,7 +45,7 @@ export const createCategory = mutation({
         )
         .filter((q) => q.eq(q.field("isDefault"), true))
         .collect();
-      
+
       for (const category of existingDefaults) {
         await ctx.db.patch(category._id, { isDefault: false, updatedAt: now });
       }
@@ -54,6 +55,7 @@ export const createCategory = mutation({
       organizationId,
       userId,
       name: args.name,
+      color: args.color,
       isDefault: args.isDefault ?? false,
       createdAt: now,
       updatedAt: now,
@@ -67,6 +69,7 @@ export const updateCategory = mutation({
   args: {
     categoryId: v.id("categories"),
     name: v.optional(v.string()),
+    color: v.optional(v.string()),
     isDefault: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
@@ -87,7 +90,7 @@ export const updateCategory = mutation({
         )
         .filter((q) => q.eq(q.field("isDefault"), true))
         .collect();
-      
+
       for (const cat of existingDefaults) {
         await ctx.db.patch(cat._id, { isDefault: false, updatedAt: now });
       }
@@ -95,6 +98,7 @@ export const updateCategory = mutation({
 
     const updates: any = { updatedAt: now };
     if (args.name !== undefined) updates.name = args.name;
+    if (args.color !== undefined) updates.color = args.color;
     if (args.isDefault !== undefined) updates.isDefault = args.isDefault;
 
     await ctx.db.patch(args.categoryId, updates);
@@ -112,6 +116,21 @@ export const deleteCategory = mutation({
     const category = await ctx.db.get(args.categoryId);
     if (!category || category.organizationId !== organizationId) {
       throw new Error("Category not found");
+    }
+
+    // Check if category is in use by any time entries
+    const entriesUsingCategory = await ctx.db
+      .query("timeEntries")
+      .withIndex("byOrganization", (q) =>
+        q.eq("organizationId", organizationId)
+      )
+      .filter((q) => q.eq(q.field("category"), category.name))
+      .collect();
+
+    if (entriesUsingCategory.length > 0) {
+      throw new Error(
+        `Cannot delete category "${category.name}" because it is used by ${entriesUsingCategory.length} time ${entriesUsingCategory.length === 1 ? "entry" : "entries"}.`
+      );
     }
 
     await ctx.db.delete(args.categoryId);
@@ -133,12 +152,13 @@ export const initializeDefaultCategories = mutation({
 
     if (existingCategories.length === 0) {
       const now = Date.now();
-      
+
       // Only create the General category by default
       await ctx.db.insert("categories", {
         organizationId,
         userId,
         name: "General",
+        color: "#8b5cf6",
         isDefault: true,
         createdAt: now,
         updatedAt: now,

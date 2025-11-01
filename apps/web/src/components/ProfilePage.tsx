@@ -25,6 +25,7 @@ export type AppPage =
   | "clients"
   | "projects"
   | "entries"
+  | "categories"
   | "settings"
   | "profile"
   | "testEmail";

@@ -102,6 +102,7 @@ const applicationTables = {
     organizationId: v.optional(v.id("organizations")),
     userId: v.optional(v.id("users")),
     name: v.string(),
+    color: v.optional(v.string()),
     isDefault: v.boolean(),
     createdAt: v.number(),
     updatedAt: v.number(),

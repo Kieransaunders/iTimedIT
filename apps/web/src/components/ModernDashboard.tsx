@@ -122,6 +122,7 @@ export function ModernDashboard({
   const [showCreateProject, setShowCreateProject] = useState(false);
   const [showCreateClient, setShowCreateClient] = useState(false);
   const [timerMode, setTimerMode] = useState<"normal" | "pomodoro">("normal");
+  const [selectedCategory, setSelectedCategory] = useState<string | undefined>(undefined);
   const [newProjectForm, setNewProjectForm] = useState({
     name: "",
     clientId: "" as Id<"clients"> | "",
@@ -156,6 +157,7 @@ export function ModernDashboard({
   );
   const runningTimer = useQuery(api.timer.getRunningTimer, { workspaceType: currentWorkspace });
   const userSettings = useQuery(api.users.getUserSettings);
+  const categories = useQuery(api.categories.getCategories);
   const startTimer = useMutation(api.timer.start);
   const stopTimer = useMutation(api.timer.stop);
   const resetTimer = useMutation(api.timer.reset);
@@ -514,6 +516,18 @@ export function ModernDashboard({
     };
   }, [runningTimer, currentProject, projectStats, now, userSettings?.gracePeriod]);
 
+  // Auto-select default category on mount (only once)
+  const categoryInitializedRef = useRef(false);
+  useEffect(() => {
+    if (categories && categories.length > 0 && !categoryInitializedRef.current) {
+      const defaultCategory = categories.find(c => c.isDefault);
+      if (defaultCategory) {
+        setSelectedCategory(defaultCategory.name);
+      }
+      categoryInitializedRef.current = true;
+    }
+  }, [categories]);
+
   // Timer state calculations
   const timerState = useMemo((): TimerState => {
     if (!runningTimer) {
@@ -645,11 +659,12 @@ export function ModernDashboard({
       await ensurePushRegistered(true);
       await startTimer({
         projectId: currentProject._id,
+        category: selectedCategory,
         pomodoroEnabled: timerMode === "pomodoro",
         startedFrom: "web"
       });
     }
-  }, [currentProject, timerState.running, startTimer, stopTimer, ensurePushRegistered, timerMode, primeSoundIfEnabled]);
+  }, [currentProject, timerState.running, startTimer, stopTimer, ensurePushRegistered, timerMode, primeSoundIfEnabled, selectedCategory]);
 
   const switchProject = useCallback(async (projectId: Id<"projects">) => {
     if (projectId === currentProjectId) return;
@@ -1549,6 +1564,28 @@ export function ModernDashboard({
             {/* Timer Controls */}
             {!isBreakTimer && (
               <div className="flex flex-col items-center gap-4 mt-6">
+                {/* Category Selector */}
+                {!timerState.running && categories && categories.length > 0 && (
+                  <div className="w-full max-w-xs">
+                    <label htmlFor="category-select" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 text-center">
+                      Category (optional)
+                    </label>
+                    <select
+                      id="category-select"
+                      value={selectedCategory || ""}
+                      onChange={(e) => setSelectedCategory(e.target.value === "" ? undefined : e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700/50 text-gray-900 dark:text-gray-100"
+                    >
+                      <option value="">No category</option>
+                      {categories.map((category) => (
+                        <option key={category._id} value={category.name}>
+                          {category.name} {category.isDefault ? "(Default)" : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
                 <div className="flex items-center justify-center gap-4">
                   <button
                     className="inline-flex items-center justify-center px-8 py-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white focus-visible:ring-[#F85E00] dark:focus-visible:ring-offset-gray-900 text-white font-medium"
