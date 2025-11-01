@@ -6,6 +6,12 @@ export function useCurrency() {
   const settings = useQuery(api.users.getUserSettings);
   const currency = settings?.currency ?? "USD";
 
+  // Debug logging to track currency changes
+  if (typeof window !== "undefined") {
+    console.log("useCurrency - settings:", settings);
+    console.log("useCurrency - currency:", currency);
+  }
+
   return {
     currency,
     formatCurrency: (amount: number) => formatCurrency(amount, currency),

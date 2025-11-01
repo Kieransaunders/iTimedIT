@@ -26,18 +26,26 @@ export const getUserSettings = query({
       .withIndex("byUser", (q) => q.eq("userId", userId))
       .unique();
 
-    return settings || {
-      userId,
-      interruptEnabled: true,
-      interruptInterval: 45, // 45 minutes default
-      gracePeriod: 60, // 60 seconds default
-      budgetWarningEnabled: true,
-      budgetWarningThresholdHours: 1.0,
-      budgetWarningThresholdAmount: 50.0,
-      pomodoroEnabled: false,
-      pomodoroWorkMinutes: 25,
-      pomodoroBreakMinutes: 5,
-      currency: "USD" as const,
+    if (!settings) {
+      return {
+        userId,
+        interruptEnabled: true,
+        interruptInterval: 45, // 45 minutes default
+        gracePeriod: 60, // 60 seconds default
+        budgetWarningEnabled: true,
+        budgetWarningThresholdHours: 1.0,
+        budgetWarningThresholdAmount: 50.0,
+        pomodoroEnabled: false,
+        pomodoroWorkMinutes: 25,
+        pomodoroBreakMinutes: 5,
+        currency: "USD" as const,
+      };
+    }
+
+    // Ensure currency field exists even for older records
+    return {
+      ...settings,
+      currency: settings.currency ?? "USD",
     };
   },
 });

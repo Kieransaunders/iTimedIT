@@ -1,6 +1,6 @@
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { toast } from "sonner";
 import * as Sentry from "@sentry/react";
 import type { AppPage } from "./ProfilePage";
@@ -262,6 +262,8 @@ export function Settings({ onNavigate, initialTab }: { onNavigate?: (page: AppPa
       // Determine the actual grace period value to save
       const actualGracePeriod = isCustomGracePeriod ? parseFloat(customGracePeriodValue) : gracePeriod;
 
+      console.log('🔄 Autosaving settings with currency:', currency);
+
       // Save timer settings
       await updateSettings({
         interruptEnabled,
@@ -304,13 +306,43 @@ export function Settings({ onNavigate, initialTab }: { onNavigate?: (page: AppPa
     }
   };
 
-  // Autosave when settings change (debounced)
+  // Track if settings have been initialized to prevent autosave on first load
+  const settingsInitializedRef = useRef(false);
+  const isFirstRenderRef = useRef(true);
+
+  // Mark settings as initialized after first load
   useEffect(() => {
+    if (settings && !settingsInitializedRef.current) {
+      // Wait for next tick to ensure all state updates from settings load are complete
+      setTimeout(() => {
+        settingsInitializedRef.current = true;
+        isFirstRenderRef.current = false;
+      }, 100);
+    }
+  }, [settings]);
+
+  // AUTOSAVE DISABLED - Use manual Save Settings button only
+  // This prevents unintended overwrites of settings
+  /*
+  useEffect(() => {
+    // Skip autosave on first render and until settings are fully loaded
+    if (isFirstRenderRef.current || !settingsInitializedRef.current) {
+      console.log('⏭️ Skipping autosave - first render or not initialized');
+      isFirstRenderRef.current = false;
+      return;
+    }
+
+    console.log('⏰ Autosave scheduled with currency:', currency);
+
     const timeoutId = setTimeout(() => {
+      console.log('🔄 Autosave triggered with currency:', currency);
       autoSave();
     }, 1000); // Save 1 second after user stops changing settings
 
-    return () => clearTimeout(timeoutId);
+    return () => {
+      console.log('🚫 Autosave cancelled');
+      clearTimeout(timeoutId);
+    };
   }, [
     interruptEnabled,
     interruptInterval,
@@ -341,6 +373,7 @@ export function Settings({ onNavigate, initialTab }: { onNavigate?: (page: AppPa
     doNotDisturbEnabled,
     currency,
   ]);
+  */
 
   const handleSave = async () => {
     try {
@@ -351,6 +384,8 @@ export function Settings({ onNavigate, initialTab }: { onNavigate?: (page: AppPa
 
       // Determine the actual grace period value to save
       const actualGracePeriod = isCustomGracePeriod ? parseFloat(customGracePeriodValue) : gracePeriod;
+
+      console.log('💾 Saving settings with currency:', currency);
 
       // Save timer settings
       await updateSettings({
@@ -365,6 +400,8 @@ export function Settings({ onNavigate, initialTab }: { onNavigate?: (page: AppPa
         pomodoroBreakMinutes,
         currency,
       });
+
+      console.log('✅ Settings saved successfully');
 
       // Save notification preferences
       await updateNotificationPrefs({
@@ -963,7 +1000,11 @@ export function Settings({ onNavigate, initialTab }: { onNavigate?: (page: AppPa
                       <select
                         id="currency"
                         value={currency}
-                        onChange={(event) => setCurrency(event.target.value as "USD" | "EUR" | "GBP")}
+                        onChange={(event) => {
+                          const newCurrency = event.target.value as "USD" | "EUR" | "GBP";
+                          console.log('💱 Currency changed from', currency, 'to', newCurrency);
+                          setCurrency(newCurrency);
+                        }}
                         className="block w-full rounded-md border border-gray-300/50 px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700/50 dark:text-gray-100 bg-white backdrop-blur-sm"
                       >
                         <option value="USD">US Dollar ($)</option>

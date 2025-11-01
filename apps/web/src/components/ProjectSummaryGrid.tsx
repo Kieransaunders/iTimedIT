@@ -1,6 +1,7 @@
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
+import { useCurrency } from "../hooks/useCurrency";
 
 interface ProjectSummaryGridProps {
   projectId: Id<"projects">;
@@ -16,14 +17,11 @@ export function ProjectSummaryGrid({ projectId, workspaceType = "work" }: Projec
     workspaceType === "personal" ? api.personalProjects.getStatsPersonal : api.projects.getStats,
     { projectId }
   );
+  const { formatCurrency } = useCurrency();
 
   if (!project || !stats) {
     return <div className="animate-pulse bg-gray-200 dark:bg-gray-700 h-32 rounded-lg"></div>;
   }
-
-  const formatCurrency = (amount: number) => {
-    return `$${amount.toFixed(2)}`;
-  };
 
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
