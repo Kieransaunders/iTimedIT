@@ -1693,7 +1693,7 @@ export function ModernDashboard({
                 <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-gray-50 dark:from-gray-900 to-transparent pointer-events-none z-10 opacity-0 transition-opacity duration-200" id="scroll-fade-right-personal"></div>
 
                 <div
-                  className="project-scroll-container flex gap-3 sm:gap-4 overflow-x-auto scroll-smooth pb-2"
+                  className="project-scroll-container flex gap-3 sm:gap-4 overflow-x-auto scroll-smooth pb-2 p-2"
                   style={{
                     WebkitOverflowScrolling: 'touch'
                   }}
