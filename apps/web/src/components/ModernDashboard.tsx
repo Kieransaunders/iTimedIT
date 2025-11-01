@@ -1637,7 +1637,7 @@ export function ModernDashboard({
           <div className="mb-6 sm:mb-8 w-full max-w-4xl">
             <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 px-4">Recent Work Projects</h3>
             <div className="relative">
-              <div className="flex gap-3 sm:gap-4 overflow-x-auto scroll-smooth pb-2 px-4">
+              <div className="flex gap-3 sm:gap-4 overflow-x-auto scroll-smooth pb-2 px-4 py-1">
                 {workProjects.slice(0, 3).map((project) => (
                   <div
                     key={project._id}
