@@ -1745,7 +1745,7 @@ export function ModernDashboard({
 
                 <div
                   ref={projectScrollRef}
-                  className="project-scroll-container flex gap-3 sm:gap-4 overflow-x-auto scroll-smooth pb-2"
+                  className="project-scroll-container flex gap-3 sm:gap-4 overflow-x-auto scroll-smooth pb-2 py-1"
                   style={{
                     WebkitOverflowScrolling: 'touch'
                   }}
