@@ -828,13 +828,17 @@ function WorkspaceIndicator({
     setShowDropdown(false);
   };
 
-  // Display name and color for the button
+  // Display name and color for the button - use optimistic UI based on currentWorkspace
+  const displayOrg = currentWorkspace === "personal"
+    ? personalMembership?.organization
+    : workMemberships.find(m => m.organization?._id === activeOrganization?._id)?.organization || workMemberships[0]?.organization;
+
   const displayName = currentWorkspace === "personal"
-    ? "Personal"
-    : (activeOrganization?.name || "Work");
+    ? (displayOrg?.name || "Personal")
+    : (displayOrg?.name || "Work");
   const displayColor = currentWorkspace === "personal"
     ? "#3b82f6" // Blue for personal
-    : (activeOrganization?.color || "#8b5cf6"); // Purple default for work
+    : (displayOrg?.color || "#8b5cf6"); // Purple default for work
 
   return (
     <div className="relative" ref={dropdownRef}>
