@@ -49,13 +49,23 @@ export const list = query({
 
     const entriesWithProjects = await Promise.all(
       result.page.map(async (entry) => {
-        const project = await ctx.db.get(entry.projectId);
-        const client = project?.clientId ? await ctx.db.get(project.clientId) : null;
-        return {
-          ...entry,
-          project,
-          client,
-        };
+        try {
+          const project = await ctx.db.get(entry.projectId);
+          const client = project?.clientId ? await ctx.db.get(project.clientId) : null;
+          return {
+            ...entry,
+            project,
+            client,
+          };
+        } catch (error) {
+          // If fetching project/client fails, return entry without them
+          console.error("Error fetching project/client for entry:", entry._id, error);
+          return {
+            ...entry,
+            project: null,
+            client: null,
+          };
+        }
       })
     );
 
