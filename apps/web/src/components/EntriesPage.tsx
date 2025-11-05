@@ -47,10 +47,8 @@ export function EntriesPage() {
     category: "",
   });
 
-  const [isTransitioning, setIsTransitioning] = useState(false);
-
-  const projects = useQuery(api.projects.listAll, (isReady && !isTransitioning) ? {} : "skip");
-  const categories = useQuery(api.categories.getCategories, (isReady && !isTransitioning) ? {} : "skip");
+  const projects = useQuery(api.projects.listAll, isReady ? {} : "skip");
+  const categories = useQuery(api.categories.getCategories, isReady ? {} : "skip");
   // Removed direct entries query - stats calculation is disabled for now to prevent workspace switching errors
   // TODO: Refactor to get stats from RecentEntriesTable or use a more robust query approach
   const entries = undefined;
@@ -58,18 +56,10 @@ export function EntriesPage() {
 
   // Reset filters when organization changes
   useEffect(() => {
-    setIsTransitioning(true);
     setSelectedClient("all");
     setSelectedProject("all");
     setSelectedCategory("all");
     setSearchTerm("");
-
-    // Allow queries to resume after a brief delay
-    const timer = setTimeout(() => {
-      setIsTransitioning(false);
-    }, 500);
-
-    return () => clearTimeout(timer);
   }, [activeOrganization?._id]);
 
   const clientOptions = useMemo<ClientOption[]>(() => {
@@ -718,7 +708,6 @@ export function EntriesPage() {
         pageSize={50}
         filters={entriesFilters}
         emptyStateMessage="No entries match the current filters."
-        skipQuery={isTransitioning}
       />
     </div>
   );
