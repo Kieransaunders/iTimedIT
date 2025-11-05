@@ -9,70 +9,76 @@ export const list = query({
     paginationOpts: paginationOptsValidator,
   },
   handler: async (ctx, args) => {
-    const membership = await maybeMembership(ctx);
-    if (!membership) {
-      return { page: [], isDone: true, continueCursor: "" };
-    }
-    const { organizationId, userId } = membership;
+    try {
+      const membership = await maybeMembership(ctx);
+      if (!membership) {
+        return { page: [], isDone: true, continueCursor: "" };
+      }
+      const { organizationId, userId } = membership;
 
-    // Defensive check: ensure we have valid IDs
-    if (!organizationId || !userId) {
-      return { page: [], isDone: true, continueCursor: "" };
-    }
-
-    let entriesQuery;
-
-    const projectId = args.projectId;
-
-    if (projectId) {
-      const project = await ctx.db.get(projectId);
-      if (!project || project.organizationId !== organizationId) {
-        // Project not found or doesn't belong to current organization
-        // Return empty result instead of throwing error (handles workspace switching gracefully)
+      // Defensive check: ensure we have valid IDs
+      if (!organizationId || !userId) {
         return { page: [], isDone: true, continueCursor: "" };
       }
 
-      entriesQuery = ctx.db
-        .query("timeEntries")
-        .withIndex("byProject", (q) => q.eq("projectId", projectId))
-        .filter((q) => q.eq(q.field("userId"), userId));
-    } else {
-      entriesQuery = ctx.db
-        .query("timeEntries")
-        .withIndex("byUserStarted", (q) => q.eq("userId", userId))
-        .filter((q) => q.eq(q.field("organizationId"), organizationId));
-    }
+      let entriesQuery;
 
-    const result = await entriesQuery
-      .order("desc")
-      .paginate(args.paginationOpts);
+      const projectId = args.projectId;
 
-    const entriesWithProjects = await Promise.all(
-      result.page.map(async (entry) => {
-        try {
-          const project = await ctx.db.get(entry.projectId);
-          const client = project?.clientId ? await ctx.db.get(project.clientId) : null;
-          return {
-            ...entry,
-            project,
-            client,
-          };
-        } catch (error) {
-          // If fetching project/client fails, return entry without them
-          console.error("Error fetching project/client for entry:", entry._id, error);
-          return {
-            ...entry,
-            project: null,
-            client: null,
-          };
+      if (projectId) {
+        const project = await ctx.db.get(projectId);
+        if (!project || project.organizationId !== organizationId) {
+          // Project not found or doesn't belong to current organization
+          // Return empty result instead of throwing error (handles workspace switching gracefully)
+          return { page: [], isDone: true, continueCursor: "" };
         }
-      })
-    );
 
-    return {
-      ...result,
-      page: entriesWithProjects,
-    };
+        entriesQuery = ctx.db
+          .query("timeEntries")
+          .withIndex("byProject", (q) => q.eq("projectId", projectId))
+          .filter((q) => q.eq(q.field("userId"), userId));
+      } else {
+        entriesQuery = ctx.db
+          .query("timeEntries")
+          .withIndex("byUserStarted", (q) => q.eq("userId", userId))
+          .filter((q) => q.eq(q.field("organizationId"), organizationId));
+      }
+
+      const result = await entriesQuery
+        .order("desc")
+        .paginate(args.paginationOpts);
+
+      const entriesWithProjects = await Promise.all(
+        result.page.map(async (entry) => {
+          try {
+            const project = await ctx.db.get(entry.projectId);
+            const client = project?.clientId ? await ctx.db.get(project.clientId) : null;
+            return {
+              ...entry,
+              project,
+              client,
+            };
+          } catch (error) {
+            // If fetching project/client fails, return entry without them
+            console.error("Error fetching project/client for entry:", entry._id, error);
+            return {
+              ...entry,
+              project: null,
+              client: null,
+            };
+          }
+        })
+      );
+
+      return {
+        ...result,
+        page: entriesWithProjects,
+      };
+    } catch (error) {
+      // Catch-all for any unexpected errors during workspace transitions
+      console.error("Error in entries.list query:", error);
+      return { page: [], isDone: true, continueCursor: "" };
+    }
   },
 });
 
