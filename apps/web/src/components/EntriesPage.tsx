@@ -47,17 +47,27 @@ export function EntriesPage() {
     category: "",
   });
 
-  const projects = useQuery(api.projects.listAll, isReady ? {} : "skip");
-  const categories = useQuery(api.categories.getCategories, isReady ? {} : "skip");
-  const entries = useQuery(api.entries.list, isReady ? { paginationOpts: { numItems: 100, cursor: null } } : "skip");
+  const [isTransitioning, setIsTransitioning] = useState(false);
+
+  const projects = useQuery(api.projects.listAll, (isReady && !isTransitioning) ? {} : "skip");
+  const categories = useQuery(api.categories.getCategories, (isReady && !isTransitioning) ? {} : "skip");
+  const entries = useQuery(api.entries.list, (isReady && !isTransitioning) ? { paginationOpts: { numItems: 100, cursor: null } } : "skip");
   const createManualEntry = useMutation(api.timer.createManualEntry);
 
   // Reset filters when organization changes
   useEffect(() => {
+    setIsTransitioning(true);
     setSelectedClient("all");
     setSelectedProject("all");
     setSelectedCategory("all");
     setSearchTerm("");
+
+    // Allow queries to resume after a brief delay
+    const timer = setTimeout(() => {
+      setIsTransitioning(false);
+    }, 500);
+
+    return () => clearTimeout(timer);
   }, [activeOrganization?._id]);
 
   const clientOptions = useMemo<ClientOption[]>(() => {
