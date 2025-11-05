@@ -22,7 +22,6 @@ import { cn } from "../lib/utils";
 import { ProjectSwitchModal } from "./ProjectSwitchModal";
 import { ProjectKpis } from "./ProjectKpis";
 import { ProjectSummaryGrid } from "./ProjectSummaryGrid";
-import { RecentEntriesTable } from "./RecentEntriesTable";
 import { WorkspaceSwitcher, WorkspaceType } from "./WorkspaceSwitcher";
 import { ensurePushSubscription, isPushSupported, getNotificationPermission } from "../lib/push";
 import { toast } from "sonner";
@@ -1896,7 +1895,6 @@ export function ModernDashboard({
                 </Dialog>
               )}
             </div>
-            <RecentEntriesTable projectId={currentProjectId} workspaceType={currentWorkspace} showHeader={false} />
           </div>
         </section>
       </div>
