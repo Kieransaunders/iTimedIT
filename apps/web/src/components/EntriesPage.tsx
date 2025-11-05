@@ -51,7 +51,9 @@ export function EntriesPage() {
 
   const projects = useQuery(api.projects.listAll, (isReady && !isTransitioning) ? {} : "skip");
   const categories = useQuery(api.categories.getCategories, (isReady && !isTransitioning) ? {} : "skip");
-  const entries = useQuery(api.entries.list, (isReady && !isTransitioning) ? { paginationOpts: { numItems: 100, cursor: null } } : "skip");
+  // Removed direct entries query - stats calculation is disabled for now to prevent workspace switching errors
+  // TODO: Refactor to get stats from RecentEntriesTable or use a more robust query approach
+  const entries = undefined;
   const createManualEntry = useMutation(api.timer.createManualEntry);
 
   // Reset filters when organization changes
@@ -122,7 +124,8 @@ export function EntriesPage() {
 
   // Calculate filtered entries and stats
   const { filteredEntries, stats } = useMemo(() => {
-    if (!entries?.page) {
+    // Stats calculation temporarily disabled - entries query removed to fix workspace switching
+    if (!entries || !entries?.page) {
       return {
         filteredEntries: [],
         stats: {
