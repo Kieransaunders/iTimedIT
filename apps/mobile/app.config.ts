@@ -22,7 +22,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ios: {
     supportsTablet: true,
     bundleIdentifier: "com.itimedit.app",
+    deploymentTarget: "15.0",
     infoPlist: {
+      UIBackgroundModes: ["fetch", "remote-notification"],
       CFBundleURLTypes: [
         {
           CFBundleURLSchemes: [
@@ -35,6 +37,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   android: {
     package: "com.itimedit.app",
+    permissions: ["VIBRATE", "RECEIVE_BOOT_COMPLETED"],
     adaptiveIcon: {
       foregroundImage: "./assets/images/adaptive-icon.png",
       backgroundColor: "#ffffff",
@@ -61,7 +64,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     output: "static",
     favicon: "./assets/images/favicon.png",
   },
-  plugins: ["expo-router", "expo-secure-store"],
+  plugins: [
+    "expo-router",
+    "expo-secure-store",
+    "expo-notifications",
+    "expo-background-fetch",
+    "expo-task-manager",
+  ],
   experiments: {
     typedRoutes: true,
     autolinkingModuleResolution: true,
@@ -71,6 +80,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     webAppUrl: process.env.EXPO_PUBLIC_WEB_APP_URL,
     router: {
       origin: false,
+    },
+    eas: {
+      projectId: "a7118405-a040-4c3e-b89f-32b9d3112242",
     },
   },
 });

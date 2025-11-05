@@ -12,24 +12,9 @@ import { useProjects } from "../../hooks/useProjects";
 import type { Id } from "@/convex/_generated/dataModel";
 
 export default function TimerScreen() {
-  const { runningTimer, isRunning, start, stop, getElapsedSeconds } = useTimer();
+  const { runningTimer, isRunning, start, stop, elapsedSeconds } = useTimer();
   const { projects, isLoading: projectsLoading } = useProjects();
   const [selectedProjectId, setSelectedProjectId] = useState<Id<"projects"> | null>(null);
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
-
-  // Update elapsed time every second when timer is running
-  useEffect(() => {
-    if (!isRunning) {
-      setElapsedSeconds(0);
-      return;
-    }
-
-    const interval = setInterval(() => {
-      setElapsedSeconds(getElapsedSeconds());
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [isRunning, getElapsedSeconds]);
 
   const formatTime = (seconds: number): string => {
     const hours = Math.floor(seconds / 3600);

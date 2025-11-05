@@ -3,7 +3,8 @@ import "react-native-get-random-values";
 import "react-native-url-polyfill/auto";
 
 // Initialize Unistyles
-import "../styles/unistyles";
+// TEMPORARILY DISABLED FOR EXPO GO
+// import "../styles/unistyles";
 
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { DarkTheme, DefaultTheme, ThemeProvider as NavigationThemeProvider } from '@react-navigation/native';
@@ -13,6 +14,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { convex } from "../services/convex";
 import { OrganizationProvider } from "../contexts/OrganizationContext";
@@ -54,7 +56,7 @@ export default function RootLayout() {
   }
 
   return (
-    <ConvexAuthProvider client={convex}>
+    <ConvexAuthProvider client={convex} storage={AsyncStorage}>
       <ThemeProvider>
         <RootLayoutNav />
       </ThemeProvider>

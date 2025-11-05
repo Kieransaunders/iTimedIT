@@ -1,12 +1,13 @@
 import React from "react";
 import {
     ActivityIndicator,
+    StyleSheet,
     Text,
     TextStyle,
     TouchableOpacity,
     ViewStyle,
 } from "react-native";
-import { createStyleSheet, useStyles } from "react-native-unistyles";
+import { darkTheme } from "@/utils/theme";
 
 export type ButtonVariant = "primary" | "secondary" | "outline" | "ghost";
 export type ButtonSize = "sm" | "md" | "lg";
@@ -45,14 +46,31 @@ export function Button({
   accessibilityLabel,
   accessibilityHint,
 }: ButtonProps) {
-  const { styles, theme } = useStyles(stylesheet, { variant, size, fullWidth, disabled: disabled || loading });
   const isDisabled = disabled || loading;
-
+  const theme = darkTheme;
   const iconColor = variant === "primary" ? "#ffffff" : theme.colors.primary;
+
+  // Build combined button style
+  const buttonStyle = [
+    styles.button,
+    styles[`button_${variant}`],
+    styles[`button_${size}`],
+    fullWidth && styles.button_fullWidth,
+    isDisabled && styles.button_disabled,
+    style,
+  ];
+
+  // Build combined text style
+  const textStyleCombined = [
+    styles.text,
+    styles[`text_${variant}`],
+    styles[`text_${size}`],
+    textStyle,
+  ];
 
   return (
     <TouchableOpacity
-      style={[styles.button, style]}
+      style={buttonStyle}
       onPress={onPress}
       disabled={isDisabled}
       activeOpacity={theme.opacity.pressed}
@@ -70,95 +88,81 @@ export function Button({
       ) : (
         <>
           {Icon && (typeof Icon === 'function' ? <Icon size={18} color={iconColor} /> : <Icon size={18} color={iconColor} />)}
-          <Text style={[styles.text, textStyle]}>{children}</Text>
+          <Text style={textStyleCombined}>{children}</Text>
         </>
       )}
     </TouchableOpacity>
   );
 }
 
-const stylesheet = createStyleSheet((theme) => ({
+const styles = StyleSheet.create({
   button: {
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: theme.borderRadius.md,
+    borderRadius: darkTheme.borderRadius.md,
     flexDirection: "row",
-    gap: theme.spacing.sm,
-
-    variants: {
-      variant: {
-        primary: {
-          backgroundColor: theme.colors.primary,
-        },
-        secondary: {
-          backgroundColor: theme.colors.surface,
-        },
-        outline: {
-          backgroundColor: "transparent",
-          borderWidth: 2,
-          borderColor: theme.colors.primary,
-        },
-        ghost: {
-          backgroundColor: "transparent",
-        },
-      },
-      size: {
-        sm: {
-          height: 36,
-          paddingHorizontal: theme.spacing.md,
-        },
-        md: {
-          height: theme.sizing.buttonHeight,
-          paddingHorizontal: theme.spacing.lg,
-        },
-        lg: {
-          height: 56,
-          paddingHorizontal: theme.spacing.xl,
-        },
-      },
-      fullWidth: {
-        true: {
-          width: "100%",
-        },
-      },
-      disabled: {
-        true: {
-          opacity: theme.opacity.disabled,
-        },
-      },
-    },
+    gap: darkTheme.spacing.sm,
   },
+  // Variant styles
+  button_primary: {
+    backgroundColor: darkTheme.colors.primary,
+  },
+  button_secondary: {
+    backgroundColor: darkTheme.colors.surface,
+  },
+  button_outline: {
+    backgroundColor: "transparent",
+    borderWidth: 2,
+    borderColor: darkTheme.colors.primary,
+  },
+  button_ghost: {
+    backgroundColor: "transparent",
+  },
+  // Size styles
+  button_sm: {
+    height: 36,
+    paddingHorizontal: darkTheme.spacing.md,
+  },
+  button_md: {
+    height: darkTheme.sizing.buttonHeight,
+    paddingHorizontal: darkTheme.spacing.lg,
+  },
+  button_lg: {
+    height: 56,
+    paddingHorizontal: darkTheme.spacing.xl,
+  },
+  // Modifiers
+  button_fullWidth: {
+    width: "100%",
+  },
+  button_disabled: {
+    opacity: darkTheme.opacity.disabled,
+  },
+  // Text styles
   text: {
     fontWeight: "600",
     fontSize: 16,
-
-    variants: {
-      variant: {
-        primary: {
-          color: "#ffffff",
-        },
-        secondary: {
-          color: theme.colors.textPrimary,
-        },
-        outline: {
-          color: theme.colors.primary,
-        },
-        ghost: {
-          color: theme.colors.primary,
-        },
-      },
-      size: {
-        sm: {
-          fontSize: 14,
-        },
-        md: {
-          fontSize: 16,
-        },
-        lg: {
-          fontSize: 20,
-          fontWeight: "700",
-        },
-      },
-    },
   },
-}));
+  text_primary: {
+    color: "#ffffff",
+  },
+  text_secondary: {
+    color: darkTheme.colors.textPrimary,
+  },
+  text_outline: {
+    color: darkTheme.colors.primary,
+  },
+  text_ghost: {
+    color: darkTheme.colors.primary,
+  },
+  text_sm: {
+    fontSize: 14,
+  },
+  text_md: {
+    fontSize: 16,
+  },
+  text_lg: {
+    fontSize: 20,
+    fontWeight: "700",
+  },
+});
