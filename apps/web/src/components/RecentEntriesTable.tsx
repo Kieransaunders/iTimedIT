@@ -16,6 +16,7 @@ interface RecentEntriesTableProps {
   emptyStateMessage?: string;
   filters?: RecentEntriesFilters;
   workspaceType?: "personal" | "work";
+  skipQuery?: boolean;
 }
 
 export interface RecentEntriesFilters {
@@ -35,6 +36,7 @@ export function RecentEntriesTable({
   emptyStateMessage = "No time entries yet. Start a timer to begin tracking!",
   filters,
   workspaceType = "work",
+  skipQuery = false,
 }: RecentEntriesTableProps) {
   const [editingEntry, setEditingEntry] = useState<any | null>(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -50,7 +52,7 @@ export function RecentEntriesTable({
 
   const entries = useQuery(
     workspaceType === "personal" ? api.personalEntries.listPersonal : api.entries.list,
-    (workspaceType === "personal" || isReady) ? {
+    (workspaceType === "personal" || isReady) && !skipQuery ? {
       projectId: projectId || undefined,
       paginationOpts: { numItems: pageSize, cursor: null },
     } : "skip"

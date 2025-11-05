@@ -718,6 +718,7 @@ export function EntriesPage() {
         pageSize={50}
         filters={entriesFilters}
         emptyStateMessage="No entries match the current filters."
+        skipQuery={isTransitioning}
       />
     </div>
   );
