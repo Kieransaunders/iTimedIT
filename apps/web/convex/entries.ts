@@ -74,8 +74,14 @@ export const list = query({
         ...result,
         page: entriesWithProjects,
       };
-    } catch (error) {
+    } catch (error: any) {
       // Catch-all for any unexpected errors during workspace transitions
+      // InvalidCursor errors are expected when switching workspaces - handle gracefully
+      if (error?.data?.paginationError === 'InvalidCursor') {
+        // This is normal during workspace switches - return empty result silently
+        return { page: [], isDone: true, continueCursor: "" };
+      }
+      // Log other unexpected errors for debugging
       console.error("Error in entries.list query:", error);
       return { page: [], isDone: true, continueCursor: "" };
     }
