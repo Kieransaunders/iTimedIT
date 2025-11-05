@@ -1,57 +1,85 @@
-import React from 'react';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { Link, Tabs } from 'expo-router';
-import { Pressable } from 'react-native';
-
-import Colors from '@/constants/Colors';
-import { useColorScheme } from '@/components/useColorScheme';
-import { useClientOnlyValue } from '@/components/useClientOnlyValue';
-
-// You can explore the built-in icon families and icons on the web at https://icons.expo.fyi/
-function TabBarIcon(props: {
-  name: React.ComponentProps<typeof FontAwesome>['name'];
-  color: string;
-}) {
-  return <FontAwesome size={28} style={{ marginBottom: -3 }} {...props} />;
-}
+import { Tabs } from "expo-router";
+import { ThemeToggle } from "@/components/common/ThemeToggle";
+import { useTheme } from "@/utils/ThemeContext";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { View, TouchableOpacity, Linking } from "react-native";
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
+  const { colors } = useTheme();
+
+  const handleReportPress = () => {
+    Linking.openURL("https://itimedit.netlify.app/projects");
+  };
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-        // Disable the static render of the header on web
-        // to prevent a hydration error in React Navigation v6.
-        headerShown: useClientOnlyValue(false, true),
-      }}>
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textSecondary,
+        tabBarStyle: {
+          backgroundColor: colors.surface,
+          borderTopColor: colors.border,
+        },
+        headerStyle: {
+          backgroundColor: colors.surface,
+        },
+        headerTintColor: colors.textPrimary,
+        headerRight: () => (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginRight: 12, paddingVertical: 4 }}>
+            <TouchableOpacity
+              onPress={handleReportPress}
+              style={{
+                padding: 8,
+                borderRadius: 8,
+                backgroundColor: colors.surface,
+              }}
+              accessible={true}
+              accessibilityLabel="Open projects in web browser"
+              accessibilityRole="button"
+            >
+              <MaterialCommunityIcons name="chart-bar" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
+            <ThemeToggle />
+          </View>
+        ),
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Tab One',
-          tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
-          headerRight: () => (
-            <Link href="/modal" asChild>
-              <Pressable>
-                {({ pressed }) => (
-                  <FontAwesome
-                    name="info-circle"
-                    size={25}
-                    color={Colors[colorScheme ?? 'light'].text}
-                    style={{ marginRight: 15, opacity: pressed ? 0.5 : 1 }}
-                  />
-                )}
-              </Pressable>
-            </Link>
-          ),
+          title: "Timer",
+          tabBarLabel: "Timer",
+          tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="timer" color={color} size={size} />,
         }}
       />
       <Tabs.Screen
-        name="two"
+        name="entries"
         options={{
-          title: 'Tab Two',
-          tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
+          title: "Entries",
+          tabBarLabel: "Entries",
+          tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="clipboard-list" color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: "Settings",
+          tabBarLabel: "Settings",
+          tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="cog" color={color} size={size} />,
+        }}
+      />
+      {/* Workspace tab removed - workspace switcher now in settings tab */}
+      <Tabs.Screen
+        name="workspace"
+        options={{
+          href: null, // Hide from tab bar but keep route available
+        }}
+      />
+      {/* Projects tab removed - project creation now available inline from timer screen */}
+      <Tabs.Screen
+        name="projects"
+        options={{
+          href: null, // Hide from tab bar but keep route available
         }}
       />
     </Tabs>

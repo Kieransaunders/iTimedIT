@@ -38,12 +38,15 @@ import {
   TermsPage,
   marketingPageToPath,
 } from "./components/MarketingPages";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <AppContent />
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <AppContent />
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }
 

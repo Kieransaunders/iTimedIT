@@ -14,6 +14,7 @@ import type * as categories from "../categories.js";
 import type * as clients from "../clients.js";
 import type * as crons from "../crons.js";
 import type * as entries from "../entries.js";
+import type * as errorHandling from "../errorHandling.js";
 import type * as expoPushActions from "../expoPushActions.js";
 import type * as expoPushTokens from "../expoPushTokens.js";
 import type * as fallbackNotifications from "../fallbackNotifications.js";
@@ -35,6 +36,7 @@ import type * as pushNotifications from "../pushNotifications.js";
 import type * as router from "../router.js";
 import type * as sendEmails from "../sendEmails.js";
 import type * as timer from "../timer.js";
+import type * as timerHelpers from "../timerHelpers.js";
 import type * as users from "../users.js";
 
 import type {
@@ -58,6 +60,7 @@ declare const fullApi: ApiFromModules<{
   clients: typeof clients;
   crons: typeof crons;
   entries: typeof entries;
+  errorHandling: typeof errorHandling;
   expoPushActions: typeof expoPushActions;
   expoPushTokens: typeof expoPushTokens;
   fallbackNotifications: typeof fallbackNotifications;
@@ -79,6 +82,7 @@ declare const fullApi: ApiFromModules<{
   router: typeof router;
   sendEmails: typeof sendEmails;
   timer: typeof timer;
+  timerHelpers: typeof timerHelpers;
   users: typeof users;
 }>;
 declare const fullApiWithMounts: typeof fullApi;

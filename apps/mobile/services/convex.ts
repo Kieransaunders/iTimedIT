@@ -1,17 +1,18 @@
 import { ConvexReactClient } from "convex/react";
 import Constants from "expo-constants";
 
-// Get Convex URL from environment
-const convexUrl = Constants.expoConfig?.extra?.convexUrl;
+// Get Convex URL from environment variables
+const convexUrl = Constants.expoConfig?.extra?.convexUrl || process.env.EXPO_PUBLIC_CONVEX_URL;
 
 if (!convexUrl) {
   throw new Error(
     "Missing EXPO_PUBLIC_CONVEX_URL environment variable. " +
-    "Please add it to your .env file."
+    "Please set it in your .env.local file or app.config.ts"
   );
 }
 
-// Initialize Convex client
-export const convex = new ConvexReactClient(convexUrl, {
-  unsavedChangesWarning: false,
-});
+// Create and export the Convex client
+export const convexClient = new ConvexReactClient(convexUrl);
+
+// Export as 'convex' for backward compatibility
+export const convex = convexClient;

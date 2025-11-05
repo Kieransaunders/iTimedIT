@@ -22,7 +22,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ios: {
     supportsTablet: true,
     bundleIdentifier: "com.itimedit.app",
-    deploymentTarget: "15.0",
     infoPlist: {
       UIBackgroundModes: ["fetch", "remote-notification"],
       CFBundleURLTypes: [

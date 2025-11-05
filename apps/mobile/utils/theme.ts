@@ -9,6 +9,7 @@ export const lightColors = {
   surfaceElevated: "#ffffff",
   primary: "#FF6B35", // iConnectIT orange
   primaryHover: "#E55A2B",
+  primaryLight: "#FFB8A1", // Light orange for backgrounds
   accent: "#FFD93D", // iConnectIT yellow
   accentHover: "#E6C335",
   textPrimary: "#1f2937", // Darker for better contrast on light bg
@@ -27,6 +28,7 @@ export const darkColors = {
   surfaceElevated: "#374151",
   primary: "#FF6B35", // iConnectIT orange (same in dark)
   primaryHover: "#E55A2B",
+  primaryLight: "#B84E25", // Darker orange for backgrounds
   accent: "#FFD93D", // iConnectIT yellow
   accentHover: "#E6C335",
   textPrimary: "#ffffff",

@@ -4,11 +4,23 @@ import { internal, api } from "./_generated/api";
 import { Doc, Id } from "./_generated/dataModel";
 import { ensureMembership, requireMembership, maybeMembership } from "./orgContext";
 import { getAuthUserId } from "@convex-dev/auth/server";
-
-// Helper to detect if project is personal workspace
-function isPersonalProject(project: Doc<"projects"> | null): boolean {
-  return project?.workspaceType === "personal" || project?.organizationId === undefined;
-}
+import {
+  NotFoundError,
+  ConflictError,
+  AuthError,
+  AuthorizationError,
+  throwAppError,
+  validateNumber,
+  validateString,
+  validateTimeRange,
+} from "./errorHandling";
+import {
+  validateProject,
+  validateProjectNotArchived,
+  validatePersonalProjectOwnership,
+  validateProjectOrganization,
+  isPersonalProject,
+} from "./timerHelpers";
 
 // Helper to get running timer for both personal and work workspaces
 async function getRunningTimerForUser(
@@ -64,12 +76,28 @@ export const getRunningTimer = query({
       return null;
     }
 
+    // Safely get project and client data
     const project = await ctx.db.get(timer.projectId);
-    const client = project?.clientId ? await ctx.db.get(project.clientId) : null;
+
+    // Handle case where project was deleted while timer is running
+    if (!project) {
+      console.warn(`Timer ${timer._id} references deleted project ${timer.projectId}`);
+      return {
+        ...timer,
+        project: null,
+      };
+    }
+
+    const client = project.clientId ? await ctx.db.get(project.clientId) : null;
+
+    // Warn if client was deleted but don't fail
+    if (project.clientId && !client) {
+      console.warn(`Project ${project._id} references deleted client ${project.clientId}`);
+    }
 
     return {
       ...timer,
-      project: project ? { ...project, client } : null,
+      project: { ...project, client },
     };
   },
 });
@@ -106,19 +134,13 @@ export const start = mutation({
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) {
-      throw new Error("Please sign in to start a timer");
+      throwAppError(AuthError.notAuthenticated());
     }
 
-    // Validate project exists
+    // Validate project exists and is not archived
     const project = await ctx.db.get(args.projectId);
-    if (!project) {
-      throw new Error("Project not found. It may have been deleted. Please refresh and select a valid project.");
-    }
-
-    // Check if project is archived
-    if (project.archived) {
-      throw new Error("Cannot start timer for an archived project. Please unarchive the project first or select a different project.");
-    }
+    validateProject(project, args.projectId);
+    validateProjectNotArchived(project);
 
     // Detect workspace type
     const isPersonal = isPersonalProject(project);
@@ -126,16 +148,12 @@ export const start = mutation({
 
     if (isPersonal) {
       // Personal workspace - verify user owns the project
-      if (project.ownerId !== userId) {
-        throw new Error("You don't have permission to use this project. Please select one of your own projects.");
-      }
+      validatePersonalProjectOwnership(project, userId);
       organizationId = undefined;
     } else {
       // Work workspace - verify organization membership
       const membership = await ensureMembership(ctx);
-      if (project.organizationId !== membership.organizationId) {
-        throw new Error("Project not found in your current workspace. Please switch workspaces or select a different project.");
-      }
+      validateProjectOrganization(project, membership.organizationId);
       organizationId = membership.organizationId;
     }
 
@@ -259,7 +277,7 @@ export const stop = mutation({
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) {
-      throw new Error("Not authenticated");
+      throwAppError(AuthError.notAuthenticated());
     }
 
     // Try to find any running timer for this user (work or personal workspace)
@@ -276,7 +294,7 @@ export const stop = mutation({
     }
 
     if (!timer) {
-      return { success: false, message: "No running timer" };
+      throwAppError(NotFoundError.timer());
     }
 
     return await stopInternal(
@@ -695,8 +713,19 @@ export const processPomodoroTransition = internalMutation({
 
     const organizationId = timer.organizationId;
 
+    // Safely get project and client data
     const project = await ctx.db.get(timer.projectId);
-    const client = project?.clientId ? await ctx.db.get(project.clientId) : null;
+    if (!project) {
+      console.error(`Pomodoro transition failed: Project ${timer.projectId} not found for timer ${timer._id}`);
+      // Delete orphaned timer
+      await ctx.db.delete(timer._id);
+      return;
+    }
+
+    const client = project.clientId ? await ctx.db.get(project.clientId) : null;
+    if (project.clientId && !client) {
+      console.warn(`Project ${project._id} references deleted client ${project.clientId}`);
+    }
 
     const now = Date.now();
     const workMinutes = timer.pomodoroWorkMinutes ?? 25;
@@ -828,13 +857,12 @@ export const createManualEntry = mutation({
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) {
-      throw new Error("Not authenticated");
+      throwAppError(AuthError.notAuthenticated());
     }
 
+    // Validate project exists
     const project = await ctx.db.get(args.projectId);
-    if (!project) {
-      throw new Error("Project not found");
-    }
+    validateProject(project, args.projectId);
 
     // Detect workspace type
     const isPersonal = isPersonalProject(project);
@@ -842,23 +870,17 @@ export const createManualEntry = mutation({
 
     if (isPersonal) {
       // Personal workspace - verify user owns the project
-      if (project.ownerId !== userId) {
-        throw new Error("Personal project not found");
-      }
+      validatePersonalProjectOwnership(project, userId);
       organizationId = undefined;
     } else {
       // Work workspace - verify organization membership
       const membership = await ensureMembership(ctx);
-      if (project.organizationId !== membership.organizationId) {
-        throw new Error("Project not found");
-      }
+      validateProjectOrganization(project, membership.organizationId);
       organizationId = membership.organizationId;
     }
 
     // Validate time range
-    if (args.stoppedAt <= args.startedAt) {
-      throw new Error("End time must be after start time");
-    }
+    validateTimeRange(args.startedAt, args.stoppedAt, "time entry");
 
     const seconds = Math.floor((args.stoppedAt - args.startedAt) / 1000);
 

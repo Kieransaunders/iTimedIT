@@ -3,8 +3,7 @@ import "react-native-get-random-values";
 import "react-native-url-polyfill/auto";
 
 // Initialize Unistyles
-// TEMPORARILY DISABLED FOR EXPO GO
-// import "../styles/unistyles";
+import "../styles/unistyles";
 
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { DarkTheme, DefaultTheme, ThemeProvider as NavigationThemeProvider } from '@react-navigation/native';

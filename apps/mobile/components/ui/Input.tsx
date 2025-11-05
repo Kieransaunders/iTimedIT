@@ -48,9 +48,9 @@ export function Input({
         <TextInput
           style={[
             styles.input,
-            multiline && styles.inputMultiline,
-            leftIcon && styles.inputWithLeftIcon,
-            rightIcon && styles.inputWithRightIcon,
+            multiline ? styles.inputMultiline : undefined,
+            leftIcon ? styles.inputWithLeftIcon : undefined,
+            rightIcon ? styles.inputWithRightIcon : undefined,
             style
           ]}
           placeholderTextColor={colors.textSecondary}
