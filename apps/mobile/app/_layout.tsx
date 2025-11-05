@@ -12,7 +12,7 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
-import { ConvexProvider } from "convex/react";
+import { ConvexAuthProvider } from "@convex-dev/auth/react";
 
 import { convex } from "../services/convex";
 import { OrganizationProvider } from "../contexts/OrganizationContext";
@@ -54,11 +54,11 @@ export default function RootLayout() {
   }
 
   return (
-    <ConvexProvider client={convex}>
+    <ConvexAuthProvider client={convex}>
       <ThemeProvider>
         <RootLayoutNav />
       </ThemeProvider>
-    </ConvexProvider>
+    </ConvexAuthProvider>
   );
 }
 

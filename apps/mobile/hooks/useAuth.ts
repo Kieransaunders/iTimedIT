@@ -1,23 +1,35 @@
-import { useQuery, useMutation } from "convex/react";
+import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { signInWithGoogle } from "../services/googleAuth";
+import { useAuthActions } from "@convex-dev/auth/react";
+import { useConvexAuth } from "convex/react";
 import { secureStorage, STORAGE_KEYS } from "../services/storage";
 
 export function useAuth() {
-  // Get current user from Convex (using the correct function name)
+  // Get Convex auth state
+  const { isAuthenticated: convexIsAuthenticated, isLoading: convexIsLoading } = useConvexAuth();
+
+  // Get current user from Convex
   const user = useQuery(api.auth.loggedInUser);
-  const signOut = useMutation(api.auth.signOut);
-  const signIn = useMutation(api.auth.signIn);
+
+  // Get Convex Auth actions
+  const { signIn: convexSignIn, signOut: convexSignOut } = useAuthActions();
 
   /**
    * Sign in with email and password using Convex Auth
    */
   const handlePasswordSignIn = async (email: string, password: string) => {
     try {
-      await signIn({
-        provider: "password",
-        params: { email, password, flow: "signIn" },
-      });
+      // Use the Convex Auth signIn action with FormData
+      const formData = new FormData();
+      formData.append("email", email);
+      formData.append("password", password);
+      formData.append("flow", "signIn");
+
+      await convexSignIn("password", formData);
+
+      // Store a flag to indicate successful authentication
+      await secureStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, "authenticated");
+
       return true;
     } catch (error) {
       console.error("Password sign in error:", error);
@@ -27,20 +39,9 @@ export function useAuth() {
 
   const handleGoogleSignIn = async () => {
     try {
-      const result = await signInWithGoogle();
-
-      if (result?.idToken) {
-        // Store tokens securely
-        await secureStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, result.idToken);
-        if (result.refreshToken) {
-          await secureStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, result.refreshToken);
-        }
-
-        // Convex Auth will handle the session via the Convex client
-        return true;
-      }
-
-      return false;
+      // TODO: Implement Google OAuth flow using convexSignIn("google", { redirectTo })
+      // This requires setting up the OAuth callback handler
+      throw new Error("Google sign-in not yet implemented");
     } catch (error) {
       console.error("Sign in error:", error);
       throw error;
@@ -49,7 +50,7 @@ export function useAuth() {
 
   const handleSignOut = async () => {
     try {
-      await signOut();
+      await convexSignOut();
       await secureStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
       await secureStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
     } catch (error) {
@@ -58,10 +59,12 @@ export function useAuth() {
     }
   };
 
+  const isLoading = convexIsLoading || (convexIsAuthenticated && user === undefined);
+
   return {
     user,
-    isAuthenticated: !!user,
-    isLoading: user === undefined,
+    isAuthenticated: convexIsAuthenticated && user !== null && user !== undefined,
+    isLoading,
     signInWithPassword: handlePasswordSignIn,
     signInWithGoogle: handleGoogleSignIn,
     signOut: handleSignOut,
