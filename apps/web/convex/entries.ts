@@ -22,7 +22,9 @@ export const list = query({
     if (projectId) {
       const project = await ctx.db.get(projectId);
       if (!project || project.organizationId !== organizationId) {
-        throw new Error("Project not found");
+        // Project not found or doesn't belong to current organization
+        // Return empty result instead of throwing error (handles workspace switching gracefully)
+        return { page: [], isDone: true, continueCursor: "" };
       }
 
       entriesQuery = ctx.db
