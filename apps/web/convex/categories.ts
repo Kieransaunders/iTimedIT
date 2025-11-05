@@ -29,7 +29,7 @@ export const getCategories = query({
 export const createCategory = mutation({
   args: {
     name: v.string(),
-    color: v.string(),
+    color: v.optional(v.string()),
     isDefault: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
