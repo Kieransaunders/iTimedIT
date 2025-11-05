@@ -15,6 +15,11 @@ export const list = query({
     }
     const { organizationId, userId } = membership;
 
+    // Defensive check: ensure we have valid IDs
+    if (!organizationId || !userId) {
+      return { page: [], isDone: true, continueCursor: "" };
+    }
+
     let entriesQuery;
 
     const projectId = args.projectId;
