@@ -4,26 +4,16 @@ import { useState } from "react";
 import { Id } from "../../convex/_generated/dataModel";
 import { notifyMutationError } from "../lib/notifyMutationError";
 import { useOrganization } from "../lib/organization-context";
-import { WorkspaceHeader, WorkspaceType } from "./WorkspaceSwitcher";
 import { ColorPicker } from "./ui/ColorPicker";
 import { Tag, Trash2, Edit, Star } from "lucide-react";
 
-interface CategoriesPageProps {
-  workspaceType?: WorkspaceType;
-  onWorkspaceChange?: (workspace: WorkspaceType) => void;
-}
-
-export function CategoriesPage({
-  workspaceType = "work",
-  onWorkspaceChange,
-}: CategoriesPageProps) {
+export function CategoriesPage() {
   // State Management
   const [showForm, setShowForm] = useState(false);
   const [editingCategory, setEditingCategory] = useState<any>(null);
   const [name, setName] = useState("");
   const [color, setColor] = useState("#8b5cf6");
   const [isDefault, setIsDefault] = useState(false);
-  const currentWorkspace = workspaceType;
   const { isReady } = useOrganization();
 
   // Convex Queries/Mutations
@@ -108,14 +98,6 @@ export function CategoriesPage({
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
-      {/* Workspace Header */}
-      {onWorkspaceChange && (
-        <WorkspaceHeader
-          currentWorkspace={currentWorkspace}
-          onWorkspaceChange={onWorkspaceChange}
-        />
-      )}
-
       {/* Header with Add Button */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Categories</h2>

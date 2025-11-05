@@ -333,12 +333,7 @@ function AuthenticatedApp() {
               )
             )}
             {currentPage === "entries" && <EntriesPage />}
-            {currentPage === "categories" && (
-              <CategoriesPage
-                workspaceType={currentWorkspace}
-                onWorkspaceChange={setCurrentWorkspace}
-              />
-            )}
+            {currentPage === "categories" && <CategoriesPage />}
             {currentPage === "settings" && <Settings onNavigate={handleNavigate} initialTab={settingsTab} />}
             {currentPage === "profile" && <ProfilePage user={loggedInUser} onNavigate={handleNavigate} />}
             {currentPage === "testEmail" && <TestEmailPage onNavigate={handleNavigate} />}
