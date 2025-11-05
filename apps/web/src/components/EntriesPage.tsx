@@ -28,7 +28,7 @@ type ClientOption = {
 };
 
 export function EntriesPage() {
-  const { isReady } = useOrganization();
+  const { isReady, activeOrganization } = useOrganization();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedClient, setSelectedClient] = useState<"all" | Id<"clients">>("all");
   const [selectedProject, setSelectedProject] = useState<"all" | Id<"projects">>("all");
@@ -51,6 +51,14 @@ export function EntriesPage() {
   const categories = useQuery(api.categories.getCategories, isReady ? {} : "skip");
   const entries = useQuery(api.entries.list, isReady ? { paginationOpts: { numItems: 100, cursor: null } } : "skip");
   const createManualEntry = useMutation(api.timer.createManualEntry);
+
+  // Reset filters when organization changes
+  useEffect(() => {
+    setSelectedClient("all");
+    setSelectedProject("all");
+    setSelectedCategory("all");
+    setSearchTerm("");
+  }, [activeOrganization?._id]);
 
   const clientOptions = useMemo<ClientOption[]>(() => {
     if (!projects) {
