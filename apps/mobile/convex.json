@@ -1,4 +1,5 @@
 {
-  "project": "use-parent-project",
-  "functions": "../web/convex/"
+  "node": {
+    "version": "20"
+  }
 }

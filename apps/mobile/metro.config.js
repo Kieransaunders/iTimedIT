@@ -1,8 +1,7 @@
 // Learn more: https://docs.expo.dev/guides/monorepos
 const { getDefaultConfig } = require('expo/metro-config');
-const path = require('path');
 
-// Get the default Expo config with require.context support enabled
+// Get the default Expo config (SDK 54 auto-configures for monorepos)
 const config = getDefaultConfig(__dirname);
 
 // Ensure context modules are enabled for expo-router
@@ -11,17 +10,7 @@ config.transformer = {
   unstable_allowRequireContext: true,
 };
 
-// Monorepo setup: Watch all files in the workspace
-const projectRoot = __dirname;
-const workspaceRoot = path.resolve(projectRoot, '../..');
-
-config.watchFolders = [workspaceRoot];
-config.resolver = {
-  ...config.resolver,
-  nodeModulesPaths: [
-    path.resolve(projectRoot, 'node_modules'),
-    path.resolve(workspaceRoot, 'node_modules'),
-  ],
-};
+// Note: SDK 54+ auto-configures watchFolders and nodeModulesPaths for monorepos
+// Manual configuration removed per Expo docs
 
 module.exports = config;

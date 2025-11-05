@@ -12,8 +12,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   orientation: "portrait",
   icon: "./assets/images/icon.png",
   scheme: "itimeditapp",
+  userInterfaceStyle: "automatic",
   newArchEnabled: true,
-  owner: "iconnectit",
   splash: {
     image: "./assets/images/splash-icon.png",
     resizeMode: "contain",
@@ -22,12 +22,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ios: {
     supportsTablet: true,
     bundleIdentifier: "com.itimedit.app",
-    deploymentTarget: "16.2",
-    appleTeamId: "QHS5TSHJA5",
     infoPlist: {
-      UIBackgroundModes: ["fetch", "remote-notification", "processing"],
-      BGTaskSchedulerPermittedIdentifiers: ["timer-heartbeat-task"],
-      NSSupportsLiveActivities: true,
       CFBundleURLTypes: [
         {
           CFBundleURLSchemes: [
@@ -36,20 +31,14 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
           ],
         },
       ],
-      ITSAppUsesNonExemptEncryption: false,
     },
   },
   android: {
-    icon: "./assets/images/icon.png",
     package: "com.itimedit.app",
-    permissions: [
-      "RECEIVE_BOOT_COMPLETED",
-      "VIBRATE",
-      "SCHEDULE_EXACT_ALARM",
-      "FOREGROUND_SERVICE",
-      "WAKE_LOCK",
-      "REQUEST_IGNORE_BATTERY_OPTIMIZATIONS",
-    ],
+    adaptiveIcon: {
+      foregroundImage: "./assets/images/adaptive-icon.png",
+      backgroundColor: "#ffffff",
+    },
     edgeToEdgeEnabled: true,
     predictiveBackGestureEnabled: false,
     intentFilters: [
@@ -68,42 +57,14 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ],
   },
   web: {
+    bundler: "metro",
     output: "static",
     favicon: "./assets/images/favicon.png",
   },
-  updates: {
-    enabled: true,
-    fallbackToCacheTimeout: 0,
-    checkAutomatically: "ON_LOAD",
-    url: "https://u.expo.dev/9765d9ef-1bbf-43eb-9200-6ecd31389a64",
-  },
-  runtimeVersion: {
-    policy: "appVersion",
-  },
-  plugins: [
-    "expo-router",
-    "expo-notifications",
-    "expo-background-fetch",
-    "expo-task-manager",
-    "expo-secure-store",
-    "expo-live-activity",
-    "expo-updates",
-    [
-      "expo-splash-screen",
-      {
-        image: "./assets/images/splash-icon.png",
-        imageWidth: 200,
-        resizeMode: "contain",
-        backgroundColor: "#1a1a2e",
-        dark: {
-          backgroundColor: "#1a1a2e",
-        },
-      },
-    ],
-  ],
+  plugins: ["expo-router", "expo-secure-store"],
   experiments: {
     typedRoutes: true,
-    reactCompiler: true,
+    autolinkingModuleResolution: true,
   },
   extra: {
     convexUrl: process.env.EXPO_PUBLIC_CONVEX_URL,
@@ -111,9 +72,5 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     router: {
       origin: false,
     },
-    eas: {
-      projectId: "9765d9ef-1bbf-43eb-9200-6ecd31389a64",
-    },
   },
-  userInterfaceStyle: "automatic",
 });

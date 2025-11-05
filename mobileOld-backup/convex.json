@@ -1,0 +1,4 @@
+{
+  "project": "use-parent-project",
+  "functions": "../web/convex/"
+}

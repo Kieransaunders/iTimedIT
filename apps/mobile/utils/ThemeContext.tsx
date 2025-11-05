@@ -8,7 +8,6 @@ import React, {
 } from "react";
 import { useColorScheme } from "react-native";
 import { lightColors, darkColors } from "./theme";
-import { UnistylesRuntime } from "react-native-unistyles";
 
 type ThemeMode = "light" | "dark" | "system";
 type Theme = "light" | "dark";
@@ -73,11 +72,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   // Get colors for current theme
   const colors = actualTheme === "dark" ? darkColors : lightColors;
-
-  // Sync theme with Unistyles
-  useEffect(() => {
-    UnistylesRuntime.setTheme(actualTheme);
-  }, [actualTheme]);
 
   // Always render children but context may not be fully ready until isReady is true
   // This prevents the "Cannot read property 'background' of undefined" error
