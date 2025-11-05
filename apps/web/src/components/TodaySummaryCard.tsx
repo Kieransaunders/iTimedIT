@@ -240,79 +240,68 @@ export function TodaySummaryCard({
 
   return (
     <div className="bg-white/60 dark:bg-gray-800/30 backdrop-blur-sm border border-gray-300/50 dark:border-gray-700/50 rounded-xl overflow-hidden">
-      {/* Header - Always Visible */}
-      <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full px-4 sm:px-6 py-3 flex items-center justify-between hover:bg-gray-100/30 dark:hover:bg-gray-700/30 transition-colors"
-      >
-        <div className="flex items-center gap-3">
-          <h3 className="text-sm font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+      {/* Header and Stats - Compact Layout */}
+      <div className="px-4 sm:px-6 py-4">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
             Weekly Summary
           </h3>
-        </div>
-        <ChevronDown
-          className={cn(
-            "w-5 h-5 text-gray-500 dark:text-gray-400 transition-transform",
-            isExpanded && "rotate-180"
-          )}
-        />
-      </button>
-
-      {/* Main Stats - Always Visible */}
-      <div className="px-4 sm:px-6 pb-4">
-        {/* Total Time - Prominent Display with Clock Icon */}
-        <div className="flex items-center justify-center mb-4">
-          <Clock className="w-5 h-5 text-primary mr-2" />
-          <div className="text-2xl font-bold text-gray-900 dark:text-white font-mono tracking-tight">
-            {formatDuration(filteredTotalSeconds || totalSeconds)}
-          </div>
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="p-1 hover:bg-gray-100/30 dark:hover:bg-gray-700/30 rounded-lg transition-colors"
+          >
+            <ChevronDown
+              className={cn(
+                "w-5 h-5 text-gray-500 dark:text-gray-400 transition-transform",
+                isExpanded && "rotate-180"
+              )}
+            />
+          </button>
         </div>
 
-        {/* Stats Grid - 3 Columns: Entries | Top Project | Earnings */}
+        {/* Stats Grid - 3 Columns: Time | Entries/Top Project | Earnings */}
         <div className="grid grid-cols-3 gap-4">
-          {/* Entries Count */}
+          {/* Total Time */}
           <div className="text-center">
-            <div className="text-xl font-bold text-primary">
-              {filteredEntriesCount}
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <Clock className="w-4 h-4 text-primary" />
+              <div className="text-lg font-semibold text-gray-900 dark:text-white">
+                {formatDuration(filteredTotalSeconds || totalSeconds)}
+              </div>
             </div>
-            <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-              {filteredEntriesCount === 1 ? "Entry" : "Entries"}
+            <div className="text-sm text-gray-600 dark:text-gray-400">
+              Total Time
             </div>
           </div>
 
-          {/* Top Project */}
-          {topProject ? (
-            <div className="text-center">
-              <div className="flex items-center justify-center gap-1 mb-1">
+          {/* Entries Count and Top Project */}
+          <div className="text-center">
+            <div className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
+              {filteredEntriesCount} {filteredEntriesCount === 1 ? "Entry" : "Entries"}
+            </div>
+            {topProject ? (
+              <div className="flex items-center justify-center gap-1">
                 <div
                   className="w-2 h-2 rounded-full flex-shrink-0"
                   style={{ backgroundColor: topProject.color || "#8b5cf6" }}
                 />
-                <div className="text-xs font-semibold text-gray-900 dark:text-white truncate max-w-[100px]">
+                <div className="text-sm text-gray-600 dark:text-gray-400 truncate max-w-[120px]">
                   {topProject.name}
                 </div>
               </div>
-              <div className="text-xs text-gray-600 dark:text-gray-400">
+            ) : (
+              <div className="text-sm text-gray-600 dark:text-gray-400">
                 Top Project
               </div>
-            </div>
-          ) : (
-            <div className="text-center">
-              <div className="text-xs font-medium text-gray-400 dark:text-gray-500">
-                —
-              </div>
-              <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                Top Project
-              </div>
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Earnings */}
           <div className="text-center">
-            <div className="text-sm font-bold text-green-600 dark:text-green-500">
+            <div className="text-lg font-semibold text-green-600 dark:text-green-500 mb-1">
               {formatCurrency(filteredEarnings)}
             </div>
-            <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+            <div className="text-sm text-gray-600 dark:text-gray-400">
               Earned This Week
             </div>
           </div>
