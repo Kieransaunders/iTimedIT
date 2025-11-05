@@ -137,7 +137,6 @@ export function ModernDashboard({
   const [isCreatingProject, setIsCreatingProject] = useState(false);
   const [isCreatingClient, setIsCreatingClient] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const projectScrollRef = useRef<HTMLDivElement>(null);
 
   // Use appropriate API based on workspace type
   const projects = useQuery(
@@ -862,74 +861,6 @@ export function ModernDashboard({
     })();
   }, [pushSwitchRequest, runningTimer, projectsWithColors, transferTimerToProject, onPushSwitchHandled]);
 
-  // Horizontal scrolling with mouse wheel for project panel
-  useEffect(() => {
-    const handleWheelScroll = (e: WheelEvent) => {
-      if (!projectScrollRef.current) return;
-      
-      // Check if the target is within our scroll container
-      const scrollContainer = projectScrollRef.current;
-      const isTargetInside = scrollContainer.contains(e.target as Node);
-      
-      if (isTargetInside) {
-        e.preventDefault();
-        const scrollAmount = e.deltaY;
-        scrollContainer.scrollLeft += scrollAmount;
-      }
-    };
-
-    const scrollElement = projectScrollRef.current;
-    if (scrollElement) {
-      scrollElement.addEventListener('wheel', handleWheelScroll, { passive: false });
-    }
-
-    return () => {
-      if (scrollElement) {
-        scrollElement.removeEventListener('wheel', handleWheelScroll);
-      }
-    };
-  }, []);
-
-  // Update scroll fade indicators
-  useEffect(() => {
-    const updateScrollIndicators = () => {
-      if (!projectScrollRef.current) return;
-
-      const container = projectScrollRef.current;
-      const leftFade = document.getElementById('scroll-fade-left');
-      const rightFade = document.getElementById('scroll-fade-right');
-
-      if (!leftFade || !rightFade) return;
-
-      const { scrollLeft, scrollWidth, clientWidth } = container;
-      
-      // Show left fade if scrolled right
-      leftFade.style.opacity = scrollLeft > 10 ? '1' : '0';
-      
-      // Show right fade if there's more content to the right
-      rightFade.style.opacity = scrollLeft < scrollWidth - clientWidth - 10 ? '1' : '0';
-    };
-
-    const scrollElement = projectScrollRef.current;
-    if (scrollElement) {
-      // Initial check
-      updateScrollIndicators();
-      
-      // Update on scroll
-      scrollElement.addEventListener('scroll', updateScrollIndicators);
-      
-      // Update on resize
-      window.addEventListener('resize', updateScrollIndicators);
-    }
-
-    return () => {
-      if (scrollElement) {
-        scrollElement.removeEventListener('scroll', updateScrollIndicators);
-      }
-      window.removeEventListener('resize', updateScrollIndicators);
-    };
-  }, [projectsWithColors]);
-
   // Detect when timer is started from mobile and show notification
   useEffect(() => {
     const currentTimerId = runningTimer?._id;
@@ -1621,152 +1552,12 @@ export function ModernDashboard({
           </div>
         )}
 
-        {/* Recent Work Projects Slider - Only when timer is not running */}
-        {!timerState.running && workProjects.length > 0 && (
-          <div className="mb-6 sm:mb-8 w-full max-w-4xl">
-            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 px-4">Recent Work Projects</h3>
-            <div className="relative">
-              <div className="flex gap-3 sm:gap-4 overflow-x-auto scroll-smooth pb-2 px-4 py-2">
-                {workProjects.slice(0, 3).map((project) => (
-                  <div
-                    key={project._id}
-                    className={cn(
-                      "bg-white/60 dark:bg-gray-800/30 backdrop-blur-sm border border-gray-300/50 dark:border-gray-700/50 rounded-xl p-4 cursor-pointer transition-all duration-200 hover:bg-gray-100/60 dark:hover:bg-gray-700/40 hover:scale-105 flex-shrink-0 w-64 sm:w-72",
-                      project._id === currentProjectId && "ring-2 ring-blue-400/50 dark:ring-blue-500/40"
-                    )}
-                    onClick={() => switchProject(project._id)}
-                  >
-                    <div className="flex items-center gap-2 mb-2">
-                      <span
-                        className="h-3 w-3 rounded-full"
-                        style={{ backgroundColor: project.color }}
-                      />
-                      <span className="font-medium text-gray-900 dark:text-white text-sm truncate">{project.name}</span>
-                    </div>
-                    <div className="text-gray-700 dark:text-gray-300 text-xs truncate font-medium">{project.client?.name || 'No Client'}</div>
-                    <div className="text-gray-600 dark:text-gray-400 text-xs mt-1">
-                      {formatCurrencyWithSymbol(project.hourlyRate)}/hr
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Project Summary */}
         {currentProjectId && (
           <section className="w-full max-w-6xl px-4 sm:px-0">
             <ProjectSummaryGrid projectId={currentProjectId} workspaceType={currentWorkspace} />
           </section>
         )}
-
-        {/* Recent Projects */}
-        <section className="w-full max-w-6xl px-4 sm:px-0 space-y-6">
-          {/* Personal Projects */}
-          {personalProjects.length > 0 && (
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  Personal Projects
-                </h2>
-                {personalProjects.length > 4 && (
-                  <span className="text-sm text-gray-500 dark:text-gray-400">
-                    {personalProjects.length} projects • Scroll to see more →
-                  </span>
-                )}
-              </div>
-              <div className="relative">
-                {/* Scroll fade indicators */}
-                <div className="absolute left-0 top-0 bottom-0 w-6 bg-gradient-to-r from-gray-50 dark:from-gray-900 to-transparent pointer-events-none z-10 opacity-0 transition-opacity duration-200" id="scroll-fade-left-personal"></div>
-                <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-gray-50 dark:from-gray-900 to-transparent pointer-events-none z-10 opacity-0 transition-opacity duration-200" id="scroll-fade-right-personal"></div>
-
-                <div
-                  className="project-scroll-container flex gap-3 sm:gap-4 overflow-x-auto scroll-smooth pb-2 p-2"
-                  style={{
-                    WebkitOverflowScrolling: 'touch'
-                  }}
-                >
-                  {personalProjects.map((project) => (
-                    <div
-                      key={project._id}
-                      className={cn(
-                        "bg-white/60 dark:bg-gray-800/30 backdrop-blur-sm border border-gray-300/50 dark:border-gray-700/50 rounded-xl p-4 cursor-pointer transition-all duration-200 hover:bg-gray-100/60 dark:hover:bg-gray-700/40 hover:scale-105 flex-shrink-0 w-64 sm:w-72",
-                        project._id === currentProjectId && "ring-2 ring-blue-400/50 dark:ring-blue-500/40"
-                      )}
-                      onClick={() => switchProject(project._id)}
-                    >
-                      <div className="flex items-center gap-2 mb-2">
-                        <span
-                          className="h-3 w-3 rounded-full"
-                          style={{ backgroundColor: project.color }}
-                        />
-                        <span className="font-medium text-gray-900 dark:text-white text-sm truncate">{project.name}</span>
-                      </div>
-                      <div className="text-gray-700 dark:text-gray-300 text-xs truncate font-medium">{project.client?.name || 'No Client'}</div>
-                      <div className="text-gray-600 dark:text-gray-400 text-xs mt-1">
-                        {formatCurrencyWithSymbol(project.hourlyRate)}/hr
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Work Projects */}
-          {workProjects.length > 0 && (
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  Work Projects
-                </h2>
-                {workProjects.length > 4 && (
-                  <span className="text-sm text-gray-500 dark:text-gray-400">
-                    {workProjects.length} projects • Scroll to see more →
-                  </span>
-                )}
-              </div>
-              <div className="relative">
-                {/* Scroll fade indicators */}
-                <div className="absolute left-0 top-0 bottom-0 w-6 bg-gradient-to-r from-gray-50 dark:from-gray-900 to-transparent pointer-events-none z-10 opacity-0 transition-opacity duration-200" id="scroll-fade-left-work"></div>
-                <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-gray-50 dark:from-gray-900 to-transparent pointer-events-none z-10 opacity-0 transition-opacity duration-200" id="scroll-fade-right-work"></div>
-
-                <div
-                  ref={projectScrollRef}
-                  className="project-scroll-container flex gap-3 sm:gap-4 overflow-x-auto scroll-smooth pb-2 p-2"
-                  style={{
-                    WebkitOverflowScrolling: 'touch'
-                  }}
-                >
-                  {workProjects.map((project) => (
-                    <div
-                      key={project._id}
-                      className={cn(
-                        "bg-white/60 dark:bg-gray-800/30 backdrop-blur-sm border border-gray-300/50 dark:border-gray-700/50 rounded-xl p-4 cursor-pointer transition-all duration-200 hover:bg-gray-100/60 dark:hover:bg-gray-700/40 hover:scale-105 flex-shrink-0 w-64 sm:w-72",
-                        project._id === currentProjectId && "ring-2 ring-gray-400/50 dark:ring-white/20"
-                      )}
-                      onClick={() => switchProject(project._id)}
-                    >
-                      <div className="flex items-center gap-2 mb-2">
-                        <span
-                          className="h-3 w-3 rounded-full"
-                          style={{ backgroundColor: project.color }}
-                        />
-                        <span className="font-medium text-gray-900 dark:text-white text-sm truncate">{project.name}</span>
-                      </div>
-                      <div className="text-gray-700 dark:text-gray-300 text-xs truncate font-medium">{project.client?.name || 'No Client'}</div>
-                      <div className="text-gray-600 dark:text-gray-400 text-xs mt-1">
-                        {formatCurrencyWithSymbol(project.hourlyRate)}/hr
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-        </section>
-
       </div>
 
       {/* Interrupt Modal - DISABLED: Using toast notifications only (see InterruptWatcher component) */}
