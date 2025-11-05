@@ -317,7 +317,10 @@ export function EntriesPage() {
     toDate: toDate || undefined,
   };
 
-  const selectedProjectId = selectedProject === "all" ? null : (selectedProject as Id<"projects">);
+  // Validate that selectedProject exists in current projects list
+  const selectedProjectId = selectedProject === "all"
+    ? null
+    : (projects?.find(p => p._id === selectedProject) ? selectedProject as Id<"projects"> : null);
 
   return (
     <div className="space-y-6">
