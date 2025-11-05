@@ -47,7 +47,7 @@ export function EntriesPage() {
     category: "",
   });
 
-  const projects = useQuery(api.projects.listAll, isReady ? { workspaceType: "work" } : "skip");
+  const projects = useQuery(api.projects.listAll, isReady ? {} : "skip");
   const categories = useQuery(api.categories.getCategories, isReady ? {} : "skip");
   const entries = useQuery(api.entries.list, isReady ? { paginationOpts: { numItems: 100, cursor: null } } : "skip");
   const createManualEntry = useMutation(api.timer.createManualEntry);
