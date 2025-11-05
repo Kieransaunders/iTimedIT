@@ -136,14 +136,6 @@ export function ModernDashboard({
   });
   const [isCreatingProject, setIsCreatingProject] = useState(false);
   const [isCreatingClient, setIsCreatingClient] = useState(false);
-  const [showManualEntryDialog, setShowManualEntryDialog] = useState(false);
-  const [manualEntryForm, setManualEntryForm] = useState({
-    date: new Date().toISOString().split('T')[0],
-    startTime: '09:00',
-    endTime: '10:00',
-    note: ''
-  });
-  const [isSubmittingManualEntry, setIsSubmittingManualEntry] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const projectScrollRef = useRef<HTMLDivElement>(null);
 
@@ -185,7 +177,6 @@ export function ModernDashboard({
       : api.clients.list,
     currentWorkspace === "personal" ? {} : {}
   );
-  const createManualEntry = useMutation(api.timer.createManualEntry);
   const updateUserSettings = useMutation(api.users.updateUserSettings);
   const notificationPrefs = useQuery(api.pushNotifications.getNotificationPrefs);
   const soundPreferenceEnabled = Boolean(notificationPrefs?.soundEnabled);
@@ -818,44 +809,6 @@ export function ModernDashboard({
     });
     setNewClientForm({ name: "", color: "" });
   }, []);
-
-  const handleManualEntrySubmit = useCallback(async () => {
-    if (!currentProject) return;
-    
-    const startDateTime = new Date(`${manualEntryForm.date}T${manualEntryForm.startTime}:00`);
-    const endDateTime = new Date(`${manualEntryForm.date}T${manualEntryForm.endTime}:00`);
-    
-    if (endDateTime <= startDateTime) {
-      toast.error("End time must be after start time");
-      return;
-    }
-    
-    setIsSubmittingManualEntry(true);
-    try {
-      await createManualEntry({
-        projectId: currentProject._id,
-        startedAt: startDateTime.getTime(),
-        stoppedAt: endDateTime.getTime(),
-        note: manualEntryForm.note || undefined
-      });
-
-      setShowManualEntryDialog(false);
-      setManualEntryForm({
-        date: new Date().toISOString().split('T')[0],
-        startTime: '09:00',
-        endTime: '10:00',
-        note: ''
-      });
-      
-      const duration = Math.round((endDateTime.getTime() - startDateTime.getTime()) / (1000 * 60));
-      toast.success(`Added ${duration} minute${duration !== 1 ? 's' : ''} to ${currentProject.name}`);
-    } catch (error) {
-      console.error('Failed to create manual entry:', error);
-      toast.error('Failed to create time entry');
-    } finally {
-      setIsSubmittingManualEntry(false);
-    }
-  }, [currentProject, manualEntryForm, createManualEntry]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -1814,89 +1767,6 @@ export function ModernDashboard({
           )}
         </section>
 
-        {/* Recent Entries */}
-        <section className="w-full max-w-6xl px-4 sm:px-0">
-          <div className="bg-white/60 dark:bg-gray-800/30 backdrop-blur-sm border border-gray-300/50 dark:border-gray-700/50 rounded-xl p-4 sm:p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Recent Entries</h3>
-              {currentProject && (
-                <Dialog open={showManualEntryDialog} onOpenChange={setShowManualEntryDialog}>
-                  <DialogTrigger asChild>
-                    <Button className="bg-[#F85E00] hover:bg-[#d14e00] text-white">
-                      + Add Time Entry
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-[425px] bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700">
-                    <DialogHeader>
-                      <DialogTitle>Add Manual Time Entry</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium text-gray-900 dark:text-white">Date</label>
-                          <Input
-                            type="date"
-                            value={manualEntryForm.date}
-                            onChange={(e) => setManualEntryForm(prev => ({ ...prev, date: e.target.value }))}
-                            className="bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium text-gray-900 dark:text-white">Start Time</label>
-                          <Input
-                            type="time"
-                            value={manualEntryForm.startTime}
-                            onChange={(e) => setManualEntryForm(prev => ({ ...prev, startTime: e.target.value }))}
-                            className="bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium text-gray-900 dark:text-white">End Time</label>
-                          <Input
-                            type="time"
-                            value={manualEntryForm.endTime}
-                            onChange={(e) => setManualEntryForm(prev => ({ ...prev, endTime: e.target.value }))}
-                            className="bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-900 dark:text-white">Note (optional)</label>
-                        <textarea
-                          placeholder="What did you work on?"
-                          value={manualEntryForm.note}
-                          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setManualEntryForm(prev => ({ ...prev, note: e.target.value }))}
-                          className="w-full min-h-[80px] px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none placeholder:text-gray-500 dark:placeholder:text-gray-400"
-                        />
-                      </div>
-                      
-                      <div className="flex gap-2 pt-4">
-                        <Button 
-                          onClick={handleManualEntrySubmit}
-                          disabled={isSubmittingManualEntry}
-                          className="flex-1"
-                        >
-                          {isSubmittingManualEntry ? "Adding..." : "Add Entry"}
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          onClick={() => setShowManualEntryDialog(false)}
-                          className="flex-1"
-                        >
-                          Cancel
-                        </Button>
-                      </div>
-                    </div>
-                  </DialogContent>
-                </Dialog>
-              )}
-            </div>
-          </div>
-        </section>
       </div>
 
       {/* Interrupt Modal - DISABLED: Using toast notifications only (see InterruptWatcher component) */}
