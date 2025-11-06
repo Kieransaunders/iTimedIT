@@ -1,13 +1,38 @@
 import { ConfigContext, ExpoConfig } from "expo/config";
 
 // Dynamically get the reversed client ID for the Google OAuth scheme
-// Note: Using defensive logic to avoid Hermes string.split() crash bug
+// Note: Using index-based string manipulation to avoid Hermes array operations crash in release builds
 const googleClientId = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID;
 let googleClientScheme: string | undefined;
 if (googleClientId && typeof googleClientId === 'string' && googleClientId.includes('.')) {
   try {
-    const parts = googleClientId.split(".");
-    googleClientScheme = parts.reverse().join(".");
+    // Safe string reversal without array operations (avoids Hermes DictPropertyMap crash)
+    const parts: string[] = [];
+    let currentPart = '';
+
+    for (let i = 0; i < googleClientId.length; i++) {
+      const char = googleClientId.charAt(i);
+      if (char === '.') {
+        if (currentPart) {
+          parts.push(currentPart);
+          currentPart = '';
+        }
+      } else {
+        currentPart += char;
+      }
+    }
+    if (currentPart) {
+      parts.push(currentPart);
+    }
+
+    // Reverse by building from end to start
+    let reversed = '';
+    for (let i = parts.length - 1; i >= 0; i--) {
+      reversed += parts[i];
+      if (i > 0) reversed += '.';
+    }
+
+    googleClientScheme = reversed || undefined;
   } catch (error) {
     console.warn('Failed to generate Google OAuth scheme:', error);
     googleClientScheme = undefined;

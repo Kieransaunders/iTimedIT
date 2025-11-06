@@ -201,9 +201,23 @@ class TimerNotificationService {
 }
 
 /**
- * Singleton instance
+ * Lazy singleton instance to prevent Hermes crash during module load in release builds
  */
-export const timerNotificationService = new TimerNotificationService();
+let _timerNotificationService: TimerNotificationService | null = null;
+
+function getTimerNotificationService(): TimerNotificationService {
+  if (!_timerNotificationService) {
+    try {
+      _timerNotificationService = new TimerNotificationService();
+    } catch (error) {
+      console.error("Failed to initialize TimerNotificationService:", error);
+      throw error;
+    }
+  }
+  return _timerNotificationService;
+}
+
+export const timerNotificationService = getTimerNotificationService();
 
 /**
  * Setup notification category for timer notifications

@@ -186,29 +186,41 @@ export function OrganizationProvider({
 
   const value = useMemo<OrganizationContextValue>(() => {
     // Use optimistic values during transitions for smoother UX
+    // Add null safety guards to prevent Hermes crashes in release builds
     const displayWorkspace = optimisticWorkspace || currentWorkspace || "work"; // Fallback to "work"
-    const displayOrganization = optimisticOrganization || currentMembership?.organization || null;
+    const displayOrganization = optimisticOrganization || (currentMembership && currentMembership.organization ? currentMembership.organization : null);
+
+    // Defensive property access to avoid null pointer dereference in Hermes
+    const safeMembershipId = currentMembership && typeof currentMembership === 'object' && 'membershipId' in currentMembership
+      ? currentMembership.membershipId
+      : null;
+    const safeRole = currentMembership && typeof currentMembership === 'object' && 'role' in currentMembership
+      ? currentMembership.role
+      : null;
+    const safeMemberships = Array.isArray(memberships) ? memberships : [];
 
     return {
-      activeMembershipId: currentMembership?.membershipId ?? null,
+      activeMembershipId: safeMembershipId,
       activeOrganization: displayOrganization,
-      activeRole: currentMembership?.role ?? null,
-      memberships: memberships ?? [],
+      activeRole: safeRole,
+      memberships: safeMemberships,
       currentWorkspace: displayWorkspace as "personal" | "work",
       switchOrganization: async (organizationId: Id<"organizations">) => {
         setIsSwitchingOrganization(true);
-        
-        // Find the target organization for optimistic update
-        const targetOrganization = memberships?.find(
-          m => m.organization?._id === organizationId
+
+        // Find the target organization for optimistic update with null safety
+        const targetOrganization = safeMemberships.find(
+          m => m && typeof m === 'object' && m.organization && m.organization._id === organizationId
         )?.organization;
-        
+
         if (targetOrganization) {
           setOptimisticOrganization(targetOrganization); // Optimistic update
         }
-        
+
         try {
-          const orgName = targetOrganization?.name || "organization";
+          const orgName = (targetOrganization && typeof targetOrganization === 'object' && 'name' in targetOrganization)
+            ? targetOrganization.name
+            : "organization";
 
           await setActiveOrganization({ organizationId });
           setError(null);
@@ -218,9 +230,13 @@ export function OrganizationProvider({
           ToastManager.organizationSuccess(orgName);
         } catch (error: any) {
           console.error("Failed to switch organization:", error);
-          const errorMessage = error?.message || "Failed to switch organization";
-          
-          const orgName = targetOrganization?.name || "organization";
+          const errorMessage = (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string')
+            ? error.message
+            : "Failed to switch organization";
+
+          const orgName = (targetOrganization && typeof targetOrganization === 'object' && 'name' in targetOrganization)
+            ? targetOrganization.name
+            : "organization";
           
           if (errorMessage.includes("permission") || errorMessage.includes("unauthorized")) {
             setHasPermissionError(true);

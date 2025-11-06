@@ -127,10 +127,20 @@ export function useTimer(): UseTimerReturn {
       return;
     }
 
-    // Calculate initial elapsed time
+    // Calculate initial elapsed time with null safety guards
     const calculateElapsed = () => {
+      // Defensive check to prevent Hermes crash in release builds
+      if (!runningTimer || typeof runningTimer !== 'object' || !('startedAt' in runningTimer)) {
+        return;
+      }
+
+      const startedAt = runningTimer.startedAt;
+      if (typeof startedAt !== 'number' || !isFinite(startedAt)) {
+        return;
+      }
+
       const now = Date.now();
-      const elapsed = Math.floor((now - runningTimer.startedAt) / 1000);
+      const elapsed = Math.floor((now - startedAt) / 1000);
       setElapsedTime(elapsed);
     };
 
@@ -215,15 +225,22 @@ export function useTimer(): UseTimerReturn {
    * detect locally if nextInterruptAt is passed and no acknowledgment
    */
   useEffect(() => {
-    if (!runningTimer || !runningTimer.nextInterruptAt) {
+    if (!runningTimer || typeof runningTimer !== 'object') {
+      return;
+    }
+
+    // Defensive property access to prevent Hermes crash
+    const nextInterruptAt = 'nextInterruptAt' in runningTimer ? runningTimer.nextInterruptAt : null;
+    if (!nextInterruptAt || typeof nextInterruptAt !== 'number') {
       return;
     }
 
     // Check if we've passed the interrupt time significantly (grace period)
     const now = Date.now();
-    const overrunThreshold = runningTimer.nextInterruptAt + 60000; // 60 second grace period
+    const overrunThreshold = nextInterruptAt + 60000; // 60 second grace period
 
-    if (now > overrunThreshold && runningTimer.awaitingInterruptAck) {
+    const awaitingInterruptAck = 'awaitingInterruptAck' in runningTimer ? runningTimer.awaitingInterruptAck : false;
+    if (now > overrunThreshold && awaitingInterruptAck) {
       playOverrunSound();
     }
   }, [runningTimer?.nextInterruptAt, runningTimer?.awaitingInterruptAck, elapsedTime]);

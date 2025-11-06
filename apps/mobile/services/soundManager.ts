@@ -357,12 +357,27 @@ class SoundManager {
   }
 }
 
-// Create singleton instance
-export const soundManager = new SoundManager();
+// Lazy singleton instance to prevent Hermes crash during module load in release builds
+let _soundManager: SoundManager | null = null;
 
-// Export convenience functions
-export const playBreakStartSound = () => soundManager.playBreakStart();
-export const playBreakEndSound = () => soundManager.playBreakEnd();
-export const playInterruptSound = () => soundManager.playInterrupt();
-export const playOverrunSound = () => soundManager.playOverrun();
-export const playTestSound = (soundId: string) => soundManager.playSound(soundId);
+function getSoundManager(): SoundManager {
+  if (!_soundManager) {
+    try {
+      _soundManager = new SoundManager();
+    } catch (error) {
+      console.error("Failed to initialize SoundManager:", error);
+      throw error;
+    }
+  }
+  return _soundManager;
+}
+
+// Create singleton instance (lazy-loaded)
+export const soundManager = getSoundManager();
+
+// Export convenience functions (lazy-loaded)
+export const playBreakStartSound = () => getSoundManager().playBreakStart();
+export const playBreakEndSound = () => getSoundManager().playBreakEnd();
+export const playInterruptSound = () => getSoundManager().playInterrupt();
+export const playOverrunSound = () => getSoundManager().playOverrun();
+export const playTestSound = (soundId: string) => getSoundManager().playSound(soundId);

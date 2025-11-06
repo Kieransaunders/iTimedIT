@@ -49,7 +49,9 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (loaded) {
-      SplashScreen.hideAsync();
+      SplashScreen.hideAsync().catch((err) => {
+        console.error("Failed to hide splash screen:", err);
+      });
     }
   }, [loaded]);
 
@@ -69,15 +71,21 @@ export default function RootLayout() {
     return null;
   }
 
-  return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <ConvexAuthProvider client={convex} storage={AsyncStorage}>
-        <ThemeProvider>
-          <RootLayoutNav />
-        </ThemeProvider>
-      </ConvexAuthProvider>
-    </GestureHandlerRootView>
-  );
+  // Wrap in try-catch to prevent Hermes crashes during provider initialization in release builds
+  try {
+    return (
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <ConvexAuthProvider client={convex} storage={AsyncStorage}>
+          <ThemeProvider>
+            <RootLayoutNav />
+          </ThemeProvider>
+        </ConvexAuthProvider>
+      </GestureHandlerRootView>
+    );
+  } catch (err) {
+    console.error("Fatal error in RootLayout:", err);
+    throw err;
+  }
 }
 
 function RootLayoutNav() {
@@ -85,20 +93,26 @@ function RootLayoutNav() {
   const router = useRouter();
   const segments = useSegments();
 
-  // Handle authentication redirects
+  // Handle authentication redirects with null safety guards
   useEffect(() => {
     if (isLoading) return;
 
-    const inAuthGroup = segments[0] === "auth";
-    const inTabsGroup = segments[0] === "(tabs)";
-    const onLandingPage = segments.length === 0;
+    try {
+      // Defensive array access to prevent Hermes crash in release builds
+      const firstSegment = Array.isArray(segments) && segments.length > 0 ? segments[0] : null;
+      const inAuthGroup = firstSegment === "auth";
+      const inTabsGroup = firstSegment === "(tabs)";
+      const onLandingPage = Array.isArray(segments) && segments.length === 0;
 
-    if (!user && inTabsGroup) {
-      // Not authenticated and trying to access protected tabs → Redirect to landing page
-      router.replace("/");
-    } else if (user && (inAuthGroup || onLandingPage)) {
-      // Authenticated and on auth/landing page → Redirect to tabs
-      router.replace("/(tabs)");
+      if (!user && inTabsGroup) {
+        // Not authenticated and trying to access protected tabs → Redirect to landing page
+        router.replace("/");
+      } else if (user && (inAuthGroup || onLandingPage)) {
+        // Authenticated and on auth/landing page → Redirect to tabs
+        router.replace("/(tabs)");
+      }
+    } catch (err) {
+      console.error("Error in navigation redirect:", err);
     }
   }, [user, isLoading, segments]);
 
