@@ -1,12 +1,12 @@
 import React from "react";
 import {
     ActivityIndicator,
+    StyleSheet,
     Text,
     TextStyle,
     TouchableOpacity,
     ViewStyle,
 } from "react-native";
-import { createStyleSheet, useStyles } from "react-native-unistyles";
 
 export type ButtonVariant = "primary" | "secondary" | "outline" | "ghost";
 export type ButtonSize = "sm" | "md" | "lg";
@@ -31,6 +31,14 @@ interface ButtonProps {
   accessibilityHint?: string;
 }
 
+// Hardcoded colors for MVP (matching theme)
+const colors = {
+  primary: "#FF6B35",
+  surface: "#2D3748",
+  textPrimary: "#ffffff",
+  background: "#1A202C",
+};
+
 export function Button({
   children,
   onPress,
@@ -45,17 +53,53 @@ export function Button({
   accessibilityLabel,
   accessibilityHint,
 }: ButtonProps) {
-  const { styles, theme } = useStyles(stylesheet, { variant, size, fullWidth, disabled: disabled || loading });
   const isDisabled = disabled || loading;
 
-  const iconColor = variant === "primary" ? "#ffffff" : theme.colors.primary;
+  // Get variant styles
+  const buttonVariantStyle = variant === "primary"
+    ? styles.primaryButton
+    : variant === "secondary"
+    ? styles.secondaryButton
+    : variant === "outline"
+    ? styles.outlineButton
+    : styles.ghostButton;
+
+  const textVariantStyle = variant === "primary"
+    ? styles.primaryText
+    : variant === "secondary"
+    ? styles.secondaryText
+    : variant === "outline"
+    ? styles.outlineText
+    : styles.ghostText;
+
+  // Get size styles
+  const buttonSizeStyle = size === "sm"
+    ? styles.smButton
+    : size === "lg"
+    ? styles.lgButton
+    : styles.mdButton;
+
+  const textSizeStyle = size === "sm"
+    ? styles.smText
+    : size === "lg"
+    ? styles.lgText
+    : styles.mdText;
+
+  const iconColor = variant === "primary" ? "#ffffff" : colors.primary;
 
   return (
     <TouchableOpacity
-      style={[styles.button, style]}
+      style={[
+        styles.button,
+        buttonVariantStyle,
+        buttonSizeStyle,
+        fullWidth && styles.fullWidth,
+        isDisabled && styles.disabled,
+        style,
+      ]}
       onPress={onPress}
       disabled={isDisabled}
-      activeOpacity={theme.opacity.pressed}
+      activeOpacity={0.7}
       accessible={true}
       accessibilityLabel={accessibilityLabel || (typeof children === "string" ? children : undefined)}
       accessibilityHint={accessibilityHint}
@@ -70,95 +114,90 @@ export function Button({
       ) : (
         <>
           {Icon && <Icon size={18} color={iconColor} />}
-          <Text style={[styles.text, textStyle]}>{children}</Text>
+          <Text style={[styles.text, textVariantStyle, textSizeStyle, textStyle]}>
+            {children}
+          </Text>
         </>
       )}
     </TouchableOpacity>
   );
 }
 
-const stylesheet = createStyleSheet((theme) => ({
+const styles = StyleSheet.create({
   button: {
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: theme.borderRadius.md,
+    borderRadius: 8,
     flexDirection: "row",
-    gap: theme.spacing.sm,
-
-    variants: {
-      variant: {
-        primary: {
-          backgroundColor: theme.colors.primary,
-        },
-        secondary: {
-          backgroundColor: theme.colors.surface,
-        },
-        outline: {
-          backgroundColor: "transparent",
-          borderWidth: 2,
-          borderColor: theme.colors.primary,
-        },
-        ghost: {
-          backgroundColor: "transparent",
-        },
-      },
-      size: {
-        sm: {
-          height: 36,
-          paddingHorizontal: theme.spacing.md,
-        },
-        md: {
-          height: theme.sizing.buttonHeight,
-          paddingHorizontal: theme.spacing.lg,
-        },
-        lg: {
-          height: 56,
-          paddingHorizontal: theme.spacing.xl,
-        },
-      },
-      fullWidth: {
-        true: {
-          width: "100%",
-        },
-      },
-      disabled: {
-        true: {
-          opacity: theme.opacity.disabled,
-        },
-      },
-    },
+    gap: 8,
   },
+
+  // Variant styles
+  primaryButton: {
+    backgroundColor: colors.primary,
+  },
+  secondaryButton: {
+    backgroundColor: colors.surface,
+  },
+  outlineButton: {
+    backgroundColor: "transparent",
+    borderWidth: 2,
+    borderColor: colors.primary,
+  },
+  ghostButton: {
+    backgroundColor: "transparent",
+  },
+
+  // Size styles
+  smButton: {
+    height: 36,
+    paddingHorizontal: 16,
+  },
+  mdButton: {
+    height: 48,
+    paddingHorizontal: 24,
+  },
+  lgButton: {
+    height: 56,
+    paddingHorizontal: 32,
+  },
+
+  // State styles
+  fullWidth: {
+    width: "100%",
+  },
+  disabled: {
+    opacity: 0.5,
+  },
+
+  // Text base
   text: {
     fontWeight: "600",
-    fontSize: 16,
-
-    variants: {
-      variant: {
-        primary: {
-          color: "#ffffff",
-        },
-        secondary: {
-          color: theme.colors.textPrimary,
-        },
-        outline: {
-          color: theme.colors.primary,
-        },
-        ghost: {
-          color: theme.colors.primary,
-        },
-      },
-      size: {
-        sm: {
-          fontSize: 14,
-        },
-        md: {
-          fontSize: 16,
-        },
-        lg: {
-          fontSize: 20,
-          fontWeight: "700",
-        },
-      },
-    },
   },
-}));
+
+  // Text variant styles
+  primaryText: {
+    color: "#ffffff",
+  },
+  secondaryText: {
+    color: colors.textPrimary,
+  },
+  outlineText: {
+    color: colors.primary,
+  },
+  ghostText: {
+    color: colors.primary,
+  },
+
+  // Text size styles
+  smText: {
+    fontSize: 14,
+  },
+  mdText: {
+    fontSize: 16,
+  },
+  lgText: {
+    fontSize: 20,
+    fontWeight: "700",
+  },
+});

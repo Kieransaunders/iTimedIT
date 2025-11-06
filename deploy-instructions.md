@@ -1,7 +1,7 @@
 # Deployment Instructions for iTimedIT Web App
 
 ## Current Setup
-- **Production URL**: https://itimedit.netlify.app
+- **Production URL**: https://itimedit.com
 - **Repository**: https://github.com/Kieransaunders/iTimedIT.git
 - **Web App Location**: `/apps/web`
 - **Production Convex Backend**: `https://basic-greyhound-928.convex.cloud`

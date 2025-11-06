@@ -8,6 +8,7 @@ import { Input } from "./ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
 import { toast } from "sonner";
 import { useCurrency } from "../hooks/useCurrency";
+import { useOrganization } from "../lib/organization-context";
 
 interface ProjectDetailPageProps {
   projectId: string;
@@ -15,11 +16,18 @@ interface ProjectDetailPageProps {
 }
 
 export function ProjectDetailPage({ projectId, onBackToProjects }: ProjectDetailPageProps) {
+  const { isReady, activeOrganization } = useOrganization();
   const project = useQuery(api.projects.get, { id: projectId as Id<"projects"> });
   const categories = useQuery(api.categories.getCategories);
+  const organizationMembers = useQuery(
+    api.organizations.listOrganizationMembers,
+    isReady ? {} : "skip"
+  );
   const createManualEntry = useMutation(api.timer.createManualEntry);
   const { getCurrencySymbol, formatCurrency } = useCurrency();
-  
+
+  const [viewMode, setViewMode] = useState<"personal" | "team">("personal");
+  const [filterUserId, setFilterUserId] = useState<"all" | Id<"users">>("all");
   const [showManualEntryDialog, setShowManualEntryDialog] = useState(false);
   const [manualEntryForm, setManualEntryForm] = useState({
     date: new Date().toISOString().split('T')[0],
@@ -29,6 +37,12 @@ export function ProjectDetailPage({ projectId, onBackToProjects }: ProjectDetail
     category: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Determine if team view should be available
+  const isWorkOrganization =
+    activeOrganization && activeOrganization.workspaceType === "work";
+  const hasMultipleMembers = (organizationMembers?.length ?? 0) > 1;
+  const showTeamView = isWorkOrganization && hasMultipleMembers;
 
   const handleManualEntrySubmit = async () => {
     if (!project) return;
@@ -105,8 +119,34 @@ export function ProjectDetailPage({ projectId, onBackToProjects }: ProjectDetail
               </p>
             )}
           </div>
-          
-          <Dialog open={showManualEntryDialog} onOpenChange={setShowManualEntryDialog}>
+
+          <div className="flex gap-3">
+            {showTeamView && (
+              <div className="flex rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-1">
+                <button
+                  onClick={() => setViewMode("personal")}
+                  className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                    viewMode === "personal"
+                      ? "bg-primary text-white"
+                      : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  }`}
+                >
+                  My Entries
+                </button>
+                <button
+                  onClick={() => setViewMode("team")}
+                  className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                    viewMode === "team"
+                      ? "bg-primary text-white"
+                      : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  }`}
+                >
+                  Team Activity
+                </button>
+              </div>
+            )}
+
+            <Dialog open={showManualEntryDialog} onOpenChange={setShowManualEntryDialog}>
             <DialogTrigger asChild>
               <Button className="bg-[#F85E00] hover:bg-[#d14e00] text-white">
                 + Add Time Entry
@@ -197,10 +237,41 @@ export function ProjectDetailPage({ projectId, onBackToProjects }: ProjectDetail
               </div>
             </DialogContent>
           </Dialog>
+          </div>
         </div>
       </div>
 
-      <RecentEntriesTable projectId={projectId as Id<"projects">} />
+      {viewMode === "team" && organizationMembers && organizationMembers.length > 0 && (
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Filter by Team Member
+          </label>
+          <select
+            value={filterUserId}
+            onChange={(event) =>
+              setFilterUserId(
+                event.target.value === "all"
+                  ? "all"
+                  : (event.target.value as Id<"users">)
+              )
+            }
+            className="h-10 w-64 rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          >
+            <option value="all">All team members</option>
+            {organizationMembers.map((member) => (
+              <option key={member.membership._id} value={member.user?._id}>
+                {member.user?.name || "Unknown"}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      <RecentEntriesTable
+        projectId={projectId as Id<"projects">}
+        viewMode={viewMode}
+        filterUserId={filterUserId === "all" ? undefined : filterUserId}
+      />
     </div>
   );
 }

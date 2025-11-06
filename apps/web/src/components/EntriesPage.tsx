@@ -4,6 +4,7 @@ import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
 import { useOrganization } from "../lib/organization-context";
 import { RecentEntriesTable, type RecentEntriesFilters } from "./RecentEntriesTable";
+import { TeamActivityLeaderboard } from "./TeamActivityLeaderboard";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
@@ -29,6 +30,8 @@ type ClientOption = {
 
 export function EntriesPage() {
   const { isReady, activeOrganization } = useOrganization();
+  const [viewMode, setViewMode] = useState<"personal" | "team">("personal");
+  const [filterUserId, setFilterUserId] = useState<"all" | Id<"users">>("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedClient, setSelectedClient] = useState<"all" | Id<"clients">>("all");
   const [selectedProject, setSelectedProject] = useState<"all" | Id<"projects">>("all");
@@ -49,10 +52,27 @@ export function EntriesPage() {
 
   const projects = useQuery(api.projects.listAll, isReady ? {} : "skip");
   const categories = useQuery(api.categories.getCategories, isReady ? {} : "skip");
-  // Removed direct entries query - stats calculation is disabled for now to prevent workspace switching errors
-  // TODO: Refactor to get stats from RecentEntriesTable or use a more robust query approach
-  const entries = undefined;
+  const organizationMembers = useQuery(
+    api.organizations.listOrganizationMembers,
+    isReady ? {} : "skip"
+  );
+  // Fetch entries for stats calculation - using same safe query pattern as RecentEntriesTable
+  const entries = useQuery(
+    api.entries.list,
+    isReady ? {
+      projectId: undefined,
+      paginationOpts: { numItems: 1000, cursor: null },
+      viewMode: viewMode,
+      filterUserId: filterUserId === "all" ? undefined : filterUserId,
+    } : "skip"
+  );
   const createManualEntry = useMutation(api.timer.createManualEntry);
+
+  // Determine if team view should be available
+  const isWorkOrganization =
+    activeOrganization && activeOrganization.workspaceType === "work";
+  const hasMultipleMembers = (organizationMembers?.length ?? 0) > 1;
+  const showTeamView = isWorkOrganization && hasMultipleMembers;
 
   // Reset filters when organization changes
   useEffect(() => {
@@ -60,6 +80,8 @@ export function EntriesPage() {
     setSelectedProject("all");
     setSelectedCategory("all");
     setSearchTerm("");
+    setViewMode("personal");
+    setFilterUserId("all");
   }, [activeOrganization?._id]);
 
   const clientOptions = useMemo<ClientOption[]>(() => {
@@ -337,7 +359,32 @@ export function EntriesPage() {
             Review, search, and adjust recent time entries across your projects.
           </p>
         </div>
-        <Dialog
+        <div className="flex gap-3">
+          {showTeamView && (
+            <div className="flex rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-1">
+              <button
+                onClick={() => setViewMode("personal")}
+                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                  viewMode === "personal"
+                    ? "bg-primary text-white"
+                    : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                }`}
+              >
+                My Entries
+              </button>
+              <button
+                onClick={() => setViewMode("team")}
+                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                  viewMode === "team"
+                    ? "bg-primary text-white"
+                    : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                }`}
+              >
+                Team Activity
+              </button>
+            </div>
+          )}
+          <Dialog
           open={showManualEntryDialog}
           onOpenChange={(open) => {
             if (open) {
@@ -473,7 +520,10 @@ export function EntriesPage() {
             </div>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
+
+      {viewMode === "team" && <TeamActivityLeaderboard />}
 
       {!hasProjects && (
         <div className="rounded-lg border border-dashed border-gray-300 bg-white/70 p-4 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-900/60 dark:text-gray-300">
@@ -532,6 +582,32 @@ export function EntriesPage() {
                     />
                   </div>
                 </div>
+
+                {viewMode === "team" && organizationMembers && organizationMembers.length > 0 && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Team Member
+                    </label>
+                    <select
+                      value={filterUserId}
+                      onChange={(event) =>
+                        setFilterUserId(
+                          event.target.value === "all"
+                            ? "all"
+                            : (event.target.value as Id<"users">)
+                        )
+                      }
+                      className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    >
+                      <option value="all">All team members</option>
+                      {organizationMembers.map((member) => (
+                        <option key={member.membership._id} value={member.user?._id}>
+                          {member.user?.name || "Unknown"}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
@@ -711,6 +787,8 @@ export function EntriesPage() {
         pageSize={50}
         filters={entriesFilters}
         emptyStateMessage="No entries match the current filters."
+        viewMode={viewMode}
+        filterUserId={filterUserId === "all" ? undefined : filterUserId}
       />
     </div>
   );

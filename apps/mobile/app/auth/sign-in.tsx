@@ -2,12 +2,12 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useAuth } from "@/hooks/useAuth";
 import { spacing, typography } from "@/utils/theme";
-import { useTheme } from "@/utils/ThemeContext";
 import { getEmailError, getPasswordError } from "@/utils/validators";
 import { useRouter } from "expo-router";
-import { Eye, EyeOff } from "lucide-react-native";
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import React, { useEffect, useState } from "react";
 import {
+  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -16,11 +16,29 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import Toast from "react-native-toast-message";
+
+// Define colors directly to match theme structure
+const colors = {
+  background: "#1A202C",
+  surface: "#2D3748",
+  surfaceElevated: "#374151",
+  primary: "#FF6B35",
+  primaryHover: "#E55A2B",
+  primaryLight: "#B84E25",
+  accent: "#FFD93D",
+  accentHover: "#E6C335",
+  textPrimary: "#ffffff",
+  textSecondary: "#cbd5e0",
+  textTertiary: "#a0aec0",
+  success: "#06d6a0",
+  warning: "#ff9f1c",
+  error: "#ef476f",
+  border: "#4a5568",
+  borderLight: "#2d3748",
+};
 
 export default function SignInScreen() {
   const router = useRouter();
-  const { colors } = useTheme();
   const { signInWithPassword, signInWithGoogle, isAuthenticated, isLoading: authLoading } = useAuth();
 
   const [email, setEmail] = useState("");
@@ -71,20 +89,15 @@ export default function SignInScreen() {
       await signInWithPassword(email, password);
 
       // Show success message
-      Toast.show({
-        type: "success",
-        text1: "Welcome back!",
-        text2: "You have successfully signed in.",
-      });
+      Alert.alert("Welcome back!", "You have successfully signed in.");
 
       router.replace("/");
     } catch (error: any) {
       // Show error message
-      Toast.show({
-        type: "error",
-        text1: "Sign In Failed",
-        text2: error.message || "Please check your credentials and try again.",
-      });
+      Alert.alert(
+        "Sign In Failed",
+        error.message || "Please check your credentials and try again."
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -123,23 +136,18 @@ export default function SignInScreen() {
       // Only show success message if we're actually authenticated
       // (signInWithGoogle returns early on cancel without throwing)
       if (isAuthenticated) {
-        Toast.show({
-          type: "success",
-          text1: "Welcome!",
-          text2: "You have successfully signed in with Google.",
-        });
+        Alert.alert("Welcome!", "You have successfully signed in with Google.");
       }
 
       // Don't manually redirect - let the useEffect handle it
       // This ensures user data is loaded before navigation
     } catch (error: any) {
-      // Only show error toast for actual errors (not cancellation)
+      // Only show error alert for actual errors (not cancellation)
       if (error.message && !error.message.includes("cancel")) {
-        Toast.show({
-          type: "error",
-          text1: "Google Sign In Failed",
-          text2: error.message || "Please try again.",
-        });
+        Alert.alert(
+          "Google Sign In Failed",
+          error.message || "Please try again."
+        );
       }
     } finally {
       setIsGoogleLoading(false);
@@ -195,11 +203,11 @@ export default function SignInScreen() {
                 onPress={() => setShowPassword(!showPassword)}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
-                {showPassword ? (
-                  <EyeOff size={20} color={colors.textSecondary} />
-                ) : (
-                  <Eye size={20} color={colors.textSecondary} />
-                )}
+                <MaterialCommunityIcons
+                  name={showPassword ? "eye-off" : "eye"}
+                  size={20}
+                  color={colors.textSecondary}
+                />
               </TouchableOpacity>
             }
           />
@@ -242,7 +250,6 @@ export default function SignInScreen() {
           </View>
         </View>
       </ScrollView>
-      <Toast />
     </KeyboardAvoidingView>
   );
 }

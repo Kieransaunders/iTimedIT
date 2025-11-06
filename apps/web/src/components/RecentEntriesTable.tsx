@@ -7,6 +7,7 @@ import { formatDateTime, formatDate } from "../lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
+import { Avatar } from "./ui/Avatar";
 
 interface RecentEntriesTableProps {
   projectId: Id<"projects"> | null;
@@ -17,6 +18,8 @@ interface RecentEntriesTableProps {
   filters?: RecentEntriesFilters;
   workspaceType?: "personal" | "work";
   skipQuery?: boolean;
+  viewMode?: "personal" | "team";
+  filterUserId?: Id<"users">;
 }
 
 export interface RecentEntriesFilters {
@@ -37,6 +40,8 @@ export function RecentEntriesTable({
   filters,
   workspaceType = "work",
   skipQuery = false,
+  viewMode = "personal",
+  filterUserId,
 }: RecentEntriesTableProps) {
   const [editingEntry, setEditingEntry] = useState<any | null>(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -55,6 +60,8 @@ export function RecentEntriesTable({
     (workspaceType === "personal" || isReady) && !skipQuery ? {
       projectId: projectId || undefined,
       paginationOpts: { numItems: pageSize, cursor: null },
+      viewMode: viewMode,
+      filterUserId: filterUserId,
     } : "skip"
   );
 
@@ -259,8 +266,13 @@ export function RecentEntriesTable({
         <table className="w-full min-w-full">
           <thead className="bg-gray-100 dark:bg-gray-700/50">
             <tr>
+              {viewMode === "team" && (
+                <th className="px-3 sm:px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                  Team Member
+                </th>
+              )}
               <th className="px-3 sm:px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                Project
+                {viewMode === "team" ? "Description" : "Project"}
               </th>
               <th className="px-3 sm:px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap">
                 Date & Time
@@ -282,20 +294,32 @@ export function RecentEntriesTable({
           <tbody className="bg-white dark:bg-gray-800/50 divide-y divide-gray-200 dark:divide-gray-600">
             {displayEntries.map((entry) => {
               const duration = entry.seconds || (entry.stoppedAt ? (entry.stoppedAt - entry.startedAt) / 1000 : 0);
-              
+
               return (
                 <tr
                   key={entry._id}
                   onClick={() => handleRowClick(entry, duration)}
                   className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors cursor-pointer"
                 >
+                  {viewMode === "team" && (
+                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-3">
+                        <Avatar name={entry.user?.name || "Unknown"} size="sm" />
+                        <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                          {entry.user?.name || "Unknown"}
+                        </span>
+                      </div>
+                    </td>
+                  )}
                   <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                      {entry.project?.name}
+                      {viewMode === "team" ? (entry.note || <span className="text-gray-500 italic">No description</span>) : entry.project?.name}
                     </div>
-                    <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-                      {entry.client?.name}
-                    </div>
+                    {viewMode !== "team" && (
+                      <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+                        {entry.client?.name}
+                      </div>
+                    )}
                   </td>
                   <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-100">
                     {formatDateTime(entry.startedAt)}
@@ -307,7 +331,14 @@ export function RecentEntriesTable({
                     {entry.category || <span className="text-gray-500 dark:text-gray-400 italic">No category</span>}
                   </td>
                   <td className="px-3 sm:px-6 py-4 hidden lg:table-cell text-sm text-gray-800 dark:text-gray-100 truncate max-w-xs">
-                    {entry.note || <span className="text-gray-500 dark:text-gray-400 italic">No note</span>}
+                    {viewMode === "team" ? (
+                      <div>
+                        <div className="font-medium">{entry.project?.name}</div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400">{entry.client?.name}</div>
+                      </div>
+                    ) : (
+                      entry.note || <span className="text-gray-500 dark:text-gray-400 italic">No note</span>
+                    )}
                   </td>
                   <td
                     className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm"

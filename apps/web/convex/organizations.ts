@@ -1,6 +1,7 @@
 import { mutation, query, internalMutation, internalQuery, MutationCtx, QueryCtx } from "./_generated/server";
 import {
   ensureMembership,
+  maybeMembership,
   MembershipContext,
   requireMembership,
   requireMembershipWithRole,
@@ -70,7 +71,7 @@ export const listMemberships = query({
 export const listOrganizationMembers = query({
   args: {},
   handler: async (ctx) => {
-    const membership = await safeRequireMembershipWithRole(ctx, ["owner", "admin"]);
+    const membership = await maybeMembership(ctx);
     if (!membership) {
       return [];
     }

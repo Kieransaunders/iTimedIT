@@ -1,110 +1,135 @@
-import React, { useEffect } from "react";
-import { ScrollView, View, StatusBar } from "react-native";
-import { createStyleSheet, useStyles } from "react-native-unistyles";
+import React from "react";
+import { View, Text, TouchableOpacity, StyleSheet, StatusBar } from "react-native";
 import { useRouter } from "expo-router";
 import { useAuth } from "../hooks/useAuth";
-import { HeroSection } from "../components/marketing/HeroSection";
-import { FeatureCard } from "../components/marketing/FeatureCard";
-import { CTAButtons } from "../components/marketing/CTAButtons";
-import {
-  Clock,
-  DollarSign,
-  Timer,
-  Smartphone,
-} from "lucide-react-native";
+import { useAuthActions } from "@convex-dev/auth/react";
 
-/**
- * Landing/Welcome Page for iTimedIT Mobile
- *
- * Shown to logged-out users as the first screen.
- * Displays marketing content with value proposition and CTAs.
- *
- * Auth Flow:
- * - Landing Page → Sign Up/Sign In → Main App
- * - Or: Landing Page → Try as Guest → Main App
- */
 export default function LandingPage() {
-  const { styles, theme } = useStyles(stylesheet);
   const router = useRouter();
-  const { isAuthenticated, isLoading } = useAuth();
+  const { user, isLoading } = useAuth();
+  const { signOut } = useAuthActions();
 
-  // Redirect to main app if already authenticated
-  useEffect(() => {
-    if (!isLoading && isAuthenticated) {
-      router.replace("/(tabs)");
-    }
-  }, [isAuthenticated, isLoading]);
-
-  // Show nothing while checking auth state
+  // Show loading state
   if (isLoading) {
-    return null;
+    return (
+      <View style={styles.container}>
+        <StatusBar barStyle="light-content" backgroundColor="#1a1a1a" />
+        <Text style={styles.title}>Loading...</Text>
+      </View>
+    );
   }
 
-  return (
-    <>
-      <StatusBar
-        barStyle="light-content"
-        backgroundColor={theme.colors.background}
-      />
-      <ScrollView
-        style={styles.container}
-        contentContainerStyle={styles.contentContainer}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Hero Section */}
-        <HeroSection />
+  // Signed in state
+  if (user) {
+    return (
+      <View style={styles.container}>
+        <StatusBar barStyle="light-content" backgroundColor="#1a1a1a" />
 
-        {/* Features Section */}
-        <View style={styles.featuresContainer}>
-          <FeatureCard
-            icon={Clock}
-            title="One-Tap Timer Start"
-            description="Start tracking time instantly with quick project selection. No complex forms or setup required."
-            iconColor={theme.colors.primary}
-          />
-          <FeatureCard
-            icon={Smartphone}
-            title="Lock Screen Control"
-            description="Timer runs in the background with push notifications. Control your time tracking from anywhere."
-            iconColor={theme.colors.accent}
-          />
-          <FeatureCard
-            icon={DollarSign}
-            title="Project & Budget Tracking"
-            description="Monitor project budgets in real-time with automatic alerts when approaching limits."
-            iconColor="#10B981"
-          />
-          <FeatureCard
-            icon={Timer}
-            title="Pomodoro & Focus Modes"
-            description="Stay productive with built-in Pomodoro timer and customizable work intervals."
-            iconColor="#8B5CF6"
-          />
+        <View style={styles.header}>
+          <Text style={styles.title}>✅ Signed In Successfully!</Text>
+          <Text style={styles.subtitle}>Welcome, {user.name || user.email}</Text>
         </View>
 
-        {/* CTA Buttons */}
-        <CTAButtons />
+        <TouchableOpacity
+          style={[styles.button, styles.dangerButton]}
+          onPress={() => signOut()}
+        >
+          <Text style={styles.buttonText}>Sign Out</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
-        {/* Bottom Spacing */}
-        <View style={styles.bottomSpacer} />
-      </ScrollView>
-    </>
+  // Signed out state - show auth options
+  return (
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#1a1a1a" />
+
+      <View style={styles.header}>
+        <Text style={styles.title}>iTimedIT</Text>
+        <Text style={styles.subtitle}>Simple Time Tracking</Text>
+      </View>
+
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity
+          style={[styles.button, styles.primaryButton]}
+          onPress={() => router.push("/auth/sign-up")}
+        >
+          <Text style={styles.primaryButtonText}>Sign Up</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.button, styles.secondaryButton]}
+          onPress={() => router.push("/auth/sign-in")}
+        >
+          <Text style={styles.secondaryButtonText}>Sign In</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
   );
 }
 
-const stylesheet = createStyleSheet((theme) => ({
+const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: "#1a1a1a",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
   },
-  contentContainer: {
-    paddingBottom: theme.spacing.xxl,
+  header: {
+    alignItems: "center",
+    marginBottom: 60,
   },
-  featuresContainer: {
-    paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.xl,
+  title: {
+    fontSize: 48,
+    fontWeight: "bold",
+    color: "#ffffff",
+    marginBottom: 12,
+    textAlign: "center",
   },
-  bottomSpacer: {
-    height: theme.spacing.xl,
+  subtitle: {
+    fontSize: 18,
+    color: "#9ca3af",
+    textAlign: "center",
   },
-}));
+  buttonContainer: {
+    width: "100%",
+    maxWidth: 400,
+    gap: 16,
+  },
+  button: {
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: 12,
+    alignItems: "center",
+    width: "100%",
+  },
+  primaryButton: {
+    backgroundColor: "#FF6B35",
+  },
+  secondaryButton: {
+    backgroundColor: "transparent",
+    borderWidth: 2,
+    borderColor: "#FF6B35",
+  },
+  dangerButton: {
+    backgroundColor: "#ef4444",
+    marginTop: 20,
+  },
+  primaryButtonText: {
+    color: "#ffffff",
+    fontSize: 18,
+    fontWeight: "600",
+  },
+  secondaryButtonText: {
+    color: "#FF6B35",
+    fontSize: 18,
+    fontWeight: "600",
+  },
+  buttonText: {
+    color: "#ffffff",
+    fontSize: 18,
+    fontWeight: "600",
+  },
+});

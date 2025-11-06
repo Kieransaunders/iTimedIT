@@ -7,6 +7,8 @@ export const list = query({
   args: {
     projectId: v.optional(v.id("projects")),
     paginationOpts: paginationOptsValidator,
+    viewMode: v.optional(v.union(v.literal("personal"), v.literal("team"))),
+    filterUserId: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
     try {
@@ -20,6 +22,9 @@ export const list = query({
       if (!organizationId || !userId) {
         return { page: [], isDone: true, continueCursor: "" };
       }
+
+      const viewMode = args.viewMode || "personal";
+      const isTeamView = viewMode === "team";
 
       let entriesQuery;
 
@@ -35,13 +40,31 @@ export const list = query({
 
         entriesQuery = ctx.db
           .query("timeEntries")
-          .withIndex("byProject", (q) => q.eq("projectId", projectId))
-          .filter((q) => q.eq(q.field("userId"), userId));
+          .withIndex("byProject", (q) => q.eq("projectId", projectId));
+
+        // Apply user filter based on view mode
+        if (isTeamView && args.filterUserId) {
+          entriesQuery = entriesQuery.filter((q) => q.eq(q.field("userId"), args.filterUserId));
+        } else if (!isTeamView) {
+          entriesQuery = entriesQuery.filter((q) => q.eq(q.field("userId"), userId));
+        }
       } else {
-        entriesQuery = ctx.db
-          .query("timeEntries")
-          .withIndex("byUserStarted", (q) => q.eq("userId", userId))
-          .filter((q) => q.eq(q.field("organizationId"), organizationId));
+        if (isTeamView) {
+          // Team view: fetch all org entries, optionally filtered by user
+          entriesQuery = ctx.db
+            .query("timeEntries")
+            .withIndex("byOrganization", (q) => q.eq("organizationId", organizationId));
+
+          if (args.filterUserId) {
+            entriesQuery = entriesQuery.filter((q) => q.eq(q.field("userId"), args.filterUserId));
+          }
+        } else {
+          // Personal view: only current user's entries
+          entriesQuery = ctx.db
+            .query("timeEntries")
+            .withIndex("byUserStarted", (q) => q.eq("userId", userId))
+            .filter((q) => q.eq(q.field("organizationId"), organizationId));
+        }
       }
 
       const result = await entriesQuery
@@ -53,18 +76,21 @@ export const list = query({
           try {
             const project = await ctx.db.get(entry.projectId);
             const client = project?.clientId ? await ctx.db.get(project.clientId) : null;
+            const user = entry.userId ? await ctx.db.get(entry.userId) : null;
             return {
               ...entry,
               project,
               client,
+              user: user ? { _id: user._id, name: user.name, email: user.email } : null,
             };
           } catch (error) {
-            // If fetching project/client fails, return entry without them
-            console.error("Error fetching project/client for entry:", entry._id, error);
+            // If fetching project/client/user fails, return entry without them
+            console.error("Error fetching project/client/user for entry:", entry._id, error);
             return {
               ...entry,
               project: null,
               client: null,
+              user: null,
             };
           }
         })
@@ -85,6 +111,58 @@ export const list = query({
       console.error("Error in entries.list query:", error);
       return { page: [], isDone: true, continueCursor: "" };
     }
+  },
+});
+
+export const getMostActiveMembers = query({
+  args: {
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const membership = await maybeMembership(ctx);
+    if (!membership) {
+      return [];
+    }
+    const { organizationId } = membership;
+
+    const limit = args.limit || 3;
+    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+
+    // Fetch all entries from the last 7 days for this organization
+    const recentEntries = await ctx.db
+      .query("timeEntries")
+      .withIndex("byOrganization", (q) => q.eq("organizationId", organizationId))
+      .filter((q) => q.gte(q.field("startedAt"), sevenDaysAgo))
+      .collect();
+
+    // Aggregate seconds by userId
+    const userTotals = new Map<string, number>();
+    for (const entry of recentEntries) {
+      if (entry.userId && entry.seconds) {
+        const current = userTotals.get(entry.userId) || 0;
+        userTotals.set(entry.userId, current + entry.seconds);
+      }
+    }
+
+    // Convert to array and sort by total seconds descending
+    const sortedUsers = Array.from(userTotals.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, limit);
+
+    // Fetch user details
+    const result = await Promise.all(
+      sortedUsers.map(async ([userId, totalSeconds]) => {
+        const user = await ctx.db.get(userId as any);
+        return {
+          userId: userId as any,
+          name: user?.name || "Unknown",
+          email: user?.email,
+          totalSeconds,
+        };
+      })
+    );
+
+    return result;
   },
 });
 
