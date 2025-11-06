@@ -142,7 +142,7 @@ export default defineConfig(({ mode }) => ({
       },
     }),
     sitemap({
-      hostname: "https://itimedit.app", // Replace with your actual domain
+      hostname: "https://itimedit.app",
       dynamicRoutes: [
         "/",
         "/features",
@@ -152,6 +152,12 @@ export default defineConfig(({ mode }) => ({
         "/privacy",
         "/support",
         "/terms",
+      ],
+      robots: [
+        {
+          userAgent: "*",
+          allow: "/",
+        },
       ],
     }),
     // Only include Sentry plugin if auth token is configured

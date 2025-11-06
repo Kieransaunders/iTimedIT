@@ -15,6 +15,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/utils/ThemeContext";
 import { spacing, typography } from "@/utils/theme";
+import { Button } from "@/components/ui";
 import {
   soundManager,
   SoundPreferences,
@@ -795,14 +796,14 @@ export default function SettingsScreen() {
         {/* Sign Out Button */}
         {user && (
           <View style={styles.signOutSection}>
-            <TouchableOpacity
+            <Button
               onPress={handleSignOut}
+              variant="primary"
+              size="md"
               style={[styles.signOutButton, { backgroundColor: colors.error }]}
             >
-              <Text style={styles.signOutButtonText}>
-                {isAnonymousUser(user) ? 'Exit Guest Mode' : 'Sign Out'}
-              </Text>
-            </TouchableOpacity>
+              {isAnonymousUser(user) ? 'Exit Guest Mode' : 'Sign Out'}
+            </Button>
           </View>
         )}
       </ScrollView>
@@ -1072,16 +1073,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   signOutButton: {
-    paddingHorizontal: 48,
-    paddingVertical: 14,
-    borderRadius: 8,
     minWidth: 200,
-    alignItems: 'center',
-  },
-  signOutButtonText: {
-    color: 'white',
-    fontWeight: '600',
-    fontSize: 16,
   },
   workspaceSwitcherContainer: {
     alignItems: 'center',

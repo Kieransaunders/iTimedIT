@@ -1,5 +1,5 @@
 import { ArrowLeft } from "lucide-react";
-import { SignInForm } from "./SignInForm";
+import { SignInForm } from "../SignInForm";
 
 interface MobileSignInProps {
   onBack: () => void;
