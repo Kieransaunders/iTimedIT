@@ -2,8 +2,9 @@
 import "react-native-get-random-values";
 import "react-native-url-polyfill/auto";
 
+// 🔍 CRASH TEST: Commenting out Unistyles to test if it causes Hermes crash
 // Initialize Unistyles
-import "../styles/unistyles";
+// import "../styles/unistyles";
 
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { DarkTheme, DefaultTheme, ThemeProvider as NavigationThemeProvider } from '@react-navigation/native';
@@ -11,7 +12,8 @@ import { useFonts } from 'expo-font';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
-import 'react-native-reanimated';
+// 🔍 CRASH TEST: Commenting out reanimated to test if it causes Hermes crash
+// import 'react-native-reanimated';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -21,7 +23,8 @@ import { OrganizationProvider } from "../contexts/OrganizationContext";
 import { ThemeProvider } from "../utils/ThemeContext";
 import { useAuth } from "../hooks/useAuth";
 import { InterruptBanner } from "../components/timer/InterruptBanner";
-import { initializeNotifications } from "../services/notifications";
+// 🔍 CRASH TEST: Commenting out notifications import (module may load at import time)
+// import { initializeNotifications } from "../services/notifications";
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -39,7 +42,7 @@ SplashScreen.preventAutoHideAsync();
 export default function RootLayout() {
   const [loaded, error] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
-    ...FontAwesome.font,
+    // ...FontAwesome.font, // Temporarily disabled to debug crash
   });
 
   // Expo Router uses Error Boundaries to catch errors in the navigation tree.
@@ -55,17 +58,18 @@ export default function RootLayout() {
     }
   }, [loaded]);
 
-  // Initialize notifications system early to prevent crashes
-  useEffect(() => {
-    // Lazy initialization - run after component mounts to prevent startup crashes
-    const timer = setTimeout(() => {
-      initializeNotifications().catch((err) => {
-        console.error("Failed to initialize notifications in _layout:", err);
-      });
-    }, 0);
+  // 🔍 CRASH TEST: Commenting out notification init to test if it causes Hermes crash
+  // // Initialize notifications system early to prevent crashes
+  // useEffect(() => {
+  //   // Lazy initialization - run after component mounts to prevent startup crashes
+  //   const timer = setTimeout(() => {
+  //     initializeNotifications().catch((err) => {
+  //       console.error("Failed to initialize notifications in _layout:", err);
+  //     });
+  //   }, 0);
 
-    return () => clearTimeout(timer);
-  }, []);
+  //   return () => clearTimeout(timer);
+  // }, []);
 
   if (!loaded) {
     return null;
