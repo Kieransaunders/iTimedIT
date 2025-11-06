@@ -248,7 +248,7 @@ const applicationTables = {
       appVersion: v.optional(v.string()),
     })),
     createdAt: v.number(),
-    lastUsedAt: v.optional(v.number()),
+    lastUsedAt: v.number(),
     isActive: v.boolean(),
   })
     .index("byUser", ["userId"])

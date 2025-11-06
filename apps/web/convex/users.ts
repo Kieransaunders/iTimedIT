@@ -185,40 +185,45 @@ export const registerExpoPushToken = mutation({
 
     const now = Date.now();
 
-    if (existingToken) {
-      // Update existing token
-      await ctx.db.patch(existingToken._id, {
-        lastUsedAt: now,
-        isActive: true,
-        ...(args.deviceInfo && { deviceInfo: args.deviceInfo }),
-      });
+    try {
+      if (existingToken) {
+        // Update existing token
+        await ctx.db.patch(existingToken._id, {
+          lastUsedAt: now,
+          isActive: true,
+          ...(args.deviceInfo && { deviceInfo: args.deviceInfo }),
+        });
 
-      console.log("Updated existing Expo push token for user:", userId);
-      return { success: true, tokenId: existingToken._id };
-    } else {
-      // Deactivate any old tokens for this user (only keep the latest)
-      const oldTokens = await ctx.db
-        .query("expoPushTokens")
-        .withIndex("byUser", (q) => q.eq("userId", userId))
-        .filter((q) => q.eq(q.field("isActive"), true))
-        .collect();
+        console.log("Updated existing Expo push token for user:", userId);
+        return { success: true, tokenId: existingToken._id };
+      } else {
+        // Deactivate any old tokens for this user (only keep the latest)
+        const oldTokens = await ctx.db
+          .query("expoPushTokens")
+          .withIndex("byUser", (q) => q.eq("userId", userId))
+          .filter((q) => q.eq(q.field("isActive"), true))
+          .collect();
 
-      for (const oldToken of oldTokens) {
-        await ctx.db.patch(oldToken._id, { isActive: false });
+        for (const oldToken of oldTokens) {
+          await ctx.db.patch(oldToken._id, { isActive: false });
+        }
+
+        // Create new token
+        const tokenId = await ctx.db.insert("expoPushTokens", {
+          userId,
+          token: args.token,
+          deviceInfo: args.deviceInfo,
+          createdAt: now,
+          lastUsedAt: now,
+          isActive: true,
+        });
+
+        console.log("Registered new Expo push token for user:", userId);
+        return { success: true, tokenId };
       }
-
-      // Create new token
-      const tokenId = await ctx.db.insert("expoPushTokens", {
-        userId,
-        token: args.token,
-        deviceInfo: args.deviceInfo,
-        createdAt: now,
-        lastUsedAt: now,
-        isActive: true,
-      });
-
-      console.log("Registered new Expo push token for user:", userId);
-      return { success: true, tokenId };
+    } catch (error) {
+      console.error("Error registering Expo push token:", error);
+      throw new Error(`Failed to register push token: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   },
 });

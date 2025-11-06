@@ -559,7 +559,6 @@ export const ackInterrupt = mutation({
     } else {
       console.log(`🛑 Interrupt Acknowledged - User chose to STOP`);
 
-      const projectId = timer.projectId;
       await stopInternal(
         ctx,
         organizationId,
@@ -567,23 +566,6 @@ export const ackInterrupt = mutation({
         "timer"
       );
 
-      try {
-        const projectData = await ctx.runMutation(internal.interrupts.getProjectAndClientInfo, {
-          projectId,
-        });
-
-        await ctx.scheduler.runAfter(0, api.pushActions.sendTimerAlert, {
-          userId,
-          title: "Break time",
-          body: `Take a short break before jumping back into ${projectData?.projectName || 'your next task'}.`,
-          alertType: "break_reminder",
-          projectName: projectData?.projectName,
-          clientName: projectData?.clientName,
-          data: { projectId, organizationId },
-        });
-      } catch (error) {
-        console.error("Failed to send break reminder notification:", error);
-      }
       return { success: true, action: "stopped", nextInterruptAt: null };
     }
   },

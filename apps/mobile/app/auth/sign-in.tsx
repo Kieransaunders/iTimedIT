@@ -21,7 +21,7 @@ import Toast from "react-native-toast-message";
 export default function SignInScreen() {
   const router = useRouter();
   const { colors } = useTheme();
-  const { signInWithPassword, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { signInWithPassword, signInWithGoogle, isAuthenticated, isLoading: authLoading } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -29,6 +29,7 @@ export default function SignInScreen() {
   const [emailError, setEmailError] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   // Redirect to main app if already authenticated
   useEffect(() => {
@@ -109,6 +110,42 @@ export default function SignInScreen() {
     }
   };
 
+  /**
+   * Handle Google sign-in button press
+   */
+  const handleGoogleSignIn = async () => {
+    try {
+      setIsGoogleLoading(true);
+
+      // Call Google sign-in function
+      await signInWithGoogle();
+
+      // Only show success message if we're actually authenticated
+      // (signInWithGoogle returns early on cancel without throwing)
+      if (isAuthenticated) {
+        Toast.show({
+          type: "success",
+          text1: "Welcome!",
+          text2: "You have successfully signed in with Google.",
+        });
+      }
+
+      // Don't manually redirect - let the useEffect handle it
+      // This ensures user data is loaded before navigation
+    } catch (error: any) {
+      // Only show error toast for actual errors (not cancellation)
+      if (error.message && !error.message.includes("cancel")) {
+        Toast.show({
+          type: "error",
+          text1: "Google Sign In Failed",
+          text2: error.message || "Please try again.",
+        });
+      }
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
+
   const styles = createStyles(colors);
 
   return (
@@ -171,7 +208,7 @@ export default function SignInScreen() {
           <Button
             variant="primary"
             onPress={handleSignIn}
-            disabled={isSubmitting}
+            disabled={isSubmitting || isGoogleLoading}
             loading={isSubmitting}
             style={styles.signInButton}
           >
@@ -185,17 +222,12 @@ export default function SignInScreen() {
             <View style={styles.dividerLine} />
           </View>
 
-          {/* Google Sign In - Disabled for now */}
+          {/* Google Sign In */}
           <Button
             variant="outline"
-            onPress={() => {
-              Toast.show({
-                type: "info",
-                text1: "Coming Soon",
-                text2: "Google sign-in will be available soon.",
-              });
-            }}
-            disabled={true}
+            onPress={handleGoogleSignIn}
+            disabled={isSubmitting || isGoogleLoading}
+            loading={isGoogleLoading}
             style={styles.googleButton}
           >
             Continue with Google

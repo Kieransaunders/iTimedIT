@@ -138,12 +138,6 @@ export default function Index() {
         // Stop the timer from lock screen notification
         handleStopTimer();
       }
-    } else if (data?.type === "timer-interrupt" || data?.type === "interrupt") {
-      if (actionIdentifier === "continue") {
-        handleAcknowledgeInterrupt(true);
-      } else if (actionIdentifier === "stop") {
-        handleAcknowledgeInterrupt(false);
-      }
     } else if (data?.type === "budget-warning" || data?.type === "budget_warning") {
       // Budget warning alert
       if (actionIdentifier === "stop") {
@@ -160,7 +154,7 @@ export default function Index() {
         // Default tap - show toast with overrun info
         showInfoToast(`Budget exceeded: ${data?.projectName || 'Project'} has exceeded its limit`);
       }
-    } else if (data?.type === "pomodoro-break" || data?.type === "break_start" || data?.type === "break_reminder") {
+    } else if (data?.type === "pomodoro-break" || data?.type === "break_start") {
       if (actionIdentifier === "start-break") {
         // User acknowledged the break - no action needed, backend handles it
         console.log("User started break");
@@ -175,28 +169,6 @@ export default function Index() {
     }
   }, [notificationResponse]);
 
-  const handleAcknowledgeInterrupt = async (shouldContinue: boolean) => {
-    try {
-      await acknowledgeInterrupt(shouldContinue);
-    } catch (err: any) {
-      showErrorToast(err.message || "Failed to acknowledge interrupt");
-    }
-  };
-
-  // Show toast notification when timer interrupt is triggered (no modal)
-  useEffect(() => {
-    if (runningTimer?.awaitingInterruptAck) {
-      const projectName = runningTimer?.project?.name || "this project";
-      const gracePeriod = userSettings?.gracePeriod ?? 60;
-
-      setToastMessage(`Still working on ${projectName}? Timer will auto-stop in ${gracePeriod}s`);
-      setToastAction({
-        label: "Continue",
-        onPress: () => handleAcknowledgeInterrupt(true),
-      });
-      setShowToast(true);
-    }
-  }, [runningTimer?.awaitingInterruptAck]);
 
   const isTimerRunning = runningTimer !== null;
 
@@ -463,11 +435,11 @@ export default function Index() {
             setToastAction(undefined);
           }}
           action={toastAction}
-          duration={runningTimer?.awaitingInterruptAck ? (userSettings?.gracePeriod ?? 60) * 1000 : 3000}
+          duration={3000}
         />
       )}
 
-      {/* Interrupt Modal - DISABLED: Using toast notifications only */}
+      {/* Interrupt Modal - DISABLED: Using global InterruptBanner component */}
 
       {/* Quick Action Menu */}
       <QuickActionMenu
