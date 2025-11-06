@@ -44,6 +44,9 @@ import { PWAInstallPrompt } from "./components/PWAInstallPrompt";
 import { MobileLandingPage } from "./components/MobileLandingPage";
 import { MobileSignIn } from "./components/MobileSignIn";
 import { MobileSignUp } from "./components/MobileSignUp";
+import { DesktopLandingPage } from "./components/DesktopLandingPage";
+import { DesktopSignIn } from "./components/DesktopSignIn";
+import { DesktopSignUp } from "./components/DesktopSignUp";
 
 // Mobile detection utility
 function isMobileDevice(): boolean {
@@ -406,6 +409,7 @@ function UnauthenticatedView() {
   const { page, navigate } = useMarketingPage();
   const [isMobile, setIsMobile] = useState(isMobileDevice());
   const [mobileAuthPage, setMobileAuthPage] = useState<MobileAuthPage>("landing");
+  const [desktopAuthPage, setDesktopAuthPage] = useState<MobileAuthPage>("landing");
   const { signIn } = useAuthActions();
 
   // Update mobile detection on resize
@@ -453,7 +457,36 @@ function UnauthenticatedView() {
     }
   }
 
-  // Desktop view - existing functionality
+  // Desktop view - new auth page routing
+  // Show desktop auth pages when on landing (not on marketing pages like /features)
+  if (page === "landing") {
+    switch (desktopAuthPage) {
+      case "sign-in":
+        return (
+          <DesktopSignIn
+            onBack={() => setDesktopAuthPage("landing")}
+            onSignUpLink={() => setDesktopAuthPage("sign-up")}
+          />
+        );
+      case "sign-up":
+        return (
+          <DesktopSignUp
+            onBack={() => setDesktopAuthPage("landing")}
+            onSignInLink={() => setDesktopAuthPage("sign-in")}
+          />
+        );
+      default:
+        return (
+          <DesktopLandingPage
+            onSignIn={() => setDesktopAuthPage("sign-in")}
+            onSignUp={() => setDesktopAuthPage("sign-up")}
+            onGuestMode={handleGuestMode}
+          />
+        );
+    }
+  }
+
+  // Desktop marketing pages (features, pricing, etc.)
   switch (page) {
     case "features":
       return <FeaturesPage onNavigate={navigate} />;
