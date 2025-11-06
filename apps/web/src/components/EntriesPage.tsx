@@ -174,8 +174,11 @@ export function EntriesPage() {
 
     // Calculate stats
     const totalSeconds = filtered.reduce((sum, entry) => {
-      return sum + (entry.seconds || 0);
+      // Use seconds field if available, otherwise calculate from timestamps
+      const duration = entry.seconds || (entry.stoppedAt ? (entry.stoppedAt - entry.startedAt) / 1000 : 0);
+      return sum + duration;
     }, 0);
+
     const totalHours = Math.floor(totalSeconds / 3600);
     const totalMinutes = Math.floor((totalSeconds % 3600) / 60);
 

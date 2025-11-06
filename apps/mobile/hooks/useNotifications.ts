@@ -148,11 +148,13 @@ export function useNotifications(): UseNotificationsReturn {
     // Default behavior: show in-app alert
     const { title, body, data } = notification.request.content;
 
-    // SKIP ALERTS FOR TIMER-RUNNING AND WEB-TIMER-STARTED NOTIFICATIONS
+    // SKIP ALERTS FOR TIMER-RUNNING, WEB-TIMER-STARTED, AND INTERRUPT NOTIFICATIONS
     // Timer updates every 3-5 seconds and should NOT show as popup alerts
     // Web timer started notifications should only show in notification tray
+    // Interrupt notifications are handled by the InterruptBanner component
     if (data?.type === "timer-running" ||
         data?.type === "web-timer-started" ||
+        data?.type === "interrupt" ||
         notification.request.content.categoryIdentifier === "timer-running") {
       return; // Silent - no alert
     }

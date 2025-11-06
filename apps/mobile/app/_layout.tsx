@@ -19,6 +19,7 @@ import { convex } from "../services/convex";
 import { OrganizationProvider } from "../contexts/OrganizationContext";
 import { ThemeProvider } from "../utils/ThemeContext";
 import { useAuth } from "../hooks/useAuth";
+import { InterruptBanner } from "../components/timer/InterruptBanner";
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -90,6 +91,7 @@ function RootLayoutNav() {
   return (
     <OrganizationProvider userId={user?._id ?? null}>
       <NavigationThemeProvider value={DarkTheme}>
+        <InterruptBanner />
         <Stack>
           <Stack.Screen name="auth/sign-in" options={{ headerShown: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
