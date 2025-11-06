@@ -41,7 +41,6 @@ import {
 } from "./components/MarketingPages";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { PWAInstallPrompt } from "./components/PWAInstallPrompt";
-import { PWAUpdatePrompt } from "./components/PWAUpdatePrompt";
 
 export default function App() {
   return (
@@ -73,7 +72,6 @@ function AppContent() {
       )}
       <Toaster />
       <PWAInstallPrompt />
-      <PWAUpdatePrompt />
     </div>
   );
 }

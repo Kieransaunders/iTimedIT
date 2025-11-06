@@ -5,12 +5,14 @@ import { precacheAndRoute } from 'workbox-precaching';
 precacheAndRoute(self.__WB_MANIFEST);
 
 self.addEventListener('install', event => {
-  console.log('Service Worker installing');
+  console.log('Service Worker installing - auto-update mode');
+  // Skip waiting to activate immediately
   self.skipWaiting();
 });
 
 self.addEventListener('activate', event => {
-  console.log('Service Worker activating');
+  console.log('Service Worker activating - taking control');
+  // Take control of all clients immediately
   event.waitUntil(self.clients.claim());
 });
 
@@ -262,8 +264,5 @@ async function focusOrOpenApp(url = '/') {
 // Handle messages from the main app
 self.addEventListener('message', event => {
   console.log('Service Worker received message:', event.data);
-  
-  if (event.data && event.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
-  }
+  // Messages can be used for custom functionality if needed
 });
