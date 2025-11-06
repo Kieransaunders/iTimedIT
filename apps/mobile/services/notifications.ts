@@ -1,4 +1,5 @@
 import Constants from "expo-constants";
+import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 import { setupTimerNotificationChannel, setupTimerNotificationCategory } from "./timerNotification";
@@ -97,7 +98,7 @@ export async function requestNotificationPermissions(): Promise<boolean> {
  */
 export async function getExpoPushToken(): Promise<string> {
   // Check if running on a physical device
-  if (!Constants.isDevice) {
+  if (!Device.isDevice) {
     console.warn(
       "⚠️ Push notifications only work on physical devices. " +
       "Skipping token registration on simulator/emulator."
@@ -141,7 +142,7 @@ export async function getExpoPushToken(): Promise<string> {
     const errorMessage = error instanceof Error ? error.message : String(error);
     throw new Error(
       `Failed to get Expo push token: ${errorMessage}. ` +
-      `Device: ${Constants.isDevice ? "Physical" : "Simulator"}, ` +
+      `Device: ${Device.isDevice ? "Physical" : "Simulator"}, ` +
       `Platform: ${Platform.OS}, ` +
       `Project ID: ${projectId || "Not set"}`
     );

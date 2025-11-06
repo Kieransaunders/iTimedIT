@@ -28,7 +28,7 @@ import { api } from "@/convex/_generated/api";
 export function InterruptBanner() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const runningTimer = useQuery(api.timer.getRunningTimer);
+  const runningTimer = useQuery(api.timer.getRunningTimer, {});
   const acknowledgeInterrupt = useMutation(api.timer.ackInterrupt);
 
   const [confirmationType, setConfirmationType] = useState<"continue" | "stop" | null>(null);

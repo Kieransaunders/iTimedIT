@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { RefreshCw, X } from 'lucide-react';
+import { RefreshCw, X, Loader2 } from 'lucide-react';
 
 export function PWAUpdatePrompt() {
   const [showReload, setShowReload] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const {
     needRefresh: [needRefresh, setNeedRefresh],
@@ -13,6 +14,13 @@ export function PWAUpdatePrompt() {
   } = useRegisterSW({
     onRegistered(registration) {
       console.log('SW Registered:', registration);
+      // Check for updates every hour
+      if (registration) {
+        setInterval(() => {
+          console.log('Checking for SW updates...');
+          registration.update();
+        }, 60 * 60 * 1000); // Every 1 hour
+      }
     },
     onRegisterError(error) {
       console.error('SW registration error:', error);
@@ -20,19 +28,38 @@ export function PWAUpdatePrompt() {
     onNeedRefresh() {
       console.log('New content available, showing update prompt');
       setShowReload(true);
+      setIsUpdating(false); // Reset if shown again
     },
     onOfflineReady() {
       console.log('App ready to work offline');
     },
   });
 
-  const handleUpdate = () => {
-    updateServiceWorker(true);
+  const handleUpdate = async () => {
+    console.log('User clicked update, initiating update process...');
+    setIsUpdating(true);
+
+    try {
+      // This will send SKIP_WAITING message to service worker
+      await updateServiceWorker(true);
+
+      // Give the service worker time to activate
+      setTimeout(() => {
+        console.log('Reloading page to apply update...');
+        window.location.reload();
+      }, 500);
+    } catch (error) {
+      console.error('Error during service worker update:', error);
+      // Force reload anyway to clear stuck state
+      window.location.reload();
+    }
   };
 
   const handleDismiss = () => {
+    console.log('User dismissed update prompt');
     setShowReload(false);
     setNeedRefresh(false);
+    setIsUpdating(false);
   };
 
   if (!showReload) {
@@ -66,15 +93,26 @@ export function PWAUpdatePrompt() {
           <div className="flex gap-2">
             <Button
               onClick={handleUpdate}
-              className="flex-1 bg-white text-blue-600 hover:bg-blue-50 font-semibold"
+              disabled={isUpdating}
+              className="flex-1 bg-white text-blue-600 hover:bg-blue-50 font-semibold disabled:opacity-50"
             >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Update Now
+              {isUpdating ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Updating...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Update Now
+                </>
+              )}
             </Button>
             <Button
               onClick={handleDismiss}
+              disabled={isUpdating}
               variant="ghost"
-              className="text-white hover:bg-blue-700"
+              className="text-white hover:bg-blue-700 disabled:opacity-50"
             >
               Later
             </Button>
