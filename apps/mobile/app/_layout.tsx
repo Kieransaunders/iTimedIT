@@ -30,7 +30,7 @@ export {
 
 export const unstable_settings = {
   // Ensure that reloading on `/modal` keeps a back button present.
-  initialRouteName: '(tabs)',
+  initialRouteName: 'index',
 };
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
@@ -90,12 +90,14 @@ function RootLayoutNav() {
     if (isLoading) return;
 
     const inAuthGroup = segments[0] === "auth";
+    const inTabsGroup = segments[0] === "(tabs)";
+    const onLandingPage = segments.length === 0;
 
-    if (!user && !inAuthGroup) {
-      // Redirect to sign-in if not authenticated
-      router.replace("/auth/sign-in");
-    } else if (user && inAuthGroup) {
-      // Redirect to tabs if authenticated
+    if (!user && inTabsGroup) {
+      // Not authenticated and trying to access protected tabs → Redirect to landing page
+      router.replace("/");
+    } else if (user && (inAuthGroup || onLandingPage)) {
+      // Authenticated and on auth/landing page → Redirect to tabs
       router.replace("/(tabs)");
     }
   }, [user, isLoading, segments]);
@@ -109,7 +111,9 @@ function RootLayoutNav() {
       <NavigationThemeProvider value={DarkTheme}>
         <InterruptBanner />
         <Stack>
+          <Stack.Screen name="index" options={{ headerShown: false }} />
           <Stack.Screen name="auth/sign-in" options={{ headerShown: false }} />
+          <Stack.Screen name="auth/sign-up" options={{ headerShown: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
         </Stack>

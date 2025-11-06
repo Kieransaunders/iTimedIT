@@ -397,3 +397,237 @@ export const getStats = query({
     };
   },
 });
+
+// Template management functions
+
+export const createTemplate = mutation({
+  args: {
+    name: v.string(),
+    hourlyRate: v.number(),
+    budgetType: v.union(v.literal("hours"), v.literal("amount")),
+    budgetHours: v.optional(v.number()),
+    budgetAmount: v.optional(v.number()),
+    clientId: v.optional(v.id("clients")),
+    recurringConfig: v.object({
+      enabled: v.boolean(),
+      namePattern: v.string(),
+      preserveClientId: v.boolean(),
+      notifyOnCreation: v.boolean(),
+    }),
+    workspaceType: v.optional(v.union(v.literal("personal"), v.literal("work"))),
+  },
+  handler: async (ctx, args) => {
+    const { organizationId, userId } = await ensureMembership(ctx);
+
+    // Validate client if provided
+    if (args.clientId) {
+      const client = await ctx.db.get(args.clientId);
+      if (!client || client.organizationId !== organizationId) {
+        throw new Error("Client not found");
+      }
+    }
+
+    // Calculate first creation date (1st of next month at midnight UTC)
+    const now = new Date();
+    const nextMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1, 0, 0, 0));
+    const nextCreationDate = nextMonth.getTime();
+
+    return await ctx.db.insert("projects", {
+      organizationId,
+      createdBy: userId,
+      clientId: args.clientId,
+      name: args.name,
+      hourlyRate: args.hourlyRate,
+      budgetType: args.budgetType,
+      budgetHours: args.budgetHours,
+      budgetAmount: args.budgetAmount,
+      archived: false,
+      workspaceType: args.workspaceType || "work",
+      isTemplate: true,
+      recurringConfig: {
+        enabled: args.recurringConfig.enabled,
+        frequency: "monthly" as const,
+        nextCreationDate,
+        namePattern: args.recurringConfig.namePattern,
+        preserveClientId: args.recurringConfig.preserveClientId,
+        notifyOnCreation: args.recurringConfig.notifyOnCreation,
+      },
+    });
+  },
+});
+
+export const duplicateFromTemplate = mutation({
+  args: {
+    templateId: v.id("projects"),
+    overrideName: v.optional(v.string()),
+    billingPeriodStart: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const { organizationId, userId } = await ensureMembership(ctx);
+
+    const template = await ctx.db.get(args.templateId);
+    if (!template || !template.isTemplate || template.organizationId !== organizationId) {
+      throw new Error("Template not found");
+    }
+
+    if (!template.recurringConfig) {
+      throw new Error("Template missing recurring configuration");
+    }
+
+    // Calculate billing period (defaults to current month)
+    const startDate = args.billingPeriodStart || new Date(Date.UTC(
+      new Date().getUTCFullYear(),
+      new Date().getUTCMonth(),
+      1, 0, 0, 0
+    )).getTime();
+
+    const endOfMonth = new Date(Date.UTC(
+      new Date(startDate).getUTCFullYear(),
+      new Date(startDate).getUTCMonth() + 1,
+      0, 23, 59, 59
+    ));
+    const endDate = endOfMonth.getTime();
+
+    const periodLabel = new Date(startDate).toLocaleDateString('en-US', {
+      month: 'long',
+      year: 'numeric'
+    });
+
+    // Generate project name from pattern
+    const projectName = args.overrideName || template.recurringConfig.namePattern
+      .replace('{month}', new Date(startDate).toLocaleDateString('en-US', { month: 'long' }))
+      .replace('{year}', new Date(startDate).getUTCFullYear().toString());
+
+    const newProjectId = await ctx.db.insert("projects", {
+      organizationId,
+      createdBy: userId,
+      clientId: template.recurringConfig.preserveClientId ? template.clientId : undefined,
+      name: projectName,
+      hourlyRate: template.hourlyRate,
+      budgetType: template.budgetType,
+      budgetHours: template.budgetHours,
+      budgetAmount: template.budgetAmount,
+      archived: false,
+      workspaceType: template.workspaceType,
+      isTemplate: false,
+      parentTemplateId: template._id,
+      billingPeriod: {
+        startDate,
+        endDate,
+        label: periodLabel,
+      },
+    });
+
+    return newProjectId;
+  },
+});
+
+export const listTemplates = query({
+  args: {
+    workspaceType: v.optional(v.union(v.literal("personal"), v.literal("work"))),
+  },
+  handler: async (ctx, args) => {
+    const membership = await maybeMembership(ctx);
+    if (!membership) {
+      return [];
+    }
+    const { organizationId } = membership;
+
+    const allTemplates = await ctx.db
+      .query("projects")
+      .withIndex("byOrganization", (q) => q.eq("organizationId", organizationId))
+      .filter((q) => q.eq(q.field("isTemplate"), true))
+      .collect();
+
+    // Filter by workspace type if specified
+    if (args.workspaceType) {
+      return allTemplates.filter(t =>
+        args.workspaceType === "work"
+          ? (t.workspaceType === "work" || t.workspaceType === undefined)
+          : t.workspaceType === "personal"
+      );
+    }
+
+    return allTemplates;
+  },
+});
+
+export const listByTemplate = query({
+  args: {
+    templateId: v.id("projects"),
+  },
+  handler: async (ctx, args) => {
+    const membership = await maybeMembership(ctx);
+    if (!membership) {
+      return [];
+    }
+    const { organizationId } = membership;
+
+    const template = await ctx.db.get(args.templateId);
+    if (!template || template.organizationId !== organizationId) {
+      throw new Error("Template not found");
+    }
+
+    return await ctx.db
+      .query("projects")
+      .withIndex("byParentTemplate", (q) => q.eq("parentTemplateId", args.templateId))
+      .collect();
+  },
+});
+
+export const updateTemplate = mutation({
+  args: {
+    id: v.id("projects"),
+    name: v.optional(v.string()),
+    hourlyRate: v.optional(v.number()),
+    budgetType: v.optional(v.union(v.literal("hours"), v.literal("amount"))),
+    budgetHours: v.optional(v.number()),
+    budgetAmount: v.optional(v.number()),
+    clientId: v.optional(v.id("clients")),
+    recurringConfig: v.optional(v.object({
+      enabled: v.boolean(),
+      namePattern: v.string(),
+      preserveClientId: v.boolean(),
+      notifyOnCreation: v.boolean(),
+    })),
+    archived: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const { organizationId } = await requireMembership(ctx);
+
+    const template = await ctx.db.get(args.id);
+    if (!template || !template.isTemplate || template.organizationId !== organizationId) {
+      throw new Error("Template not found");
+    }
+
+    // If changing client, validate it
+    if (args.clientId !== undefined && args.clientId !== null) {
+      const client = await ctx.db.get(args.clientId);
+      if (!client || client.organizationId !== organizationId) {
+        throw new Error("Client not found");
+      }
+    }
+
+    const patchData: any = {};
+    if (args.name !== undefined) patchData.name = args.name;
+    if (args.hourlyRate !== undefined) patchData.hourlyRate = args.hourlyRate;
+    if (args.budgetType !== undefined) patchData.budgetType = args.budgetType;
+    if (args.budgetHours !== undefined) patchData.budgetHours = args.budgetHours;
+    if (args.budgetAmount !== undefined) patchData.budgetAmount = args.budgetAmount;
+    if (args.archived !== undefined) patchData.archived = args.archived;
+    if ("clientId" in args) patchData.clientId = args.clientId;
+
+    // Handle recurringConfig update - merge with existing config
+    if (args.recurringConfig !== undefined && template.recurringConfig) {
+      patchData.recurringConfig = {
+        ...template.recurringConfig,
+        enabled: args.recurringConfig.enabled,
+        namePattern: args.recurringConfig.namePattern,
+        preserveClientId: args.recurringConfig.preserveClientId,
+        notifyOnCreation: args.recurringConfig.notifyOnCreation,
+      };
+    }
+
+    await ctx.db.patch(args.id, patchData);
+  },
+});

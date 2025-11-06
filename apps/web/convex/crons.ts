@@ -7,6 +7,8 @@ const crons = cronJobs();
 // Run every minute to check for missed interrupt acknowledgments
 crons.interval("check missed interrupts", { minutes: 1 }, internal.crons.checkMissedInterrupts, {});
 crons.interval("nudge long running timers", { minutes: 5 }, internal.crons.nudgeLongRunningTimers, {});
+// Run daily to create recurring projects
+crons.daily("create recurring projects", { hourUTC: 0, minuteUTC: 0 }, internal.crons.createRecurringProjects, {});
 
 export const checkMissedInterrupts = internalMutation({
   args: {},
@@ -134,6 +136,115 @@ export const nudgeLongRunningTimers = internalMutation({
         console.error("Failed to send scheduled nudge", error);
       }
     }
+  },
+});
+
+export const createRecurringProjects = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const now = Date.now();
+
+    // Find all templates with auto-creation enabled that are due
+    const allProjects = await ctx.db.query("projects").collect();
+    const dueTemplates = allProjects.filter(p =>
+      p.isTemplate &&
+      p.recurringConfig?.enabled &&
+      p.recurringConfig.nextCreationDate <= now
+    );
+
+    console.log(`🔄 Recurring Projects Cron: Found ${dueTemplates.length} templates ready for project creation`);
+
+    for (const template of dueTemplates) {
+      try {
+        if (!template.recurringConfig) {
+          console.error(`❌ Template ${template._id} missing recurring config`);
+          continue;
+        }
+
+        // Calculate billing period for new project
+        const nextCreationDate = template.recurringConfig.nextCreationDate;
+        const startDate = new Date(nextCreationDate);
+        const endDate = new Date(Date.UTC(
+          startDate.getUTCFullYear(),
+          startDate.getUTCMonth() + 1,
+          0, 23, 59, 59
+        ));
+
+        const periodLabel = startDate.toLocaleDateString('en-US', {
+          month: 'long',
+          year: 'numeric'
+        });
+
+        // Generate project name
+        const projectName = template.recurringConfig.namePattern
+          .replace('{month}', startDate.toLocaleDateString('en-US', { month: 'long' }))
+          .replace('{year}', startDate.getUTCFullYear().toString());
+
+        // Create new project
+        const newProjectId = await ctx.db.insert("projects", {
+          organizationId: template.organizationId,
+          createdBy: template.createdBy,
+          ownerId: template.ownerId,
+          clientId: template.recurringConfig.preserveClientId ? template.clientId : undefined,
+          name: projectName,
+          hourlyRate: template.hourlyRate,
+          budgetType: template.budgetType,
+          budgetHours: template.budgetHours,
+          budgetAmount: template.budgetAmount,
+          archived: false,
+          workspaceType: template.workspaceType,
+          isTemplate: false,
+          parentTemplateId: template._id,
+          billingPeriod: {
+            startDate: startDate.getTime(),
+            endDate: endDate.getTime(),
+            label: periodLabel,
+          },
+        });
+
+        console.log(`✅ Created recurring project: ${projectName} (${newProjectId})`);
+
+        // Update template's next creation date (advance to next month)
+        const nextMonth = new Date(Date.UTC(
+          startDate.getUTCFullYear(),
+          startDate.getUTCMonth() + 1,
+          1, 0, 0, 0
+        ));
+
+        await ctx.db.patch(template._id, {
+          recurringConfig: {
+            ...template.recurringConfig,
+            nextCreationDate: nextMonth.getTime(),
+          },
+        });
+
+        console.log(`📅 Updated template next creation date to ${nextMonth.toISOString()}`);
+
+        // Send notification if enabled
+        if (template.recurringConfig.notifyOnCreation && template.createdBy) {
+          try {
+            await ctx.scheduler.runAfter(0, api.pushActions.sendTimerAlert, {
+              userId: template.createdBy,
+              title: "New recurring project created",
+              body: `${projectName} is ready for time tracking`,
+              alertType: "budget_warning",
+              projectName,
+              data: {
+                projectId: newProjectId,
+                organizationId: template.organizationId,
+              },
+            });
+            console.log(`🔔 Notification scheduled for user ${template.createdBy}`);
+          } catch (notifError) {
+            console.error(`⚠️ Failed to send notification:`, notifError);
+          }
+        }
+      } catch (error) {
+        console.error(`❌ Failed to create project from template ${template._id}:`, error);
+      }
+    }
+
+    console.log(`🔄 Recurring Projects Cron: Complete`);
   },
 });
 

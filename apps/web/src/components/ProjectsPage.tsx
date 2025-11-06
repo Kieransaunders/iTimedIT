@@ -204,7 +204,8 @@ export function ProjectsPage({
   const filteredProjects = useMemo(() => {
     if (!projects) return [];
 
-    let filtered = projects;
+    // Exclude templates from the regular projects list
+    let filtered = projects.filter(p => !p.isTemplate);
 
     // Client filter (from props or from filters)
     if (clientFilter) {
@@ -509,8 +510,13 @@ export function ProjectsPage({
                             </span>
                           )}
                         </div>
-                        <div className="text-sm text-gray-500 dark:text-gray-400">
-                          {project.client?.name}
+                        <div className="text-sm text-gray-500 dark:text-gray-400 flex flex-col gap-0.5">
+                          {project.client?.name && <span>{project.client.name}</span>}
+                          {project.billingPeriod && (
+                            <span className="text-xs text-blue-600 dark:text-blue-400">
+                              📅 {project.billingPeriod.label}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>

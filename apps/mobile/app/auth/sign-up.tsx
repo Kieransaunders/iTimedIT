@@ -18,23 +18,26 @@ import {
 } from "react-native";
 import Toast from "react-native-toast-message";
 
-export default function SignInScreen() {
+export default function SignUpScreen() {
   const router = useRouter();
   const { colors } = useTheme();
   const { signInWithPassword, signInWithGoogle, isAuthenticated, isLoading: authLoading } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [emailError, setEmailError] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [confirmPasswordError, setConfirmPasswordError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   // Redirect to main app if already authenticated
   useEffect(() => {
     if (isAuthenticated && !authLoading) {
-      router.replace("/");
+      router.replace("/(tabs)");
     }
   }, [isAuthenticated, authLoading, router]);
 
@@ -44,20 +47,27 @@ export default function SignInScreen() {
   const validateForm = (): boolean => {
     const emailErr = getEmailError(email);
     const passwordErr = getPasswordError(password);
+    let confirmPasswordErr: string | null = null;
+
+    if (password !== confirmPassword) {
+      confirmPasswordErr = "Passwords do not match";
+    }
 
     setEmailError(emailErr);
     setPasswordError(passwordErr);
+    setConfirmPasswordError(confirmPasswordErr);
 
-    return !emailErr && !passwordErr;
+    return !emailErr && !passwordErr && !confirmPasswordErr;
   };
 
   /**
-   * Handle sign-in button press
+   * Handle sign-up button press
    */
-  const handleSignIn = async () => {
+  const handleSignUp = async () => {
     // Clear previous errors
     setEmailError(null);
     setPasswordError(null);
+    setConfirmPasswordError(null);
 
     // Validate form
     if (!validateForm()) {
@@ -67,23 +77,23 @@ export default function SignInScreen() {
     try {
       setIsSubmitting(true);
 
-      // Call sign-in function
+      // Sign up uses the same sign-in function (Convex Auth handles account creation)
       await signInWithPassword(email, password);
 
       // Show success message
       Toast.show({
         type: "success",
-        text1: "Welcome back!",
-        text2: "You have successfully signed in.",
+        text1: "Account Created!",
+        text2: "Welcome to iTimedIT.",
       });
 
-      router.replace("/");
+      router.replace("/(tabs)");
     } catch (error: any) {
       // Show error message
       Toast.show({
         type: "error",
-        text1: "Sign In Failed",
-        text2: error.message || "Please check your credentials and try again.",
+        text1: "Sign Up Failed",
+        text2: error.message || "Please try again.",
       });
     } finally {
       setIsSubmitting(false);
@@ -111,39 +121,52 @@ export default function SignInScreen() {
   };
 
   /**
-   * Handle Google sign-in button press
+   * Handle confirm password input change
    */
-  const handleGoogleSignIn = async () => {
+  const handleConfirmPasswordChange = (text: string) => {
+    setConfirmPassword(text);
+    if (confirmPasswordError) {
+      setConfirmPasswordError(null);
+    }
+  };
+
+  /**
+   * Handle Google sign-up button press
+   */
+  const handleGoogleSignUp = async () => {
     try {
       setIsGoogleLoading(true);
 
-      // Call Google sign-in function
+      // Call Google sign-in function (also creates account if new)
       await signInWithGoogle();
 
       // Only show success message if we're actually authenticated
-      // (signInWithGoogle returns early on cancel without throwing)
       if (isAuthenticated) {
         Toast.show({
           type: "success",
           text1: "Welcome!",
-          text2: "You have successfully signed in with Google.",
+          text2: "You have successfully signed up with Google.",
         });
       }
-
-      // Don't manually redirect - let the useEffect handle it
-      // This ensures user data is loaded before navigation
     } catch (error: any) {
       // Only show error toast for actual errors (not cancellation)
       if (error.message && !error.message.includes("cancel")) {
         Toast.show({
           type: "error",
-          text1: "Google Sign In Failed",
+          text1: "Google Sign Up Failed",
           text2: error.message || "Please try again.",
         });
       }
     } finally {
       setIsGoogleLoading(false);
     }
+  };
+
+  /**
+   * Navigate to sign-in screen
+   */
+  const handleSignInPress = () => {
+    router.push("/auth/sign-in");
   };
 
   const styles = createStyles(colors);
@@ -162,8 +185,8 @@ export default function SignInScreen() {
         <View style={styles.content}>
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.title}>Welcome Back</Text>
-            <Text style={styles.subtitle}>Sign in to continue tracking your time</Text>
+            <Text style={styles.title}>Get Started</Text>
+            <Text style={styles.subtitle}>Create an account to start tracking your time</Text>
           </View>
 
           {/* Email Input */}
@@ -182,7 +205,7 @@ export default function SignInScreen() {
           {/* Password Input */}
           <Input
             label="Password"
-            placeholder="Enter your password"
+            placeholder="Choose a strong password"
             value={password}
             onChangeText={handlePasswordChange}
             error={passwordError || undefined}
@@ -204,15 +227,40 @@ export default function SignInScreen() {
             }
           />
 
-          {/* Sign In Button */}
+          {/* Confirm Password Input */}
+          <Input
+            label="Confirm Password"
+            placeholder="Re-enter your password"
+            value={confirmPassword}
+            onChangeText={handleConfirmPasswordChange}
+            error={confirmPasswordError || undefined}
+            secureTextEntry={!showConfirmPassword}
+            autoCapitalize="none"
+            autoCorrect={false}
+            editable={!isSubmitting}
+            rightIcon={
+              <TouchableOpacity
+                onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                {showConfirmPassword ? (
+                  <EyeOff size={20} color={colors.textSecondary} />
+                ) : (
+                  <Eye size={20} color={colors.textSecondary} />
+                )}
+              </TouchableOpacity>
+            }
+          />
+
+          {/* Sign Up Button */}
           <Button
             variant="primary"
-            onPress={handleSignIn}
+            onPress={handleSignUp}
             disabled={isSubmitting || isGoogleLoading}
             loading={isSubmitting}
-            style={styles.signInButton}
+            style={styles.signUpButton}
           >
-            Sign In
+            Create Account
           </Button>
 
           {/* Divider */}
@@ -222,10 +270,10 @@ export default function SignInScreen() {
             <View style={styles.dividerLine} />
           </View>
 
-          {/* Google Sign In */}
+          {/* Google Sign Up */}
           <Button
             variant="outline"
-            onPress={handleGoogleSignIn}
+            onPress={handleGoogleSignUp}
             disabled={isSubmitting || isGoogleLoading}
             loading={isGoogleLoading}
             style={styles.googleButton}
@@ -233,11 +281,11 @@ export default function SignInScreen() {
             Continue with Google
           </Button>
 
-          {/* Sign Up Link */}
+          {/* Sign In Link */}
           <View style={styles.footer}>
-            <Text style={styles.footerText}>Don't have an account? </Text>
-            <TouchableOpacity onPress={() => router.push("/auth/sign-up" as any)}>
-              <Text style={styles.signUpLink}>Sign Up</Text>
+            <Text style={styles.footerText}>Already have an account? </Text>
+            <TouchableOpacity onPress={handleSignInPress}>
+              <Text style={styles.signInLink}>Sign In</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -275,7 +323,7 @@ const createStyles = (colors: typeof import("@/utils/theme").lightColors) =>
       ...typography.body,
       color: colors.textSecondary,
     },
-    signInButton: {
+    signUpButton: {
       marginTop: spacing.md,
     },
     divider: {
@@ -306,7 +354,7 @@ const createStyles = (colors: typeof import("@/utils/theme").lightColors) =>
       ...typography.body,
       color: colors.textSecondary,
     },
-    signUpLink: {
+    signInLink: {
       ...typography.body,
       color: colors.primary,
       fontWeight: "600",

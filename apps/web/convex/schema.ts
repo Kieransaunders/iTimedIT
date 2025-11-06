@@ -91,12 +91,30 @@ const applicationTables = {
     budgetAmount: v.optional(v.number()),
     archived: v.boolean(),
     workspaceType: v.optional(v.union(v.literal("personal"), v.literal("work"))),
+    // Template and recurring project fields
+    isTemplate: v.optional(v.boolean()),
+    parentTemplateId: v.optional(v.id("projects")),
+    recurringConfig: v.optional(v.object({
+      enabled: v.boolean(),
+      frequency: v.literal("monthly"),
+      nextCreationDate: v.number(),
+      namePattern: v.string(),
+      preserveClientId: v.boolean(),
+      notifyOnCreation: v.boolean(),
+    })),
+    billingPeriod: v.optional(v.object({
+      startDate: v.number(),
+      endDate: v.number(),
+      label: v.string(),
+    })),
   })
     .index("byClient", ["clientId"])
     .index("byOrganization", ["organizationId"])
     .index("byOrgName", ["organizationId", "name"])
     .index("byCreator", ["createdBy"])
-    .index("byOwnerPersonal", ["ownerId", "workspaceType"]),
+    .index("byOwnerPersonal", ["ownerId", "workspaceType"])
+    .index("byTemplate", ["isTemplate"])
+    .index("byParentTemplate", ["parentTemplateId"]),
 
   categories: defineTable({
     organizationId: v.optional(v.id("organizations")),
