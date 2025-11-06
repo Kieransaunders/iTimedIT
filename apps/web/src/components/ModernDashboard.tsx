@@ -629,12 +629,6 @@ export function ModernDashboard({
   }, [soundPreferenceEnabled]);
 
   const ensurePushRegistered = useCallback(async (requestPermission: boolean) => {
-    if (isPushSupported() && getNotificationPermission() === 'default' && requestPermission) {
-      toast.info('Enable notifications to catch timer alerts', {
-        description: 'We only prompt when you start your first timer.',
-        duration: 4000,
-      });
-    }
     try {
       const subscription = await ensurePushSubscription({ requestPermission });
       if (!subscription) {

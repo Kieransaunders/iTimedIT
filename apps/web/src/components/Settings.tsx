@@ -17,6 +17,7 @@ import { buildAppPath } from "../lib/basePath";
 import { ColorPicker } from "./ui/ColorPicker";
 import { Crown, Shield, User, Mail, Calendar, Copy, RefreshCw, Trash2 } from "lucide-react";
 import { notifyMutationError } from "../lib/notifyMutationError";
+import { NotificationDebug } from "./NotificationDebug";
 
 type MembershipRole = Doc<"memberships">["role"];
 
@@ -1026,6 +1027,8 @@ export function Settings({ onNavigate, initialTab }: { onNavigate?: (page: AppPa
               <p className="text-gray-600 dark:text-gray-300 mb-4">
                 Configure how you want to be notified when interruptions occur. Push notifications will be automatically requested when needed.
               </p>
+
+              <NotificationDebug />
 
               <div className="space-y-6">
                 {/* In-App Attention */}

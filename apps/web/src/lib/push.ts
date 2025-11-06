@@ -257,29 +257,38 @@ export async function ensurePushSubscription(options: {
   requestPermission?: boolean;
 } = {}): Promise<PushSubscriptionData | null> {
   if (!isPushSupported()) {
+    console.warn('Push notifications not supported on this device');
     return null;
   }
 
   if (!swRegistration) {
+    console.log('Service Worker not registered, initializing...');
     const initialized = await initializePushNotifications();
     if (!initialized) {
+      console.error('Failed to initialize push notifications');
       return null;
     }
   }
 
   let permission = getNotificationPermission();
+  console.log('Current notification permission:', permission);
 
   if (permission === 'default' && options.requestPermission) {
+    console.log('Requesting notification permission from user...');
     permission = await requestNotificationPermission();
+    console.log('Permission result:', permission);
   }
 
   if (permission !== 'granted') {
+    console.warn('Notification permission not granted, cannot subscribe to push');
     return null;
   }
 
   if (cachedSubscription) {
+    console.log('Using cached push subscription');
     return cachedSubscription;
   }
 
+  console.log('Creating new push subscription...');
   return await subscribeToPush();
 }
