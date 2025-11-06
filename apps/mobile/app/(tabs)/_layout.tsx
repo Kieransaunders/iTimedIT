@@ -2,14 +2,10 @@ import { Tabs } from "expo-router";
 import { ThemeToggle } from "@/components/common/ThemeToggle";
 import { useTheme } from "@/utils/ThemeContext";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { View, TouchableOpacity, Linking } from "react-native";
+import { View } from "react-native";
 
 export default function TabLayout() {
   const { colors } = useTheme();
-
-  const handleReportPress = () => {
-    Linking.openURL("https://itimedit.netlify.app/projects");
-  };
 
   return (
     <Tabs
@@ -26,19 +22,6 @@ export default function TabLayout() {
         headerTintColor: colors.textPrimary,
         headerRight: () => (
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginRight: 12, paddingVertical: 4 }}>
-            <TouchableOpacity
-              onPress={handleReportPress}
-              style={{
-                padding: 8,
-                borderRadius: 8,
-                backgroundColor: colors.surface,
-              }}
-              accessible={true}
-              accessibilityLabel="Open projects in web browser"
-              accessibilityRole="button"
-            >
-              <MaterialCommunityIcons name="chart-bar" size={20} color={colors.textSecondary} />
-            </TouchableOpacity>
             <ThemeToggle />
           </View>
         ),

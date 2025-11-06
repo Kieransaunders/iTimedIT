@@ -26,6 +26,7 @@ import {
   isPushSupported,
   setupPushMessageListener,
 } from "./lib/push";
+import { clearAppBadge } from "./lib/badgeApi";
 import { buildAppPath, stripBasePath } from "./lib/basePath";
 import {
   type MarketingPageSlug,
@@ -39,6 +40,8 @@ import {
   marketingPageToPath,
 } from "./components/MarketingPages";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { PWAInstallPrompt } from "./components/PWAInstallPrompt";
+import { PWAUpdatePrompt } from "./components/PWAUpdatePrompt";
 
 export default function App() {
   return (
@@ -69,6 +72,8 @@ function AppContent() {
         </>
       )}
       <Toaster />
+      <PWAInstallPrompt />
+      <PWAUpdatePrompt />
     </div>
   );
 }
@@ -217,6 +222,8 @@ function AuthenticatedApp() {
       active = false;
       cleanup();
       pushListenerCleanup.current = null;
+      // Clear badge when component unmounts
+      clearAppBadge();
     };
   }, [loggedInUser?._id, stopTimerMutation, ackInterrupt, savePushSubscription]);
 

@@ -89,8 +89,8 @@ export const ProjectCarousel = React.memo<ProjectCarouselProps>(
     };
 
     // Collapsible state
-    const [isCollapsed, setIsCollapsed] = useState(false);
-    const chevronRotation = useSharedValue(0);
+    const [isCollapsed, setIsCollapsed] = useState(true);
+    const chevronRotation = useSharedValue(-90);
 
     // Pagination state
     const [currentIndex, setCurrentIndex] = useState(0);

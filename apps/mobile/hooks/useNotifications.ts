@@ -1,9 +1,8 @@
 import { api } from "@/convex/_generated/api";
 import {
     getExpoPushToken,
+    initializeNotifications,
     requestNotificationPermissions,
-    setupNotificationCategories,
-    setupNotificationChannels,
 } from "@/services/notifications";
 import { useMutation } from "convex/react";
 import * as Notifications from "expo-notifications";
@@ -79,10 +78,6 @@ export function useNotifications(): UseNotificationsReturn {
 
       console.log("Starting push notification registration...");
 
-      // Set up notification channels (Android) and categories (iOS)
-      await setupNotificationChannels();
-      await setupNotificationCategories();
-
       // Request permissions
       const granted = await requestPermissions();
       if (!granted) {
@@ -90,7 +85,14 @@ export function useNotifications(): UseNotificationsReturn {
       }
 
       // Get the Expo push token (now throws with detailed error)
-      const token = await getExpoPushToken();
+      let token: string;
+      try {
+        token = await getExpoPushToken();
+        console.log("✓ Push token obtained");
+      } catch (err) {
+        console.error("Failed to get push token:", err);
+        throw err; // Re-throw - this is a critical error
+      }
 
       setExpoPushToken(token);
 
@@ -102,10 +104,16 @@ export function useNotifications(): UseNotificationsReturn {
         appVersion: Constants.expoConfig?.version || undefined,
       };
 
-      // Register the token with Convex
-      await registerToken({ token, deviceInfo });
+      // Register the token with Convex - gracefully handle errors
+      try {
+        await registerToken({ token, deviceInfo });
+        console.log("✓ Push token registered with backend");
+      } catch (err) {
+        console.error("Failed to register token with backend (non-fatal):", err);
+        // Continue anyway - we have the token locally, can retry later
+      }
 
-      console.log("Successfully registered push token with backend");
+      console.log("Successfully completed push notification registration");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to register for push notifications";
       setError(message);
@@ -257,20 +265,37 @@ export function useNotifications(): UseNotificationsReturn {
    * Set up notification listeners on mount
    */
   useEffect(() => {
-    // Check current permission status
-    Notifications.getPermissionsAsync().then((status) => {
-      setHasPermission(status.status === "granted");
+    // Initialize ALL notification setup in one call
+    initializeNotifications().catch((err) => {
+      console.error("Error initializing notifications:", err);
     });
 
+    // Check current permission status
+    Notifications.getPermissionsAsync()
+      .then((status) => {
+        setHasPermission(status.status === "granted");
+      })
+      .catch((err) => {
+        console.error("Error checking notification permissions:", err);
+      });
+
     // Listener for notifications received while app is in foreground
-    notificationListener.current = Notifications.addNotificationReceivedListener(
-      handleForegroundNotification
-    );
+    try {
+      notificationListener.current = Notifications.addNotificationReceivedListener(
+        handleForegroundNotification
+      );
+    } catch (err) {
+      console.error("Error setting up notification listener:", err);
+    }
 
     // Listener for when user taps on a notification
-    responseListener.current = Notifications.addNotificationResponseReceivedListener(
-      handleNotificationResponse
-    );
+    try {
+      responseListener.current = Notifications.addNotificationResponseReceivedListener(
+        handleNotificationResponse
+      );
+    } catch (err) {
+      console.error("Error setting up response listener:", err);
+    }
 
     // Check if app was opened from a notification
     Notifications.getLastNotificationResponseAsync()

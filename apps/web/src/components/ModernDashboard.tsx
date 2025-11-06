@@ -35,6 +35,7 @@ import { PomodoroPhaseIndicator } from "./PomodoroPhaseIndicator";
 import { useCurrency } from "../hooks/useCurrency";
 import { updateTimerTitle, clearTimerTitle, setPageVisibility } from "../lib/attention";
 import { updateTimerFavicon, clearTimerFavicon, type FaviconState } from "../lib/favicon";
+import { updateBadgeForTimer, clearAppBadge } from "../lib/badgeApi";
 import { SoundSelectionModal } from "./SoundSelectionModal";
 import { PictureInPictureTimer } from "./PictureInPictureTimer";
 import type { PiPTimerState } from "../lib/pip";
@@ -442,6 +443,19 @@ export function ModernDashboard({
 
     return () => clearInterval(interval);
   }, [runningTimer, currentProject, now, userSettings?.gracePeriod]);
+
+  // Update badge when timer state changes
+  useEffect(() => {
+    const hasRunningTimer = !!runningTimer;
+    updateBadgeForTimer(hasRunningTimer);
+
+    // Clear badge when timer stops
+    return () => {
+      if (!hasRunningTimer) {
+        clearAppBadge();
+      }
+    };
+  }, [runningTimer?._id]);
 
   // Update favicon when timer is running
   useEffect(() => {

@@ -24,7 +24,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Clock, User, Briefcase } from "lucide-react-native";
 import { spacing, borderRadius } from "@/utils/theme";
 import React, { useEffect, useState, useMemo, useRef } from "react";
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View, InteractionManager } from "react-native";
 import { CelebrationComponent, type CelebrationHandle } from "@/utils/celebration";
 
 export default function Index() {
@@ -116,12 +116,30 @@ export default function Index() {
     })).filter((entry) => entry.project && entry.seconds > 0); // Filter out invalid entries
   }, [entries]);
 
-  // Register for push notifications on mount
+  // Register for push notifications on mount - delayed to ensure native modules are ready
   useEffect(() => {
-    registerForPushNotifications().catch((err) => {
-      console.error("Failed to register for push notifications:", err);
-      // Don't show error to user - notifications are optional
+    // Use InteractionManager to wait until all interactions/animations complete
+    const handle = InteractionManager.runAfterInteractions(() => {
+      // Add additional delay to ensure native modules are fully initialized
+      const timer = setTimeout(() => {
+        console.log("Attempting push notification registration...");
+        registerForPushNotifications()
+          .then(() => {
+            console.log("✓ Push notifications registered successfully");
+          })
+          .catch((err) => {
+            console.error("Failed to register for push notifications:", err);
+            // Don't show error to user - notifications are optional
+            // App continues to function without push notifications
+          });
+      }, 1500); // 1.5 second delay after interactions complete
+
+      return () => clearTimeout(timer);
     });
+
+    return () => {
+      handle.cancel();
+    };
   }, []);
 
   // Handle notification actions (Continue/Stop for interrupts, Pomodoro actions, Timer controls)

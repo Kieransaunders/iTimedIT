@@ -3,34 +3,76 @@ import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 import { setupTimerNotificationChannel, setupTimerNotificationCategory } from "./timerNotification";
 
+// Track if the notification handler has been initialized
+let notificationHandlerInitialized = false;
+
 /**
- * Configure how notifications are handled when the app is in the foreground
+ * Initialize the notification handler (call once at app startup)
+ * This must be called before any other notification functions
  */
-Notifications.setNotificationHandler({
-  handleNotification: async (notification: Notifications.Notification) => {
-    const notificationType = notification.request.content.data?.type;
+export function initializeNotificationHandler(): void {
+  if (notificationHandlerInitialized) {
+    return; // Already initialized
+  }
 
-    // Timer running notifications should be silent (no banner/alert)
-    // They update every 3-5 seconds and should only show in notification tray
-    if (notificationType === "timer-running" ||
-        notification.request.content.categoryIdentifier === "timer-running") {
-      return {
-        shouldPlaySound: false,
-        shouldSetBadge: false,
-        shouldShowBanner: false,
-        shouldShowList: true, // Still show in notification list
-      };
-    }
+  try {
+    Notifications.setNotificationHandler({
+      handleNotification: async (notification: Notifications.Notification) => {
+        const notificationType = notification.request.content.data?.type;
 
-    // All other notifications (interrupts, budget alerts, etc.) should show
-    return {
-      shouldPlaySound: true,
-      shouldSetBadge: false,
-      shouldShowBanner: true,
-      shouldShowList: true,
-    };
-  },
-});
+        // Timer running notifications should be silent (no banner/alert)
+        // They update every 3-5 seconds and should only show in notification tray
+        if (notificationType === "timer-running" ||
+            notification.request.content.categoryIdentifier === "timer-running") {
+          return {
+            shouldPlaySound: false,
+            shouldSetBadge: false,
+            shouldShowBanner: false,
+            shouldShowList: true, // Still show in notification list
+          };
+        }
+
+        // All other notifications (interrupts, budget alerts, etc.) should show
+        return {
+          shouldPlaySound: true,
+          shouldSetBadge: false,
+          shouldShowBanner: true,
+          shouldShowList: true,
+        };
+      },
+    });
+
+    notificationHandlerInitialized = true;
+    console.log("✓ Notification handler initialized successfully");
+  } catch (error) {
+    console.error("Failed to initialize notification handler:", error);
+    // Don't throw - allow app to continue without notification handler
+  }
+}
+
+/**
+ * Initialize the entire notifications system in the correct order
+ * Call this once at app startup to set up all notification infrastructure
+ */
+export async function initializeNotifications(): Promise<void> {
+  console.log("Initializing notifications system...");
+
+  try {
+    // 1. Initialize handler first (must happen before any other notification calls)
+    initializeNotificationHandler();
+
+    // 2. Set up Android notification channels
+    await setupNotificationChannels();
+
+    // 3. Set up notification categories (iOS action buttons)
+    await setupNotificationCategories();
+
+    console.log("✓ Notifications system initialized successfully");
+  } catch (error) {
+    console.error("Failed to initialize notifications system:", error);
+    // Don't throw - allow app to continue without full notification support
+  }
+}
 
 /**
  * Request notification permissions from the user
@@ -73,8 +115,8 @@ export async function getExpoPushToken(): Promise<string> {
     );
   }
 
-  // Get the push token
-  const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+  // Get the push token - use null-safe access with explicit fallback
+  const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? null;
 
   if (!projectId) {
     console.warn("No EAS project ID found. This may cause issues in production.");

@@ -1,3 +1,4 @@
+import 'react-native-gesture-handler';
 // Entry point for Expo Router in monorepo setup
 // Replicates expo-router/entry with explicit app directory
 import '@expo/metro-runtime';

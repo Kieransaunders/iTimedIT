@@ -260,9 +260,6 @@ export function TodaySummaryCard({
         accessibilityHint="Double tap to toggle summary details"
       >
         <View style={styles.headerContent}>
-          <Text style={[styles.headerTitle, { color: colors.textSecondary }]}>
-            Today&apos;s Summary
-          </Text>
           <Animated.View style={chevronAnimatedStyle}>
             <ChevronDown size={20} color={colors.textSecondary} />
           </Animated.View>
@@ -482,23 +479,6 @@ export function TodaySummaryCard({
             </View>
           )}
 
-          {/* Dismiss Button */}
-          <Pressable
-            onPress={handleDismiss}
-            style={({ pressed }) => [
-              styles.dismissButton,
-              { opacity: pressed ? 0.7 : 1 },
-            ]}
-            accessible={true}
-            accessibilityRole="button"
-            accessibilityLabel="Don't show this summary again"
-            accessibilityHint="You can re-enable this in settings"
-          >
-            <XCircle size={16} color={colors.textTertiary} />
-            <Text style={[styles.dismissButtonText, { color: colors.textTertiary }]}>
-              Don&apos;t show again
-            </Text>
-          </Pressable>
         </View>
       )}
     </View>

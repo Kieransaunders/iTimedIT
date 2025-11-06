@@ -12,6 +12,7 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -20,6 +21,7 @@ import { OrganizationProvider } from "../contexts/OrganizationContext";
 import { ThemeProvider } from "../utils/ThemeContext";
 import { useAuth } from "../hooks/useAuth";
 import { InterruptBanner } from "../components/timer/InterruptBanner";
+import { initializeNotifications } from "../services/notifications";
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -51,16 +53,30 @@ export default function RootLayout() {
     }
   }, [loaded]);
 
+  // Initialize notifications system early to prevent crashes
+  useEffect(() => {
+    // Lazy initialization - run after component mounts to prevent startup crashes
+    const timer = setTimeout(() => {
+      initializeNotifications().catch((err) => {
+        console.error("Failed to initialize notifications in _layout:", err);
+      });
+    }, 0);
+
+    return () => clearTimeout(timer);
+  }, []);
+
   if (!loaded) {
     return null;
   }
 
   return (
-    <ConvexAuthProvider client={convex} storage={AsyncStorage}>
-      <ThemeProvider>
-        <RootLayoutNav />
-      </ThemeProvider>
-    </ConvexAuthProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ConvexAuthProvider client={convex} storage={AsyncStorage}>
+        <ThemeProvider>
+          <RootLayoutNav />
+        </ThemeProvider>
+      </ConvexAuthProvider>
+    </GestureHandlerRootView>
   );
 }
 
