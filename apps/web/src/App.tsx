@@ -41,6 +41,17 @@ import {
 } from "./components/MarketingPages";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { PWAInstallPrompt } from "./components/PWAInstallPrompt";
+import { MobileLandingPage } from "./components/MobileLandingPage";
+import { MobileSignIn } from "./components/MobileSignIn";
+import { MobileSignUp } from "./components/MobileSignUp";
+
+// Mobile detection utility
+function isMobileDevice(): boolean {
+  return window.innerWidth < 768 || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+}
+
+// Mobile auth page type
+type MobileAuthPage = "landing" | "sign-in" | "sign-up";
 
 export default function App() {
   return (
@@ -393,7 +404,56 @@ function AuthenticatedApp() {
 
 function UnauthenticatedView() {
   const { page, navigate } = useMarketingPage();
+  const [isMobile, setIsMobile] = useState(isMobileDevice());
+  const [mobileAuthPage, setMobileAuthPage] = useState<MobileAuthPage>("landing");
+  const { signIn } = useAuthActions();
 
+  // Update mobile detection on resize
+  useEffect(() => {
+    const handleResize = () => setIsMobile(isMobileDevice());
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  // Handle guest mode sign-in
+  const handleGuestMode = async () => {
+    try {
+      await signIn("anonymous");
+    } catch (error) {
+      console.error("Guest sign-in failed:", error);
+      toast.error("Failed to start guest session. Please try again.");
+    }
+  };
+
+  // If mobile, show mobile-specific pages
+  if (isMobile) {
+    switch (mobileAuthPage) {
+      case "sign-in":
+        return (
+          <MobileSignIn
+            onBack={() => setMobileAuthPage("landing")}
+            onSignUpLink={() => setMobileAuthPage("sign-up")}
+          />
+        );
+      case "sign-up":
+        return (
+          <MobileSignUp
+            onBack={() => setMobileAuthPage("landing")}
+            onSignInLink={() => setMobileAuthPage("sign-in")}
+          />
+        );
+      default:
+        return (
+          <MobileLandingPage
+            onSignIn={() => setMobileAuthPage("sign-in")}
+            onSignUp={() => setMobileAuthPage("sign-up")}
+            onGuestMode={handleGuestMode}
+          />
+        );
+    }
+  }
+
+  // Desktop view - existing functionality
   switch (page) {
     case "features":
       return <FeaturesPage onNavigate={navigate} />;

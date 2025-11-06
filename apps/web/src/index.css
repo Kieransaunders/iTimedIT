@@ -105,3 +105,51 @@ body {
 .hero-subtitle {
   color: var(--text-secondary);
 }
+
+/* Mobile Landing Page Styles */
+.mobile-landing-gradient {
+  background: linear-gradient(180deg, #ffffff 0%, #fef3f0 50%, #ffffff 100%);
+}
+
+.mobile-feature-card {
+  @apply bg-white rounded-xl border border-slate-100 p-4 transition-all duration-200;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.mobile-feature-card:active {
+  transform: scale(0.98);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.mobile-feature-icon {
+  @apply w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0;
+  background: linear-gradient(135deg, #fef3f0 0%, #ffffff 100%);
+}
+
+/* Mobile Auth Page Styles */
+.mobile-auth-gradient {
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+}
+
+.mobile-auth-card {
+  @apply bg-white rounded-2xl border border-slate-100 p-6;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* Improve touch targets on mobile */
+@media (max-width: 768px) {
+  .auth-input-field {
+    @apply py-4 text-base;
+    min-height: 52px;
+  }
+
+  .auth-button {
+    @apply py-4 text-base;
+    min-height: 52px;
+  }
+
+  button, a {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
