@@ -207,7 +207,16 @@ class SoundManager {
   async addCustomSound(uri: string, name: string): Promise<string> {
     try {
       const id = `custom-${Date.now()}`;
-      const fileExtension = uri.split('.').pop() || 'mp3';
+      // Safely extract file extension (avoid Hermes string operation bugs)
+      let fileExtension = 'mp3';
+      try {
+        const match = uri.match(/\.([^.]+)$/);
+        if (match && match[1]) {
+          fileExtension = match[1];
+        }
+      } catch (error) {
+        console.warn('Failed to extract file extension, using default:', error);
+      }
       const newUri = `${CUSTOM_SOUNDS_DIR}${id}.${fileExtension}`;
 
       // Copy file to app's document directory

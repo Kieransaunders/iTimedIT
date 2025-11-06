@@ -34,24 +34,36 @@ export function getUserInitials(user: UserLike): string {
   }
 
   const name = user.name?.trim();
-  if (name) {
-    const parts = name.split(/\s+/).slice(0, 2);
-    if (parts.length === 1) {
-      return parts[0].charAt(0).toUpperCase() || "?";
+  if (name && name.length > 0) {
+    try {
+      const parts = name.split(/\s+/).slice(0, 2);
+      if (parts.length === 1) {
+        return parts[0].charAt(0).toUpperCase() || "?";
+      }
+      return parts.map((part: string) => part.charAt(0).toUpperCase()).join("") || "??";
+    } catch (error) {
+      // Fallback if split fails (Hermes bug workaround)
+      return name.charAt(0).toUpperCase() || "?";
     }
-    return parts.map((part: string) => part.charAt(0).toUpperCase()).join("") || "??";
   }
 
   const email = user.email?.trim();
-  if (email) {
-    const [localPart] = email.split("@");
-    if (!localPart) {
-      return "??";
+  if (email && email.length > 0) {
+    try {
+      const atIndex = email.indexOf("@");
+      const localPart = atIndex > 0 ? email.substring(0, atIndex) : email;
+
+      if (!localPart || localPart.length === 0) {
+        return "??";
+      }
+      if (localPart.length === 1) {
+        return localPart.toUpperCase();
+      }
+      return `${localPart[0]}${localPart[1]}`.toUpperCase();
+    } catch (error) {
+      // Fallback if string operations fail
+      return email.charAt(0).toUpperCase() || "??";
     }
-    if (localPart.length === 1) {
-      return localPart.toUpperCase();
-    }
-    return `${localPart[0]}${localPart[1]}`.toUpperCase();
   }
 
   return "??";

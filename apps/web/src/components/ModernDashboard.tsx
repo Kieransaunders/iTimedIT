@@ -146,6 +146,17 @@ export function ModernDashboard({
       : api.projects.listAll,
     currentWorkspace === "personal" ? {} : {}
   );
+
+  // Debug logging for mobile issues
+  useEffect(() => {
+    if (projects !== undefined) {
+      console.log("Projects loaded:", {
+        workspace: currentWorkspace,
+        count: projects.length,
+        projects: projects.map(p => ({ id: p._id, name: p.name, workspace: p.workspaceType }))
+      });
+    }
+  }, [projects, currentWorkspace]);
   const runningTimer = useQuery(api.timer.getRunningTimer, { workspaceType: currentWorkspace });
   const userSettings = useQuery(api.users.getUserSettings);
   const categories = useQuery(api.categories.getCategories);
@@ -234,7 +245,15 @@ export function ModernDashboard({
   }, [projectsWithColors, searchTerm]);
 
   const currentProject = useMemo(() => {
-    return projectsWithColors.find(p => p._id === currentProjectId) || projectsWithColors[0];
+    const project = projectsWithColors.find(p => p._id === currentProjectId) || projectsWithColors[0];
+    if (!project && projectsWithColors.length > 0) {
+      console.warn("No current project found despite having projects:", {
+        projectCount: projectsWithColors.length,
+        currentProjectId,
+        availableProjects: projectsWithColors.map(p => ({ id: p._id, name: p.name }))
+      });
+    }
+    return project;
   }, [projectsWithColors, currentProjectId]);
 
   const hasProjects = projectsWithColors.length > 0;
@@ -647,8 +666,12 @@ export function ModernDashboard({
   }, [savePushSubscription]);
 
   const toggleTimer = useCallback(async () => {
-    if (!currentProject) return;
-    
+    if (!currentProject) {
+      console.error("No project selected - cannot start timer");
+      toast.error("Please select a project first");
+      return;
+    }
+
     if (timerState.running) {
       await stopTimer();
     } else {
@@ -1479,11 +1502,12 @@ export function ModernDashboard({
 
                 <div className="flex items-center justify-center gap-4">
                   <button
-                    className="inline-flex items-center justify-center px-8 py-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white focus-visible:ring-[#F85E00] dark:focus-visible:ring-offset-gray-900 text-white font-medium"
+                    className="inline-flex items-center justify-center px-8 py-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white focus-visible:ring-[#F85E00] dark:focus-visible:ring-offset-gray-900 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                     style={{
-                      backgroundColor: timerState.running ? "#ef4444" : currentProject.color,
+                      backgroundColor: timerState.running ? "#ef4444" : (currentProject?.color || "#6b7280"),
                     }}
                     onClick={toggleTimer}
+                    disabled={!currentProject && !timerState.running}
                     aria-pressed={timerState.running}
                     aria-label={timerState.running ? "Stop timer" : "Start timer"}
                   >

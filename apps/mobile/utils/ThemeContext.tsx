@@ -19,6 +19,7 @@ interface ThemeContextType {
   colors: typeof lightColors;
   setThemeMode: (mode: ThemeMode) => void;
   toggleTheme: () => void;
+  isReady: boolean;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -86,11 +87,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
   }, [actualTheme, isReady]);
 
-  // Always render children but context may not be fully ready until isReady is true
+  // Always render children but expose isReady so components can wait for theme initialization
   // This prevents the "Cannot read property 'background' of undefined" error
   return (
     <ThemeContext.Provider
-      value={{ theme: actualTheme, themeMode, colors, setThemeMode, toggleTheme }}
+      value={{ theme: actualTheme, themeMode, colors, setThemeMode, toggleTheme, isReady }}
     >
       {children}
     </ThemeContext.Provider>

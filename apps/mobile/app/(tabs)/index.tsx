@@ -94,6 +94,11 @@ export default function Index() {
 
   // Separate projects by workspace type for carousels
   const { personalProjects, workProjects, recentProjects } = useMemo(() => {
+    // Guard against undefined projects array to prevent startup crashes
+    if (!projects || !Array.isArray(projects)) {
+      return { personalProjects: [], workProjects: [], recentProjects: [] };
+    }
+
     const personal = projects.filter(p => p.workspaceType === "personal");
     const work = projects.filter(p => !p.workspaceType || p.workspaceType === "work");
 
@@ -106,6 +111,11 @@ export default function Index() {
 
   // Format entries for TodaySummaryCard
   const formattedEntries = useMemo((): TimeEntry[] => {
+    // Guard against undefined entries array to prevent startup crashes
+    if (!entries || !Array.isArray(entries)) {
+      return [];
+    }
+
     return entries.map((entry: any) => ({
       _id: entry._id || "",
       projectId: entry.projectId || "",

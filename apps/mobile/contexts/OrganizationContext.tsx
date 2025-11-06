@@ -274,7 +274,14 @@ export function OrganizationProvider({
 export function useOrganization() {
   const context = useContext(OrganizationContext);
   if (!context) {
-    throw new Error("useOrganization must be used within an OrganizationProvider");
+    // Provide more helpful error message to debug startup crashes
+    throw new Error(
+      "useOrganization must be used within an OrganizationProvider. " +
+      "This error typically occurs when:\n" +
+      "1. A component using useOrganization is rendered outside the provider\n" +
+      "2. The provider hasn't finished initialization\n" +
+      "3. There's a circular dependency in component imports"
+    );
   }
   return context;
 }
