@@ -1,4 +1,5 @@
 {
+  "deployment": "dev:watchful-hedgehog-860",
   "node": {
     "version": "20"
   }

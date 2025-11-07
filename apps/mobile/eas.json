@@ -1,31 +1,38 @@
 {
   "cli": {
-    "version": ">= 16.20.4",
-    "appVersionSource": "remote"
+    "version": ">= 3.15.1"
   },
   "build": {
     "development": {
-      "developmentClient": true,
+      "extends": "production",
       "distribution": "internal",
-      "channel": "development",
-      "env": {
-        "HERMES_ENABLE_DEBUGGER": "true"
+      "android": {
+        "gradleCommand": ":app:assembleDebug"
+      },
+      "ios": {
+        "buildConfiguration": "Debug",
+        "simulator": true
+      }
+    },
+    "development:device": {
+      "extends": "development",
+      "distribution": "internal",
+      "ios": {
+        "buildConfiguration": "Debug",
+        "simulator": false
       }
     },
     "preview": {
+      "extends": "production",
       "distribution": "internal",
-      "channel": "preview",
-      "ios": {
-        "buildConfiguration": "Release"
-      }
+      "ios": { "simulator": true },
+      "android": { "buildType": "apk" }
     },
-    "production": {
-      "autoIncrement": true,
-      "channel": "production",
-      "ios": {
-        "buildConfiguration": "Release"
-      }
-    }
+    "preview:device": {
+      "extends": "preview",
+      "ios": { "simulator": false }
+    },
+    "production": {}
   },
   "submit": {
     "production": {}

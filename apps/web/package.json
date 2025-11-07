@@ -15,7 +15,7 @@
     "generate:vapid": "node scripts/generate-vapid-keys.js"
   },
   "dependencies": {
-    "@auth/core": "^0.34.3",
+    "@auth/core": "^0.41.1",
     "@convex-dev/auth": "^0.0.90",
     "@convex-dev/resend": "^0.1.13",
     "@radix-ui/react-dialog": "^1.1.15",

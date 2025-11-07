@@ -5,26 +5,47 @@ iTimedIT is a multi-tenant time tracking and client management platform for agen
 - **Live site**: <https://itimedit.com/> → production Convex deployment `https://basic-greyhound-928.convex.cloud`
 - **Convex dashboard**: [`basic-greyhound-928`](https://dashboard.convex.dev/d/basic-greyhound-928)
 
-Monorepo Structure Complete! (app and web)
-🎯 Development Commands
-Web app: npm run dev:web
-Mobile app: npm run dev:mobile
-Build web: npm run build:web
-Build mobile: npm run build:mobile
-Run tests: npm run test
-Lint all: npm run lint
+## 🎯 Monorepo Structure
 
-📱 What's Changed
-Web app moved to apps/web/ with its own package.json
-Mobile app moved to apps/mobile/ (from MobileiTimedIT)
-Shared package created at packages/shared/ for common code
-Root package.json configured for workspace management
-Scripts updated to work with the monorepo structure
-🔧 Key Features
-Workspace management with npm workspaces
-Shared code between web and mobile apps
-Independent development - each app can be developed separately
-Unified commands - run scripts across all workspaces from root
+This is a **true monorepo** with shared backend architecture:
+
+```
+apps/
+├── web/          # React + Vite web app
+│   └── convex → ../../packages/backend
+└── mobile/       # Expo + React Native mobile app (Ignite boilerplate)
+    └── convex → ../../packages/backend
+
+packages/
+├── backend/      # Shared Convex backend (queries, mutations, schema)
+└── shared/       # Shared utilities and types
+```
+
+### Development Commands
+
+```bash
+# Web app
+npm run dev:web          # Start web app with hot reload
+
+# Mobile app
+npm run dev:mobile       # Start Expo dev server
+npm run ios              # Run on iOS simulator
+npm run android          # Run on Android emulator
+
+# Both platforms
+npm run test             # Run all tests
+npm run lint             # Lint all workspaces
+npm run build:web        # Build web for production
+npm run build:mobile     # Build mobile for production
+```
+
+### Key Features
+
+✅ **Shared Backend**: Single Convex backend serves both platforms via symlinks
+✅ **Type Safety**: Shared TypeScript types from generated Convex code
+✅ **Instant Sync**: Changes in one app immediately visible in the other
+✅ **Unified Development**: Run both apps from monorepo root
+✅ **npm Workspaces**: Deduplicated dependencies, faster installs
 
 ## Highlights
 

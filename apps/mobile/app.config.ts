@@ -1,122 +1,41 @@
-import { ConfigContext, ExpoConfig } from "expo/config";
+import { ExpoConfig, ConfigContext } from "@expo/config"
 
-// Dynamically get the reversed client ID for the Google OAuth scheme
-// Note: Using index-based string manipulation to avoid Hermes array operations crash in release builds
-const googleClientId = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID;
-let googleClientScheme: string | undefined;
-if (googleClientId && typeof googleClientId === 'string' && googleClientId.includes('.')) {
-  try {
-    // Safe string reversal without array operations (avoids Hermes DictPropertyMap crash)
-    const parts: string[] = [];
-    let currentPart = '';
+/**
+ * Use tsx/cjs here so we can use TypeScript for our Config Plugins
+ * and not have to compile them to JavaScript.
+ *
+ * See https://docs.expo.dev/config-plugins/plugins/#add-typescript-support-and-convert-to-dynamic-app-config
+ */
+import "tsx/cjs"
 
-    for (let i = 0; i < googleClientId.length; i++) {
-      const char = googleClientId.charAt(i);
-      if (char === '.') {
-        if (currentPart) {
-          parts.push(currentPart);
-          currentPart = '';
-        }
-      } else {
-        currentPart += char;
-      }
-    }
-    if (currentPart) {
-      parts.push(currentPart);
-    }
+/**
+ * @param config ExpoConfig coming from the static config app.json if it exists
+ *
+ * You can read more about Expo's Configuration Resolution Rules here:
+ * https://docs.expo.dev/workflow/configuration/#configuration-resolution-rules
+ */
+module.exports = ({ config }: ConfigContext): Partial<ExpoConfig> => {
+  const existingPlugins = config.plugins ?? []
 
-    // Reverse by building from end to start
-    let reversed = '';
-    for (let i = parts.length - 1; i >= 0; i--) {
-      reversed += parts[i];
-      if (i > 0) reversed += '.';
-    }
-
-    googleClientScheme = reversed || undefined;
-  } catch (error) {
-    console.warn('Failed to generate Google OAuth scheme:', error);
-    googleClientScheme = undefined;
-  }
-}
-
-export default ({ config }: ConfigContext): ExpoConfig => ({
-  ...config,
-  name: "iTimedIT",
-  slug: "itimedit",
-  version: "1.0.2",
-  orientation: "portrait",
-  icon: "./assets/images/icon.png",
-  scheme: "itimeditapp",
-  userInterfaceStyle: "automatic",
-  newArchEnabled: true,
-  splash: {
-    image: "./assets/images/splash-icon.png",
-    resizeMode: "contain",
-    backgroundColor: "#1a1a2e",
-  },
-  ios: {
-    supportsTablet: true,
-    bundleIdentifier: "com.itimedit.app",
-    infoPlist: {
-      UIBackgroundModes: ["fetch", "remote-notification"],
-      CFBundleURLTypes: [
-        {
-          CFBundleURLSchemes: [
-            "itimeditapp",
-            ...(googleClientScheme ? [googleClientScheme] : []),
-          ],
-        },
-      ],
-    },
-  },
-  android: {
-    package: "com.itimedit.app",
-    permissions: ["VIBRATE", "RECEIVE_BOOT_COMPLETED"],
-    adaptiveIcon: {
-      foregroundImage: "./assets/images/adaptive-icon.png",
-      backgroundColor: "#ffffff",
-    },
-    edgeToEdgeEnabled: true,
-    predictiveBackGestureEnabled: false,
-    intentFilters: [
-      {
-        action: "VIEW",
-        autoVerify: true,
-        data: [
+  return {
+    ...config,
+    ios: {
+      ...config.ios,
+      // This privacyManifests is to get you started.
+      // See Expo's guide on apple privacy manifests here:
+      // https://docs.expo.dev/guides/apple-privacy/
+      // You may need to add more privacy manifests depending on your app's usage of APIs.
+      // More details and a list of "required reason" APIs can be found in the Apple Developer Documentation.
+      // https://developer.apple.com/documentation/bundleresources/privacy-manifest-files
+      privacyManifests: {
+        NSPrivacyAccessedAPITypes: [
           {
-            scheme: "itimeditapp",
-            host: "auth",
-            pathPrefix: "/callback",
+            NSPrivacyAccessedAPIType: "NSPrivacyAccessedAPICategoryUserDefaults",
+            NSPrivacyAccessedAPITypeReasons: ["CA92.1"], // CA92.1 = "Access info from same app, per documentation"
           },
         ],
-        category: ["BROWSABLE", "DEFAULT"],
       },
-    ],
-  },
-  web: {
-    bundler: "metro",
-    output: "static",
-    favicon: "./assets/images/favicon.png",
-  },
-  plugins: [
-    "expo-router",
-    "expo-secure-store",
-    "expo-notifications",
-    "expo-background-fetch",
-    "expo-task-manager",
-  ],
-  experiments: {
-    typedRoutes: true,
-    autolinkingModuleResolution: true,
-  },
-  extra: {
-    convexUrl: process.env.EXPO_PUBLIC_CONVEX_URL,
-    webAppUrl: process.env.EXPO_PUBLIC_WEB_APP_URL,
-    router: {
-      origin: false,
     },
-    eas: {
-      projectId: "a7118405-a040-4c3e-b89f-32b9d3112242",
-    },
-  },
-});
+    plugins: [...existingPlugins],
+  }
+}

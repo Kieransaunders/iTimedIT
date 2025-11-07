@@ -11,15 +11,7 @@ iTimedIT is a multi-tenant time tracking platform with both **web** and **mobile
 ```
 apps/
 ├── web/                    # React + Vite web application
-│   ├── convex/            # Convex backend (Node.js 20 runtime)
-│   │   ├── schema.ts      # Database schema
-│   │   ├── timer.ts       # Timer mutations/queries
-│   │   ├── entries.ts     # Time entry management
-│   │   ├── projects.ts    # Project management
-│   │   ├── clients.ts     # Client management
-│   │   ├── interrupts.ts  # Timer interruption system
-│   │   ├── organizations.ts
-│   │   └── auth.ts        # Convex Auth configuration
+│   ├── convex -> ../../packages/backend  # Symlink to shared backend
 │   └── src/
 │       ├── components/
 │       │   ├── ModernDashboard.tsx  # ACTIVE: Main timer UI
@@ -28,18 +20,43 @@ apps/
 │       │   └── ui/         # shadcn/ui components
 │       └── lib/            # Shared utilities
 │
-├── mobile/                 # Expo/React Native mobile app
-│   ├── convex -> ../web/convex  # Symlink to shared Convex backend
-│   ├── app/               # Expo Router file-based routing
-│   │   ├── (tabs)/        # Tab navigation
-│   │   ├── auth/          # Auth screens
-│   │   └── _layout.tsx    # Auto-initializes "Personal Workspace"
-│   ├── components/
-│   ├── hooks/             # useAuth, useProjects, useClients
-│   └── services/          # googleAuth, notifications
+├── mobile/                 # Expo/React Native mobile app (@itimedit/mobile)
+│   ├── convex -> ../../packages/backend  # Symlink to shared backend
+│   ├── app/               # Ignite boilerplate structure
+│   │   ├── screens/       # SignInScreen, SignUpScreen, WelcomeScreen
+│   │   ├── navigators/    # AppNavigator with auth flow
+│   │   ├── components/    # Button, TextField, Screen, etc.
+│   │   ├── theme/         # Light/dark mode theming
+│   │   ├── services/      # Convex client, storage
+│   │   └── utils/         # useAuth hook, validators
+│   ├── assets/            # Images, fonts
+│   ├── ios/               # iOS native code
+│   ├── android/           # Android native code
+│   ├── metro.config.js    # Ignite-configured Metro bundler
+│   └── eas.json          # EAS Build configuration
 │
 packages/
-└── shared/                # Shared code (if any)
+├── backend/               # 🎯 SHARED Convex backend (@itimedit/backend)
+│   ├── schema.ts          # Database schema
+│   ├── timer.ts           # Timer mutations/queries
+│   ├── entries.ts         # Time entry management (work workspace)
+│   ├── personalEntries.ts # Personal workspace entries
+│   ├── projects.ts        # Project management (work)
+│   ├── personalProjects.ts # Personal workspace projects
+│   ├── clients.ts         # Client management
+│   ├── interrupts.ts      # Timer interruption system
+│   ├── organizations.ts   # Workspace management
+│   ├── users.ts           # User settings, Expo push tokens
+│   ├── expoPushActions.ts # Mobile push notifications
+│   ├── auth.ts            # Convex Auth configuration
+│   ├── http.ts            # HTTP routes
+│   └── convex.config.ts   # Convex app config
+│
+└── shared/                # Shared utilities (@itimedit/shared)
+    └── src/
+        ├── types/         # Shared TypeScript types
+        ├── utils/         # formatTime, validators
+        └── constants/     # Shared constants
 ```
 
 ## Technology Stack
@@ -54,12 +71,14 @@ packages/
 
 ### Mobile App
 - **Framework**: Expo ~54 + React Native 0.81
-- **Backend**: Convex (shared with web via symlink at `apps/mobile/convex -> apps/web/convex`)
-- **Routing**: Expo Router (file-based)
-- **UI**: react-native-unistyles + custom components
-- **Auth**: Convex Auth + Google OAuth (expo-auth-session)
-- **Navigation**: @react-navigation/native
-- **Testing**: Jest + jest-expo
+- **Boilerplate**: Ignite v11.3.2 (Infinite Red)
+- **Backend**: Convex (shared with web via symlink at `apps/mobile/convex -> ../../packages/backend`)
+- **Navigation**: React Navigation v7 (native stack)
+- **UI**: Ignite components (Button, TextField, Screen, etc.) + custom theming
+- **Theming**: Light/dark mode with ThemeProvider + useAppTheme hook
+- **Auth**: Convex Auth + Google OAuth (@react-native-google-signin/google-signin)
+- **Storage**: MMKV (react-native-mmkv) for fast, encrypted storage
+- **Testing**: Jest + jest-expo + Maestro (E2E)
 
 ## Common Commands
 
@@ -98,13 +117,45 @@ npm run lint                                 # ESLint checks
 npm run test                                 # Run Jest tests (--runInBand)
 ```
 
-### Convex commands (run from apps/web/)
+### Convex commands (run from packages/backend/ or via symlink)
 ```bash
 npx convex dev           # Start Convex development backend
 npx convex deploy        # Deploy to production Convex backend
 npx convex dashboard     # Open Convex dashboard
 npx convex logs          # View function logs
 ```
+
+## 🎯 Shared Backend Architecture
+
+### Critical Information
+
+The Convex backend is located at `packages/backend/` and is **shared by both web and mobile apps** via symlinks:
+- `apps/web/convex` → `../../packages/backend`
+- `apps/mobile/convex` → `../../packages/backend`
+
+**⚠️ IMPORTANT RULES:**
+
+1. **Schema Changes**: All schema modifications must be made in `packages/backend/schema.ts`
+2. **Function Development**: Add new queries/mutations/actions in `packages/backend/`
+3. **Testing**: Schema changes affect BOTH apps simultaneously
+4. **Deployment**: Single deployment serves both platforms
+5. **Generated Types**: Both apps import from their symlinked `convex/_generated/`
+
+### Production Deployment
+
+Both apps connect to the same Convex deployment:
+- **Production URL**: `https://basic-greyhound-928.convex.cloud`
+- **Set in**:
+  - Web: `apps/web/.env.production` → `VITE_CONVEX_URL`
+  - Mobile: `apps/mobile/.env.local` → `EXPO_PUBLIC_CONVEX_URL`
+
+### Benefits
+
+✅ **Single Source of Truth**: One schema, one set of functions
+✅ **Instant Sync**: Changes propagate immediately between apps
+✅ **Type Safety**: Shared TypeScript types from generated code
+✅ **Easier Maintenance**: Fix bugs once, both apps benefit
+✅ **Consistent Data**: No schema drift between platforms
 
 ## Mobile-Web Feature Division Strategy
 
