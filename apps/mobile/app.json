@@ -2,7 +2,7 @@
   "name": "iTimedIT",
   "slug": "itimedit",
   "scheme": "itimedit",
-  "version": "1.0.0",
+  "version": "1.0.5",
   "orientation": "portrait",
   "userInterfaceStyle": "automatic",
   "icon": "./assets/images/app-icon-all.png",
@@ -16,7 +16,7 @@
   ],
   "android": {
     "icon": "./assets/images/app-icon-android-legacy.png",
-    "package": "com.itimedit",
+    "package": "com.itimedit.app",
     "adaptiveIcon": {
       "foregroundImage": "./assets/images/app-icon-android-adaptive-foreground.png",
       "backgroundImage": "./assets/images/app-icon-android-adaptive-background.png"
@@ -27,7 +27,7 @@
   "ios": {
     "icon": "./assets/images/app-icon-ios.png",
     "supportsTablet": true,
-    "bundleIdentifier": "com.itimedit"
+    "bundleIdentifier": "com.itimedit.app"
   },
   "web": {
     "favicon": "./assets/images/app-icon-web-favicon.png",

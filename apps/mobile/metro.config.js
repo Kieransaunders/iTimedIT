@@ -10,8 +10,8 @@ const workspaceRoot = path.resolve(projectRoot, "../..")
 /** @type {import('expo/metro-config').MetroConfig} */
 const config = getDefaultConfig(projectRoot)
 
-// 1. Watch all files within the monorepo
-config.watchFolders = [workspaceRoot]
+// 1. Watch all files within the monorepo (merge with Expo defaults)
+config.watchFolders = [...(config.watchFolders || []), workspaceRoot]
 
 // 2. Let Metro know where to resolve packages and in what order
 config.resolver.nodeModulesPaths = [
