@@ -1,4 +1,4 @@
-import React, { FC, useEffect, useState } from "react"
+import React, { FC, useState } from "react"
 import {
   KeyboardAvoidingView,
   Platform,
@@ -37,13 +37,6 @@ export const SignUpScreen: FC<SignUpScreenProps> = ({ navigation }) => {
   const [confirmPasswordError, setConfirmPasswordError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
-
-  // Redirect to main app if already authenticated
-  useEffect(() => {
-    if (isAuthenticated && !authLoading) {
-      navigation.replace("Welcome")
-    }
-  }, [isAuthenticated, authLoading, navigation])
 
   /**
    * Validate form fields
@@ -91,7 +84,7 @@ export const SignUpScreen: FC<SignUpScreenProps> = ({ navigation }) => {
         text2: "Welcome to iTimedIT.",
       })
 
-      navigation.replace("Welcome")
+      // Navigation will happen automatically via conditional routing in AppNavigator
     } catch (error: any) {
       // Show error message
       Toast.show({

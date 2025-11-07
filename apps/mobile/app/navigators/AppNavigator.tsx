@@ -16,6 +16,7 @@ import { WelcomeScreen } from "@/screens/WelcomeScreen"
 import { useAppTheme } from "@/theme/context"
 import { useAuth } from "@/utils/useAuth"
 
+import { MainNavigator } from "./MainNavigator"
 import { DemoNavigator } from "./DemoNavigator"
 import type { AppStackParamList, NavigationProps } from "./navigationTypes"
 import { navigationRef, useBackButtonHandler } from "./navigationUtilities"
@@ -30,11 +31,16 @@ const exitRoutes = Config.exitRoutes
 const Stack = createNativeStackNavigator<AppStackParamList>()
 
 const AppStack = () => {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, isLoading } = useAuth()
 
   const {
     theme: { colors },
   } = useAppTheme()
+
+  // Don't render anything while checking auth status
+  if (isLoading) {
+    return null
+  }
 
   return (
     <Stack.Navigator
@@ -45,12 +51,13 @@ const AppStack = () => {
           backgroundColor: colors.background,
         },
       }}
-      initialRouteName={isAuthenticated ? "Welcome" : "SignIn"}
+      initialRouteName={isAuthenticated ? "Main" : "SignIn"}
     >
       {isAuthenticated ? (
         <>
-          <Stack.Screen name="Welcome" component={WelcomeScreen} />
+          <Stack.Screen name="Main" component={MainNavigator} />
 
+          <Stack.Screen name="Welcome" component={WelcomeScreen} />
           <Stack.Screen name="Demo" component={DemoNavigator} />
         </>
       ) : (
