@@ -37,7 +37,11 @@
       "Bash(npx convex dashboard)",
       "Bash(del nul)",
       "Bash(git commit:*)",
-      "WebFetch(domain:docs.convex.dev)"
+      "WebFetch(domain:docs.convex.dev)",
+      "Bash(npm ls:*)",
+      "Bash(git -C /Users/kieransaunders/Dev/iTimedIT status package-lock.json apps/mobile/package-lock.json)",
+      "Bash(git -C /Users/kieransaunders/Dev/iTimedIT log --oneline -10 -- package-lock.json apps/mobile/package-lock.json)",
+      "Bash(npm view:*)"
     ],
     "deny": [],
     "ask": []
