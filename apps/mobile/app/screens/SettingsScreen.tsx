@@ -1,18 +1,22 @@
 import { Alert, View, ViewStyle } from "react-native"
+import { useMMKVString } from "react-native-mmkv"
 import { Screen } from "@/components/Screen"
 import { Text } from "@/components/Text"
 import { Button } from "@/components/Button"
+import { Radio } from "@/components/Toggle/Radio"
 import { useAuth } from "@/utils/useAuth"
 import { useAppTheme } from "@/theme/context"
-import type { ThemedStyle } from "@/theme/types"
+import { storage } from "@/utils/storage"
+import type { ThemedStyle, ThemeContextModeT } from "@/theme/types"
 
 /**
  * SettingsScreen - App settings and user preferences
  * @returns {JSX.Element} The rendered `SettingsScreen`.
  */
 export function SettingsScreen() {
-  const { themed } = useAppTheme()
+  const { themed, setThemeContextOverride } = useAppTheme()
   const { signOut, user } = useAuth()
+  const [themePreference] = useMMKVString("ignite.themeScheme", storage)
 
   const handleSignOut = async () => {
     Alert.alert(
@@ -52,8 +56,28 @@ export function SettingsScreen() {
         )}
 
         <View style={themed($section)}>
-          <Text preset="subheading" text="General" />
-          <Text text="App settings will go here" />
+          <Text preset="subheading" text="Appearance" style={themed($sectionTitle)} />
+
+          <Radio
+            label="Light"
+            value={themePreference === "light"}
+            onValueChange={() => setThemeContextOverride("light")}
+            containerStyle={themed($radioContainer)}
+          />
+
+          <Radio
+            label="Dark"
+            value={themePreference === "dark"}
+            onValueChange={() => setThemeContextOverride("dark")}
+            containerStyle={themed($radioContainer)}
+          />
+
+          <Radio
+            label="System (Auto)"
+            value={themePreference === undefined}
+            onValueChange={() => setThemeContextOverride(undefined)}
+            containerStyle={themed($radioContainer)}
+          />
         </View>
 
         <View style={themed($signOutSection)}>
@@ -83,7 +107,15 @@ const $userInfo: ThemedStyle<ViewStyle> = ({ spacing }) => ({
 })
 
 const $section: ThemedStyle<ViewStyle> = ({ spacing }) => ({
-  gap: spacing.xs,
+  gap: spacing.md,
+})
+
+const $sectionTitle: ThemedStyle<ViewStyle> = ({ spacing }) => ({
+  marginBottom: spacing.xs,
+})
+
+const $radioContainer: ThemedStyle<ViewStyle> = () => ({
+  marginBottom: 0,
 })
 
 const $signOutSection: ThemedStyle<ViewStyle> = ({ spacing }) => ({

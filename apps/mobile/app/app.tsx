@@ -25,7 +25,6 @@ import { KeyboardProvider } from "react-native-keyboard-controller"
 import { initialWindowMetrics, SafeAreaProvider } from "react-native-safe-area-context"
 
 import { ConvexAuthProvider } from "@convex-dev/auth/react"
-import { ConvexProvider } from "convex/react"
 
 import { AuthProvider } from "./context/AuthContext"
 import { initI18n } from "./i18n"
@@ -102,17 +101,15 @@ export function App() {
     <SafeAreaProvider initialMetrics={initialWindowMetrics}>
       <KeyboardProvider>
         <ConvexAuthProvider client={convex} storage={convexTokenStorage}>
-          <ConvexProvider client={convex}>
-            <AuthProvider>
-              <ThemeProvider>
-                <AppNavigator
-                  linking={linking}
-                  initialState={initialNavigationState}
-                  onStateChange={onNavigationStateChange}
-                />
-              </ThemeProvider>
-            </AuthProvider>
-          </ConvexProvider>
+          <AuthProvider>
+            <ThemeProvider>
+              <AppNavigator
+                linking={linking}
+                initialState={initialNavigationState}
+                onStateChange={onNavigationStateChange}
+              />
+            </ThemeProvider>
+          </AuthProvider>
         </ConvexAuthProvider>
       </KeyboardProvider>
     </SafeAreaProvider>

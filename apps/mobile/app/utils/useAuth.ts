@@ -1,7 +1,6 @@
 import { api } from "../../convex/_generated/api"
 import { secureStorage } from "@/services/storage"
-import { useAuthActions } from "@convex-dev/auth/react"
-import { useConvexAuth } from "convex/react"
+import { useAuthActions, useAuthToken } from "@convex-dev/auth/react"
 import { useQuery } from "convex/react"
 import * as WebBrowser from "expo-web-browser"
 import { useCallback, useEffect, useState } from "react"
@@ -32,7 +31,7 @@ export interface UseAuthReturn {
  * Uses Convex Auth for authentication and Expo SecureStore for token storage
  */
 export function useAuth(): UseAuthReturn {
-  const { isAuthenticated: convexIsAuthenticated, isLoading: convexIsLoading } = useConvexAuth()
+  const authToken = useAuthToken()
   const [error, setError] = useState<string | null>(null)
   const [isInitializing, setIsInitializing] = useState(true)
 
@@ -213,9 +212,10 @@ export function useAuth(): UseAuthReturn {
   // If Convex says we're not authenticated but we have a stored token, clear it
   useEffect(() => {
     const handleSessionExpiration = async () => {
-      if (!convexIsLoading && !convexIsAuthenticated && !isInitializing) {
-        const token = await secureStorage.getAuthToken()
-        if (token) {
+      const hasToken = authToken !== null
+      if (!isInitializing && !hasToken && user === null) {
+        const storedToken = await secureStorage.getAuthToken()
+        if (storedToken) {
           // Session has expired, clear the stored token
           console.log("Session expired, clearing stored token")
           await secureStorage.clearAuthToken()
@@ -225,12 +225,17 @@ export function useAuth(): UseAuthReturn {
     }
 
     handleSessionExpiration()
-  }, [convexIsAuthenticated, convexIsLoading, isInitializing])
+  }, [authToken, user, isInitializing])
 
-  const isLoading = convexIsLoading || isInitializing || (convexIsAuthenticated && user === undefined)
+  // Determine authentication state:
+  // - user === undefined means query is loading
+  // - user === null means not authenticated
+  // - user object means authenticated
+  const isAuthenticated = authToken !== null && user !== null && user !== undefined
+  const isLoading = isInitializing || user === undefined
 
   return {
-    isAuthenticated: convexIsAuthenticated && user !== null && user !== undefined,
+    isAuthenticated,
     user: user ?? null,
     isLoading,
     error,
