@@ -1,7 +1,7 @@
 {
-  "name": "iTimedITiOS",
-  "slug": "iTimedITiOS",
-  "scheme": "itimeditios",
+  "name": "iTimedIT",
+  "slug": "itimedit",
+  "scheme": "itimedit",
   "version": "1.0.0",
   "orientation": "portrait",
   "userInterfaceStyle": "automatic",
@@ -16,7 +16,7 @@
   ],
   "android": {
     "icon": "./assets/images/app-icon-android-legacy.png",
-    "package": "com.itimeditios",
+    "package": "com.itimedit",
     "adaptiveIcon": {
       "foregroundImage": "./assets/images/app-icon-android-adaptive-foreground.png",
       "backgroundImage": "./assets/images/app-icon-android-adaptive-background.png"
@@ -27,7 +27,7 @@
   "ios": {
     "icon": "./assets/images/app-icon-ios.png",
     "supportsTablet": true,
-    "bundleIdentifier": "com.itimeditios"
+    "bundleIdentifier": "com.itimedit"
   },
   "web": {
     "favicon": "./assets/images/app-icon-web-favicon.png",
@@ -60,6 +60,9 @@
     "tsconfigPaths": true
   },
   "extra": {
+    "eas": {
+      "projectId": "a7118405-a040-4c3e-b89f-32b9d3112242"
+    },
     "ignite": {
       "version": "11.3.2"
     }
