@@ -3,5 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Shared Convex backend for iTimedIT web and mobile apps"
+  "description": "Shared Convex backend for iTimedIT web and mobile apps",
+  "scripts": {
+    "lint": "echo 'Backend linting handled by web app workspace'"
+  }
 }

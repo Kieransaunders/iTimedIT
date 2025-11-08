@@ -4,7 +4,7 @@ import { internalMutation, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 
-const resend = new Resend(components.resend, {
+const resend = new Resend((components as any).resend, {
   testMode: false,
 });
 
