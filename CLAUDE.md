@@ -80,6 +80,128 @@ packages/
 - **Storage**: MMKV (react-native-mmkv) for fast, encrypted storage
 - **Testing**: Jest + jest-expo + Maestro (E2E)
 
+## Monorepo Dependency Management
+
+### Dependency Ownership Structure
+
+This monorepo follows **Expo's best practices** for dependency management with special accommodations for Convex's bundling requirements:
+
+#### Backend Package (`packages/backend/package.json`)
+**Owns all backend runtime dependencies:**
+```json
+{
+  "dependencies": {
+    "@auth/core": "^0.41.1",
+    "@convex-dev/auth": "^0.0.90",
+    "@convex-dev/resend": "^0.1.13",
+    "convex": "^1.28.0",
+    "web-push": "^3.6.7"
+  }
+}
+```
+
+**Why?** Clear ownership of backend dependencies following Expo monorepo guidelines.
+
+#### Root Package (`package.json`)
+**Minimal dependencies + version overrides:**
+```json
+{
+  "dependencies": {
+    "@auth/core": "^0.41.1",  // Required for Convex bundler resolution
+    "expo": "54.0.23",          // Shared by web and mobile
+    "react": "19.1.0",          // Shared by web and mobile
+    "react-dom": "19.1.0",      // Shared by web and mobile
+    // ... UI libraries shared by both apps
+  },
+  "overrides": {
+    "@auth/core": "^0.41.1",
+    "convex": "^1.28.0",
+    "expo": "54.0.23",
+    // ... ensures consistent versions across workspaces
+  }
+}
+```
+
+**Why @auth/core at root?** Convex's bundler resolves dependencies from the workspace root. Without it, builds fail with "Could not resolve @auth/core" errors.
+
+#### Web App (`apps/web/package.json`)
+**Frontend dependencies + Convex dev dependencies:**
+```json
+{
+  "dependencies": {
+    "@auth/core": "^0.41.1",     // Used by frontend code
+    "convex": "^1.28.0",          // Convex client
+    // ... UI libraries (Radix, Tailwind, etc.)
+  },
+  "devDependencies": {
+    "@convex-dev/auth": "^0.0.90",    // For Convex build process
+    "@convex-dev/resend": "^0.1.13",  // For Convex build process
+    "web-push": "^3.6.7",             // For Convex build process
+    // ... build tools (Vite, TypeScript, etc.)
+  }
+}
+```
+
+**Why in devDependencies?** These packages are only needed during the Convex build step (`convex dev --once` in lint script).
+
+#### Mobile App (`apps/mobile/package.json`)
+**Mobile-specific dependencies:**
+```json
+{
+  "dependencies": {
+    "@auth/core": "^0.41.1",
+    "@convex-dev/auth": "^0.0.90",
+    "convex": "^1.28.0",
+    "expo": "54.0.23",
+    // ... Expo and React Native packages
+  }
+}
+```
+
+### Best Practices
+
+#### Adding New Dependencies
+
+1. **Backend-only code** (Convex functions):
+   - Add to `packages/backend/package.json` dependencies
+   - Add to `apps/web/package.json` devDependencies (for build)
+   - Example: Adding a new Convex integration
+
+2. **Web frontend code**:
+   - Add to `apps/web/package.json` dependencies
+   - Example: New UI component library
+
+3. **Mobile code**:
+   - Add to `apps/mobile/package.json` dependencies
+   - Use `npx expo install <package>` for Expo compatibility
+   - Run `npm run align-deps` in mobile workspace to check version alignment
+
+4. **Shared by multiple packages**:
+   - Add version override to root `package.json` overrides
+   - Ensures consistent versions across workspaces
+   - Example: React, TypeScript, Expo
+
+#### Version Management
+
+- **Always use overrides** for packages shared across workspaces
+- **Pin exact versions** for Expo (e.g., `"expo": "54.0.23"` not `"expo": "^54.0.23"`)
+- **Use caret ranges** for most other packages (e.g., `"^1.28.0"`)
+- **Test after dependency updates**: Run `npm run lint` to verify Convex build works
+
+#### Troubleshooting
+
+**"Could not resolve @auth/core" errors:**
+- Ensure `@auth/core` is in root `package.json` dependencies
+- Run `rm -rf node_modules package-lock.json && npm install` for clean install
+
+**Duplicate package warnings:**
+- Add version override to root `package.json`
+- Verify override is propagating: `npm ls <package>`
+
+**Convex build failures:**
+- Check that backend dependencies are in `apps/web/package.json` devDependencies
+- Verify symlink is correct: `ls -la apps/web/convex`
+
 ## Common Commands
 
 ### Root-level commands (manages both apps)
@@ -243,7 +365,11 @@ onLongPress={() => {
 
 ### Convex Backend Architecture (Shared)
 
-**IMPORTANT**: Both web and mobile apps share the same Convex backend via symlink (`apps/mobile/convex -> apps/web/convex`). All backend functions are defined in `apps/web/convex/` and used by both applications.
+**IMPORTANT**: Both web and mobile apps share the same Convex backend located at `packages/backend/`. The backend is accessed via symlinks:
+- `apps/web/convex` → `../../packages/backend`
+- `apps/mobile/convex` → `../../packages/backend`
+
+All backend functions are defined in `packages/backend/` and used by both applications.
 
 #### Shared Backend Features
 - Server-side timer interruptions using `scheduler.runAt`
@@ -258,7 +384,7 @@ onLongPress={() => {
   - Web: Uses `ensureMembership()` in Convex functions
   - Mobile: Calls `api.organizations.ensurePersonalWorkspace` in `app/_layout.tsx` on authentication
 
-#### Organization Context Pattern (`apps/web/convex/orgContext.ts`)
+#### Organization Context Pattern (`packages/backend/orgContext.ts`)
 ```typescript
 // Shared helpers used by both web and mobile
 requireMembership(ctx)      // Throws if no membership
@@ -276,7 +402,7 @@ Both apps use `@convex-dev/auth`:
 
 ### Data Model
 
-Key tables (defined in `apps/web/convex/schema.ts`):
+Key tables (defined in `packages/backend/schema.ts`):
 - **organizations**: Multi-tenant workspaces (auto-created "Personal Workspace")
 - **memberships**: User-org relationships with roles (owner/admin/member)
 - **clients**: Optional client association for projects
@@ -359,8 +485,8 @@ Key tables (defined in `apps/web/convex/schema.ts`):
 5. Push notifications require Node.js 20 runtime in Convex actions
 
 ### For Mobile App Development
-1. **Mobile app shares Convex backend with web** via symlink at `apps/mobile/convex -> apps/web/convex`
-2. **All Convex functions are in `apps/web/convex/`** - mobile uses the same functions as web
+1. **Mobile app shares Convex backend with web** via symlink at `apps/mobile/convex -> ../../packages/backend`
+2. **All Convex functions are in `packages/backend/`** - mobile uses the same functions as web
 3. **Auto-creates Personal Workspace** via `app/_layout.tsx` when user authenticates
 4. Google OAuth uses PKCE flow via `services/googleAuth.ts`
 5. Push notifications use Expo's system (`expo-notifications`)
@@ -381,7 +507,7 @@ Key tables (defined in `apps/web/convex/schema.ts`):
 
 When referencing code locations, use the format `file_path:line_number` for easy navigation.
 
-Example: "Timer start logic is in `apps/web/convex/timer.ts:142`"
+Example: "Timer start logic is in `packages/backend/timer.ts:142`"
 
 ## Additional Documentation
 
