@@ -15,6 +15,8 @@ export interface PiPTimerState {
   isBudgetWarning?: boolean;
   isBudgetOverrun?: boolean;
   projectColor?: string;
+  isBreakTimer?: boolean;
+  breakTimeRemaining?: number;
 }
 
 /**
@@ -55,7 +57,9 @@ function drawTimerToCanvas(ctx: CanvasRenderingContext2D, state: PiPTimerState) 
 
   // Determine background color based on state
   let bgColor = '#1a1a1a'; // dark background
-  if (state.isInterrupt) {
+  if (state.isBreakTimer) {
+    bgColor = '#10b981'; // green for break timer
+  } else if (state.isInterrupt) {
     bgColor = '#dc2626'; // red for interrupt
   } else if (state.isBudgetOverrun) {
     bgColor = '#dc2626'; // red for overrun
@@ -70,7 +74,11 @@ function drawTimerToCanvas(ctx: CanvasRenderingContext2D, state: PiPTimerState) 
   ctx.fillRect(0, 0, width, height);
 
   // Draw timer text
-  const timeStr = formatTime(state.elapsedMs);
+  // Use break time remaining if in break mode, otherwise use elapsed time
+  const timeStr = state.isBreakTimer && state.breakTimeRemaining !== undefined
+    ? formatTime(state.breakTimeRemaining)
+    : formatTime(state.elapsedMs);
+
   ctx.fillStyle = '#ffffff';
   ctx.font = 'bold 120px monospace';
   ctx.textAlign = 'center';
@@ -89,7 +97,11 @@ function drawTimerToCanvas(ctx: CanvasRenderingContext2D, state: PiPTimerState) 
   }
 
   // Draw status text
-  if (state.isInterrupt && state.interruptSecondsLeft !== undefined) {
+  if (state.isBreakTimer) {
+    ctx.font = 'bold 28px sans-serif';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText('☕ Break Time!', width / 2, height / 2 + 130);
+  } else if (state.isInterrupt && state.interruptSecondsLeft !== undefined) {
     ctx.font = 'bold 24px sans-serif';
     ctx.fillStyle = '#ffffff';
     const minutes = Math.floor(state.interruptSecondsLeft / 60);

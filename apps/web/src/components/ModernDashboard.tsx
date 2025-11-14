@@ -614,8 +614,10 @@ export function ModernDashboard({
       isBudgetWarning,
       isBudgetOverrun,
       projectColor: currentProject.color,
+      isBreakTimer,
+      breakTimeRemaining: isBreakTimer ? breakTimeRemaining : undefined,
     };
-  }, [currentProject, totalElapsedMs, timerState.running, runningTimer, projectStats, isBreakTimer, now, userSettings?.gracePeriod]);
+  }, [currentProject, totalElapsedMs, timerState.running, runningTimer, projectStats, isBreakTimer, now, userSettings?.gracePeriod, breakTimeRemaining]);
 
   // Calculate real-time budget remaining by subtracting current elapsed time
   const realTimeBudgetRemaining = useMemo(() => {
@@ -1422,23 +1424,6 @@ export function ModernDashboard({
                 breakMinutes={runningTimer.pomodoroBreakMinutes ?? 5}
                 sessionStartedAt={runningTimer.pomodoroSessionStartedAt}
               />
-              
-              {/* Break time remaining for break timer */}
-              {isBreakTimer && (
-                <div className="text-center mt-3">
-                  <div className="text-sm text-gray-600">
-                    Time remaining: {formatTime(breakTimeRemaining)}
-                  </div>
-                  <div className="w-64 bg-gray-200 rounded-full h-2 mx-auto mt-2">
-                    <div 
-                      className="bg-green-500 h-2 rounded-full transition-all duration-1000"
-                      style={{ 
-                        width: `${breakTimeRemaining > 0 ? (breakTimeRemaining / ((runningTimer?.pomodoroBreakMinutes ?? 5) * 60 * 1000)) * 100 : 0}%` 
-                      }}
-                    ></div>
-                  </div>
-                </div>
-              )}
             </div>
           )}
           

@@ -38,14 +38,18 @@ export const getUserSettings = query({
         pomodoroEnabled: false,
         pomodoroWorkMinutes: 25,
         pomodoroBreakMinutes: 5,
+        pomodoroLongBreakMinutes: 15,
+        pomodoroContinuous: false,
         currency: "USD" as const,
       };
     }
 
-    // Ensure currency field exists even for older records
+    // Ensure currency, pomodoroContinuous, and pomodoroLongBreakMinutes fields exist even for older records
     return {
       ...settings,
       currency: settings.currency ?? "USD",
+      pomodoroContinuous: settings.pomodoroContinuous ?? false,
+      pomodoroLongBreakMinutes: settings.pomodoroLongBreakMinutes ?? 15,
     };
   },
 });
@@ -96,6 +100,8 @@ export const updateUserSettings = mutation({
     pomodoroEnabled: v.optional(v.boolean()),
     pomodoroWorkMinutes: v.optional(v.number()),
     pomodoroBreakMinutes: v.optional(v.number()),
+    pomodoroLongBreakMinutes: v.optional(v.number()),
+    pomodoroContinuous: v.optional(v.boolean()),
     notificationSound: v.optional(v.string()),
     currency: v.optional(v.union(
       v.literal("USD"),
@@ -136,6 +142,8 @@ export const updateUserSettings = mutation({
         pomodoroEnabled: args.pomodoroEnabled ?? false,
         pomodoroWorkMinutes: args.pomodoroWorkMinutes ?? 25,
         pomodoroBreakMinutes: args.pomodoroBreakMinutes ?? 5,
+        pomodoroLongBreakMinutes: args.pomodoroLongBreakMinutes ?? 15,
+        pomodoroContinuous: args.pomodoroContinuous ?? false,
         notificationSound: args.notificationSound,
         currency: args.currency ?? "USD",
       });
@@ -150,6 +158,8 @@ export const updateUserSettings = mutation({
         ...(args.pomodoroEnabled !== undefined && { pomodoroEnabled: args.pomodoroEnabled }),
         ...(args.pomodoroWorkMinutes !== undefined && { pomodoroWorkMinutes: args.pomodoroWorkMinutes }),
         ...(args.pomodoroBreakMinutes !== undefined && { pomodoroBreakMinutes: args.pomodoroBreakMinutes }),
+        ...(args.pomodoroLongBreakMinutes !== undefined && { pomodoroLongBreakMinutes: args.pomodoroLongBreakMinutes }),
+        ...(args.pomodoroContinuous !== undefined && { pomodoroContinuous: args.pomodoroContinuous }),
         ...(args.notificationSound !== undefined && { notificationSound: args.notificationSound }),
         ...(args.currency !== undefined && { currency: args.currency }),
       });

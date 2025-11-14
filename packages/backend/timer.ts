@@ -695,6 +695,14 @@ export const processPomodoroTransition = internalMutation({
 
     const organizationId = timer.organizationId;
 
+    // Get user settings for continuous mode
+    const settings = await ctx.db
+      .query("userSettings")
+      .withIndex("byUser", (q) => q.eq("userId", timer.userId!))
+      .unique();
+
+    const isContinuous = settings?.pomodoroContinuous ?? false;
+
     // Safely get project and client data
     const project = await ctx.db.get(timer.projectId);
     if (!project) {
@@ -720,29 +728,96 @@ export const processPomodoroTransition = internalMutation({
       // Break finished - increment completed cycles
       const completedCycles = (timer.pomodoroCompletedCycles ?? 0) + 1;
       const isFullCycleComplete = completedCycles % 4 === 0; // Full Pomodoro cycle = 4 work sessions
-      
-      // Send appropriate notification
-      await ctx.scheduler.runAfter(0, api.pushActions.sendTimerAlert, {
-        userId: timer.userId,
-        title: isFullCycleComplete ? "Pomodoro cycle complete! 🎉" : "Break complete",
-        body: isFullCycleComplete 
-          ? `Congratulations! You've completed ${completedCycles / 4} full Pomodoro cycle${completedCycles / 4 > 1 ? 's' : ''}. Ready for the next cycle?`
-          : `Ready to get back to ${project?.name || 'work'}? Click to resume tracking.`,
-        alertType: "break_complete",
-        projectName: project?.name,
-        clientName: client?.name,
-        data: {
-          projectId: project?._id,
-          organizationId: timer.organizationId,
-          pomodoroPhase: "work",
-          timerId: timer._id,
-          completedCycles,
-          isFullCycleComplete,
-        },
-      });
 
-      // Delete the break timer - user must manually restart
-      await ctx.db.delete(timer._id);
+      if (isContinuous) {
+        // Continuous mode: automatically start new work session
+        console.log(`🔄 Continuous Pomodoro - Auto-starting work session #${completedCycles + 1}`);
+
+        // Delete break timer first
+        await ctx.db.delete(timer._id);
+
+        // Create new work timer entry
+        await ctx.db.insert("timeEntries", {
+          organizationId,
+          userId: timer.userId,
+          ownerId: organizationId ? undefined : timer.userId,
+          projectId: timer.projectId,
+          startedAt: now,
+          source: "timer",
+          category: timer.category,
+          isOverrun: false,
+        });
+
+        // Create new work timer
+        const workEndsAt = now + workMinutes * 60 * 1000;
+        const newTimerId = await ctx.db.insert("runningTimers", {
+          organizationId,
+          userId: timer.userId,
+          projectId: timer.projectId,
+          startedAt: now,
+          lastHeartbeatAt: now,
+          awaitingInterruptAck: false,
+          pomodoroEnabled: true,
+          pomodoroPhase: "work",
+          pomodoroTransitionAt: workEndsAt,
+          pomodoroWorkMinutes: workMinutes,
+          pomodoroBreakMinutes: breakMinutes,
+          pomodoroCurrentCycle: completedCycles + 1,
+          pomodoroCompletedCycles: completedCycles,
+          pomodoroSessionStartedAt: timer.pomodoroSessionStartedAt,
+          category: timer.category,
+          startedFrom: timer.startedFrom,
+        });
+
+        // Schedule work session completion
+        await ctx.scheduler.runAt(workEndsAt, api.timer.handlePomodoroTransition, {
+          timerId: newTimerId,
+        });
+
+        // Send notification
+        await ctx.scheduler.runAfter(0, api.pushActions.sendTimerAlert, {
+          userId: timer.userId,
+          title: isFullCycleComplete ? "New Pomodoro cycle started! 🎉" : "Work session started",
+          body: isFullCycleComplete
+            ? `Excellent! You've completed ${completedCycles / 4} full Pomodoro cycle${completedCycles / 4 > 1 ? 's' : ''}. Starting work session #${completedCycles + 1} on ${project?.name || 'your project'}.`
+            : `Starting work session #${completedCycles + 1} on ${project?.name || 'your project'}. Stay focused for ${workMinutes} minutes!`,
+          alertType: "work_start",
+          projectName: project?.name,
+          clientName: client?.name,
+          data: {
+            projectId: project?._id,
+            organizationId: timer.organizationId,
+            pomodoroPhase: "work",
+            timerId: newTimerId,
+            currentCycle: completedCycles + 1,
+            completedCycles,
+            isFullCycleComplete,
+          },
+        });
+      } else {
+        // Non-continuous mode: send notification and delete timer
+        await ctx.scheduler.runAfter(0, api.pushActions.sendTimerAlert, {
+          userId: timer.userId,
+          title: isFullCycleComplete ? "Pomodoro cycle complete! 🎉" : "Break complete",
+          body: isFullCycleComplete
+            ? `Congratulations! You've completed ${completedCycles / 4} full Pomodoro cycle${completedCycles / 4 > 1 ? 's' : ''}. Ready for the next cycle?`
+            : `Ready to get back to ${project?.name || 'work'}? Click to resume tracking.`,
+          alertType: "break_complete",
+          projectName: project?.name,
+          clientName: client?.name,
+          data: {
+            projectId: project?._id,
+            organizationId: timer.organizationId,
+            pomodoroPhase: "work",
+            timerId: timer._id,
+            completedCycles,
+            isFullCycleComplete,
+          },
+        });
+
+        // Delete the break timer - user must manually restart
+        await ctx.db.delete(timer._id);
+      }
     } else {
       // Work session finished - stop the work timer and start break timer
       

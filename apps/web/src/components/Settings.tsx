@@ -148,6 +148,11 @@ export function Settings({ onNavigate, initialTab }: { onNavigate?: (page: AppPa
   const [pomodoroEnabled, setPomodoroEnabled] = useState(false);
   const [pomodoroWorkMinutes, setPomodoroWorkMinutes] = useState(25);
   const [pomodoroBreakMinutes, setPomodoroBreakMinutes] = useState(5);
+  const [pomodoroLongBreakMinutes, setPomodoroLongBreakMinutes] = useState(15);
+  const [pomodoroWorkMinutesInput, setPomodoroWorkMinutesInput] = useState("25");
+  const [pomodoroBreakMinutesInput, setPomodoroBreakMinutesInput] = useState("5");
+  const [pomodoroLongBreakMinutesInput, setPomodoroLongBreakMinutesInput] = useState("15");
+  const [pomodoroContinuous, setPomodoroContinuous] = useState(false);
   const [currency, setCurrency] = useState<"USD" | "EUR" | "GBP">("USD");
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaveTime, setLastSaveTime] = useState<number | null>(null);
@@ -219,8 +224,16 @@ export function Settings({ onNavigate, initialTab }: { onNavigate?: (page: AppPa
       setBudgetWarningThresholdHours(settings.budgetWarningThresholdHours ?? 1.0);
       setBudgetWarningThresholdAmount(settings.budgetWarningThresholdAmount ?? 50.0);
       setPomodoroEnabled(settings.pomodoroEnabled ?? false);
-      setPomodoroWorkMinutes(settings.pomodoroWorkMinutes ?? 25);
-      setPomodoroBreakMinutes(settings.pomodoroBreakMinutes ?? 5);
+      const workMins = settings.pomodoroWorkMinutes ?? 25;
+      const breakMins = settings.pomodoroBreakMinutes ?? 5;
+      const longBreakMins = settings.pomodoroLongBreakMinutes ?? 15;
+      setPomodoroWorkMinutes(workMins);
+      setPomodoroBreakMinutes(breakMins);
+      setPomodoroLongBreakMinutes(longBreakMins);
+      setPomodoroWorkMinutesInput(workMins.toString());
+      setPomodoroBreakMinutesInput(breakMins.toString());
+      setPomodoroLongBreakMinutesInput(longBreakMins.toString());
+      setPomodoroContinuous(settings.pomodoroContinuous ?? false);
       setCurrency(settings.currency ?? "USD");
     } else {
       // Ensure settings exist
@@ -276,6 +289,8 @@ export function Settings({ onNavigate, initialTab }: { onNavigate?: (page: AppPa
         pomodoroEnabled,
         pomodoroWorkMinutes,
         pomodoroBreakMinutes,
+        pomodoroLongBreakMinutes,
+        pomodoroContinuous,
         currency,
       });
 
@@ -399,6 +414,8 @@ export function Settings({ onNavigate, initialTab }: { onNavigate?: (page: AppPa
         pomodoroEnabled,
         pomodoroWorkMinutes,
         pomodoroBreakMinutes,
+        pomodoroLongBreakMinutes,
+        pomodoroContinuous,
         currency,
       });
 
@@ -860,7 +877,24 @@ export function Settings({ onNavigate, initialTab }: { onNavigate?: (page: AppPa
                     </div>
 
                     {pomodoroEnabled && (
-                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                      <>
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          id="pomodoroContinuous"
+                          checked={pomodoroContinuous}
+                          onChange={(event) => setPomodoroContinuous(event.target.checked)}
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        />
+                        <label htmlFor="pomodoroContinuous" className="ml-2 block text-sm text-gray-900 dark:text-white">
+                          Continuous Pomodoro (auto-restart after breaks)
+                        </label>
+                      </div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 ml-6 -mt-2">
+                        Automatically start a new work session after each break completes.
+                      </p>
+
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                       <div>
                         <label htmlFor="pomodoroWorkMinutes" className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
                           Focus duration (minutes)
@@ -868,11 +902,29 @@ export function Settings({ onNavigate, initialTab }: { onNavigate?: (page: AppPa
                         <input
                           type="number"
                           id="pomodoroWorkMinutes"
-                          value={pomodoroWorkMinutes}
-                          onChange={(event) =>
-                            setPomodoroWorkMinutes(Math.max(5, parseInt(event.target.value, 10) || 25))
-                          }
-                          min={5}
+                          value={pomodoroWorkMinutesInput}
+                          onChange={(event) => {
+                            const value = event.target.value;
+                            setPomodoroWorkMinutesInput(value);
+                            const numValue = parseInt(value, 10);
+                            if (!isNaN(numValue) && numValue >= 1 && numValue <= 120) {
+                              setPomodoroWorkMinutes(numValue);
+                            }
+                          }}
+                          onBlur={() => {
+                            const numValue = parseInt(pomodoroWorkMinutesInput, 10);
+                            let finalValue = 25; // default
+                            if (!isNaN(numValue)) {
+                              if (numValue < 1) finalValue = 1;
+                              else if (numValue > 120) finalValue = 120;
+                              else finalValue = numValue;
+                            } else {
+                              finalValue = 1;
+                            }
+                            setPomodoroWorkMinutes(finalValue);
+                            setPomodoroWorkMinutesInput(finalValue.toString());
+                          }}
+                          min={1}
                           max={120}
                           className="block w-full rounded-md border border-gray-300/50 px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700/50 dark:text-gray-100 bg-white backdrop-blur-sm"
                         />
@@ -888,10 +940,28 @@ export function Settings({ onNavigate, initialTab }: { onNavigate?: (page: AppPa
                         <input
                           type="number"
                           id="pomodoroBreakMinutes"
-                          value={pomodoroBreakMinutes}
-                          onChange={(event) =>
-                            setPomodoroBreakMinutes(Math.max(1, parseInt(event.target.value, 10) || 5))
-                          }
+                          value={pomodoroBreakMinutesInput}
+                          onChange={(event) => {
+                            const value = event.target.value;
+                            setPomodoroBreakMinutesInput(value);
+                            const numValue = parseInt(value, 10);
+                            if (!isNaN(numValue) && numValue >= 1 && numValue <= 60) {
+                              setPomodoroBreakMinutes(numValue);
+                            }
+                          }}
+                          onBlur={() => {
+                            const numValue = parseInt(pomodoroBreakMinutesInput, 10);
+                            let finalValue = 5; // default
+                            if (!isNaN(numValue)) {
+                              if (numValue < 1) finalValue = 1;
+                              else if (numValue > 60) finalValue = 60;
+                              else finalValue = numValue;
+                            } else {
+                              finalValue = 1;
+                            }
+                            setPomodoroBreakMinutes(finalValue);
+                            setPomodoroBreakMinutesInput(finalValue.toString());
+                          }}
                           min={1}
                           max={60}
                           className="block w-full rounded-md border border-gray-300/50 px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700/50 dark:text-gray-100 bg-white backdrop-blur-sm"
@@ -900,7 +970,46 @@ export function Settings({ onNavigate, initialTab }: { onNavigate?: (page: AppPa
                           Default break length when using Pomodoro mode.
                         </p>
                       </div>
+
+                      <div>
+                        <label htmlFor="pomodoroLongBreakMinutes" className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Long break duration (minutes)
+                        </label>
+                        <input
+                          type="number"
+                          id="pomodoroLongBreakMinutes"
+                          value={pomodoroLongBreakMinutesInput}
+                          onChange={(event) => {
+                            const value = event.target.value;
+                            setPomodoroLongBreakMinutesInput(value);
+                            const numValue = parseInt(value, 10);
+                            if (!isNaN(numValue) && numValue >= 1 && numValue <= 120) {
+                              setPomodoroLongBreakMinutes(numValue);
+                            }
+                          }}
+                          onBlur={() => {
+                            const numValue = parseInt(pomodoroLongBreakMinutesInput, 10);
+                            let finalValue = 15; // default
+                            if (!isNaN(numValue)) {
+                              if (numValue < 1) finalValue = 1;
+                              else if (numValue > 120) finalValue = 120;
+                              else finalValue = numValue;
+                            } else {
+                              finalValue = 1;
+                            }
+                            setPomodoroLongBreakMinutes(finalValue);
+                            setPomodoroLongBreakMinutesInput(finalValue.toString());
+                          }}
+                          min={1}
+                          max={120}
+                          className="block w-full rounded-md border border-gray-300/50 px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700/50 dark:text-gray-100 bg-white backdrop-blur-sm"
+                        />
+                        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                          Extended break after completing 4 work sessions (every 4th break).
+                        </p>
+                      </div>
                     </div>
+                    </>
                     )}
                   </div>
                 </div>

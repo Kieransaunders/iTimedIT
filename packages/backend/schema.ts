@@ -198,6 +198,8 @@ const applicationTables = {
     pomodoroEnabled: v.optional(v.boolean()),
     pomodoroWorkMinutes: v.optional(v.number()),
     pomodoroBreakMinutes: v.optional(v.number()),
+    pomodoroLongBreakMinutes: v.optional(v.number()),
+    pomodoroContinuous: v.optional(v.boolean()),
     notificationSound: v.optional(v.string()),
     currency: v.optional(v.union(
       v.literal("USD"), // US Dollar
