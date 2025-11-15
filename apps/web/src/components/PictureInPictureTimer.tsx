@@ -38,7 +38,15 @@ export function PictureInPictureTimer({ timerState, disabled }: PictureInPicture
     if (isActive) {
       updatePiPTimer(timerState);
     }
-  }, [timerState, isActive]);
+  }, [
+    isActive,
+    timerState.isBreakTimer,
+    timerState.breakTimeRemaining,
+    timerState.elapsedMs,
+    timerState.isRunning,
+    timerState.isInterrupt,
+    timerState
+  ]);
 
   // Check if PiP is still active (user might close it externally)
   useEffect(() => {

@@ -569,55 +569,50 @@ export function ModernDashboard({
   }, [timerState, now]);
 
   // Break timer calculations
-  const isBreakTimer = runningTimer?.isBreakTimer;
+  const isBreakTimer = runningTimer?.isBreakTimer ?? false;
   const breakTimeRemaining = useMemo(() => {
-    if (!isBreakTimer || !runningTimer?.breakEndsAt) return 0;
+    if (!runningTimer?.isBreakTimer || !runningTimer?.breakEndsAt) return 0;
     return Math.max(0, runningTimer.breakEndsAt - now);
-  }, [isBreakTimer, runningTimer?.breakEndsAt, now]);
+  }, [runningTimer?.isBreakTimer, runningTimer?.breakEndsAt, now]);
 
   const totalSeconds = Math.floor(totalElapsedMs / 1000);
   const earnedAmount = currentProject && !isBreakTimer ? (totalSeconds / 3600) * currentProject.hourlyRate : 0;
 
-  // PiP timer state
-  const pipTimerState = useMemo((): PiPTimerState => {
-    if (!currentProject) {
-      return {
-        elapsedMs: 0,
-        projectName: "",
-        isRunning: false,
-      };
+  // PiP timer state - Removed useMemo to ensure new object reference every render
+  let isBudgetWarning = false;
+  let isBudgetOverrun = false;
+
+  if (projectStats && runningTimer && !isBreakTimer && currentProject) {
+    const budgetRemaining = projectStats.budgetRemaining;
+    const budgetTotal = projectStats.budgetTotal;
+
+    if (budgetRemaining !== undefined && budgetTotal !== undefined && budgetTotal > 0) {
+      const percentRemaining = (budgetRemaining / budgetTotal) * 100;
+      isBudgetOverrun = budgetRemaining <= 0;
+      isBudgetWarning = !isBudgetOverrun && percentRemaining < 10;
     }
+  }
 
-    let isBudgetWarning = false;
-    let isBudgetOverrun = false;
+  const pipTimerState: PiPTimerState = !currentProject ? {
+    elapsedMs: 0,
+    projectName: "",
+    isRunning: false,
+  } : {
+    elapsedMs: totalElapsedMs,
+    projectName: currentProject.name,
+    clientName: currentProject.client?.name,
+    isRunning: timerState.running,
+    isInterrupt: runningTimer?.awaitingInterruptAck,
+    interruptSecondsLeft: runningTimer?.awaitingInterruptAck && runningTimer.interruptShownAt && userSettings?.gracePeriod
+      ? Math.max(0, Math.ceil((userSettings.gracePeriod * 1000 - (now - runningTimer.interruptShownAt)) / 1000))
+      : undefined,
+    isBudgetWarning,
+    isBudgetOverrun,
+    projectColor: currentProject.color,
+    isBreakTimer,
+    breakTimeRemaining: isBreakTimer ? breakTimeRemaining : 0,
+  };
 
-    if (projectStats && runningTimer && !isBreakTimer) {
-      const budgetRemaining = projectStats.budgetRemaining;
-      const budgetTotal = projectStats.budgetTotal;
-
-      if (budgetRemaining !== undefined && budgetTotal !== undefined && budgetTotal > 0) {
-        const percentRemaining = (budgetRemaining / budgetTotal) * 100;
-        isBudgetOverrun = budgetRemaining <= 0;
-        isBudgetWarning = !isBudgetOverrun && percentRemaining < 10;
-      }
-    }
-
-    return {
-      elapsedMs: totalElapsedMs,
-      projectName: currentProject.name,
-      clientName: currentProject.client?.name,
-      isRunning: timerState.running,
-      isInterrupt: runningTimer?.awaitingInterruptAck,
-      interruptSecondsLeft: runningTimer?.awaitingInterruptAck && runningTimer.interruptShownAt && userSettings?.gracePeriod
-        ? Math.max(0, Math.ceil((userSettings.gracePeriod * 1000 - (now - runningTimer.interruptShownAt)) / 1000))
-        : undefined,
-      isBudgetWarning,
-      isBudgetOverrun,
-      projectColor: currentProject.color,
-      isBreakTimer,
-      breakTimeRemaining: isBreakTimer ? breakTimeRemaining : undefined,
-    };
-  }, [currentProject, totalElapsedMs, timerState.running, runningTimer, projectStats, isBreakTimer, now, userSettings?.gracePeriod, breakTimeRemaining]);
 
   // Calculate real-time budget remaining by subtracting current elapsed time
   const realTimeBudgetRemaining = useMemo(() => {
@@ -1522,18 +1517,20 @@ export function ModernDashboard({
                     Reset
                   </button>
                 </div>
+              </div>
+            )}
 
-                {/* Picture-in-Picture Button - Hidden on mobile */}
-                <div className="hidden md:block">
-                  <PictureInPictureTimer
-                    timerState={pipTimerState}
-                    disabled={!timerState.running}
-                  />
-                </div>
+            {/* Picture-in-Picture Button - Moved outside break conditional to work during breaks too */}
+            {runningTimer && (
+              <div className="hidden md:block mt-4 text-center">
+                <PictureInPictureTimer
+                  timerState={pipTimerState}
+                  disabled={!timerState.running}
+                />
               </div>
             )}
           </div>
-          
+
           {isBreakTimer && (
             <div className="mt-6">
               <PomodoroBreakTimer
